@@ -1,4 +1,4 @@
-#include "parsers/RecvUPRequestParser.h"
+#include "parsers/UPReqParser.h"
 
 struct UPReqParser {
     // public:      //
@@ -12,13 +12,13 @@ struct UPReqParser {
     uint8_t bytesToRead;
 };
 
-UpReqParser newUPReqParser() {
-    UpReqParser uprp = malloc(sizeof(struct UPReqParser));
+UPReqParser newUPReqParser() {
+    UPReqParser uprp = malloc(sizeof(struct UPReqParser));
     uprp->state = UP_REQ_VERSION;
     return uprp;
 }
 
-enum UPReqState readNextByte(UPReqParser p, const uint8_t b) {   
+enum UPReqState upReadNextByte(UPReqParser p, const uint8_t b) {   
     switch(p->state) {
         case UP_REQ_VERSION:
             if (0x01 == b)
@@ -77,6 +77,49 @@ enum UPReqState readNextByte(UPReqParser p, const uint8_t b) {
             // break;
         default:
             break;
+    }
+}
+
+enum UPReqState consumeMessage(buffer * b, UPReqParser p, int *errored) {
+    enum UPReqState st = p->state;
+
+    while (buffer_can_read(b) && !upDoneParsing(p, errored)) {
+        const uint8_t c = buffer_read(b);
+        st = upReadNextByte(p, c);
+    }
+    return st;
+}
+
+const char * upErrorString(const UPReqParser p) {
+    switch (p->state) {
+        case UP_ERROR_INV_VERSION:
+            return "Invalid (Unsupported) Version"; 
+        case UP_ERROR_INV_IDLEN:
+            return "Invalid ID length"; 
+        case UP_ERROR_INV_PWLEN:
+            return "Invalid Password Length"; 
+        case UP_ERROR_INV_AUTH:
+            return "Invalid Auth Data";
+        }
+}
+
+int upDoneParsing(UPReqParser p, int * errored) {
+    switch(p->state) {
+        case UP_REQ_DONE:
+            *errored = 0; 
+            return 1;
+        case UP_ERROR_INV_VERSION:
+            *errored = UP_ERROR_INV_VERSION;
+        case UP_ERROR_INV_IDLEN:
+            *errored = UP_ERROR_INV_IDLEN;
+        case UP_ERROR_INV_PWLEN:
+            *errored = UP_ERROR_INV_PWLEN;    
+        case UP_ERROR_INV_AUTH:
+            *errored = UP_ERROR_INV_AUTH;
+            return 1;
+        default:
+            *errored = 0;
+            return 0;
     }
 }
 
