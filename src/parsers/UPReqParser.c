@@ -124,6 +124,7 @@ int upDoneParsing(UPReqParser p, int * errored) {
 }
 
 void freeUPReqParser(UPReqParser p) {
+    free(p->data);
     free(p->uid);
     free(p->pw);
     free(p);
