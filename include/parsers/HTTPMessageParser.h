@@ -1,0 +1,38 @@
+#ifndef __DOH_RESPONSE_PARSER_H__
+#define __DOH_RESPONSE_PARSER_H__
+
+#include <stdlib.h>
+#include <ctype.h>
+#include <stdint.h>
+
+#include "io_utils/buffer.h"
+
+typedef enum HTTPMessageState {
+    HTTP_H, HTTP_T1, HTTP_T2, HTTP_P,
+    HTTP_SLASH, HTTP_V1, HTTP_V2,
+    HTTP_STATUS_CODE, HTTP_STATUS_MSG,
+    HTTP_I1,
+    HTTP_HK, HTTP_HV,
+    HTTP_B,
+    HTTP_I2,
+    HTTP_F,
+    HTTP_ERR_INV_STATUS_LINE,
+    HTTP_ERR_INV_VERSION,
+    HTTP_ERR_INV_STATUS_CODE,
+    HTTP_ERR_INV_HK,
+    HTTP_ERR_INV_HV,
+    HTTP_ERR_INV_BODY
+} HTTPMessageState;
+
+typedef struct HTTPMessageParser * HTTPMessageParser;
+
+HTTPMessageParser newHTTPMessageParser();
+
+enum HTTPMessageState HTTPMessageReadNextByte(HTTPMessageParser p, const uint8_t b);
+enum HTTPMessageState HTTPMessageConsumeMessage(buffer * b, HTTPMessageParser p, int *errored);
+int HTTPMessageDoneParsing(HTTPMessageParser p, int * errored);
+// Free all HTTPMessageParser-Related memory
+
+void freeHTTPMessageParser(HTTPMessageParser p);
+
+#endif
