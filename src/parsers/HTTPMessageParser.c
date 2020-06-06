@@ -117,6 +117,7 @@ enum HTTPMessageState HTTPMessageReadNextByte(HTTPMessageParser p, const uint8_t
             else if (b == CLRF) {
                 *p->cursor = '\0';
                 // Process status code - save?
+                p->state = HTTP_I1;
                 p->cursor = p->buff;
             }
             else
