@@ -5,7 +5,11 @@
 #include <ctype.h>
 #include <stdint.h>
 
+#include "http_utils/httpUtils.h"
 #include "io_utils/buffer.h"
+
+// Warning! This assumes HTTP Versions of regex [0-9]\.[0-9]
+// You've been warned --
 
 typedef enum HTTPMessageState {
     HTTP_H, HTTP_T1, HTTP_T2, HTTP_P,
