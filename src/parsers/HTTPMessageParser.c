@@ -126,28 +126,63 @@ enum HTTPMessageState HTTPMessageReadNextByte(HTTPMessageParser p, const uint8_t
             if (b == CLRF) {
                 p->state = HTTP_B;
             }
-            else if (IS_HEADER_SYMBOL(b)) {
+            else if (IS_HEADER_NAME_SYMBOL(b)) {
+                *p->cursor = b;
+                p->cursor++;
+                p->state = HTTP_HK;
+            }
+            else
+                p->state = HTTP_ERR_INV_MSG;
+            break;
+        case HTTP_HK:
+            if (IS_HEADER_NAME_SYMBOL(b)) {
+                *p->cursor = b;
+                p->cursor++;
+            }
+            else if (b == ':') {
+                *p->cursor = '\0';
+                // Process Header key
+                p->state = HTTP_HV;
+                p->cursor = p->buff;
+            }
+            else
+                p->state = HTTP_ERR_INV_HK;
+            break; 
+        case HTTP_HV:
+            if (b != CLRF) {
                 *p->cursor = b;
                 p->cursor++;
             }
             else {
-                
+                *p->cursor = '\0';
+                // Process Header Value
+                p->state = HTTP_I1;
+                p->cursor = p->buff;
             }
             break;
-        case HTTP_HK:
-            
-            break; 
-        case HTTP_HV:
-
-            break;
         case HTTP_B:
-            
+            if (b == CLRF) {
+                p->state = HTTP_I2;
+            }
+            else {
+                *p->cursor = b;
+                p->cursor++;
+            }
             break;
         case HTTP_I2:
-            
+            if (b == CLRF) {
+                *p->cursor = '\0'; 
+                p->state = HTTP_F;
+            }
+            else {
+                *p->cursor++ = CLRF;
+                *p->cursor = b;
+                p->cursor++;
+            }
             break;
         case HTTP_F:
-            
+            // DONE
+            printf("Finished\n");
             break;
         case HTTP_ERR_INV_STATUS_LINE:
             
@@ -169,8 +204,23 @@ enum HTTPMessageState HTTPMessageReadNextByte(HTTPMessageParser p, const uint8_t
             break;
     }
 }
-enum HTTPMessageState HTTPMessageConsumeMessage(buffer * b, HTTPMessageParser p, int *errored);
-int HTTPMessageDoneParsing(HTTPMessageParser p, int * errored);
+
+
+
+enum HTTPMessageState HTTPConsumeMessage(buffer * b, HTTPMessageParser p, int *errored) {
+    HTTPMessageState st = p->state;
+    while(buffer_can_read(b) && !HTTPDoneParsingMessage(p, errored)) {
+        const uint8_t c = buffer_read(b);
+        st = HTTPMessageReadNextByte(p, c);
+    }
+    return st;
+}
+
+int HTTPDoneParsingMessage(HTTPMessageParser p, int * errored) {
+    return (p->state >= HTTP_F);
+}
 // Free all HTTPMessageParser-Related memory
 
-void freeHTTPMessageParser(HTTPMessageParser p);
+void freeHTTPMessageParser(HTTPMessageParser p) {
+    free(p);
+}

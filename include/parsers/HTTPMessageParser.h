@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "http_utils/httpUtils.h"
 #include "io_utils/buffer.h"
@@ -20,6 +21,7 @@ typedef enum HTTPMessageState {
     HTTP_B,
     HTTP_I2,
     HTTP_F,
+    HTTP_ERR_INV_MSG,
     HTTP_ERR_INV_STATUS_LINE,
     HTTP_ERR_INV_VERSION,
     HTTP_ERR_INV_STATUS_CODE,
@@ -33,8 +35,8 @@ typedef struct HTTPMessageParser * HTTPMessageParser;
 HTTPMessageParser newHTTPMessageParser();
 
 enum HTTPMessageState HTTPMessageReadNextByte(HTTPMessageParser p, const uint8_t b);
-enum HTTPMessageState HTTPMessageConsumeMessage(buffer * b, HTTPMessageParser p, int *errored);
-int HTTPMessageDoneParsing(HTTPMessageParser p, int * errored);
+enum HTTPMessageState HTTPConsumeMessage(buffer * b, HTTPMessageParser p, int *errored);
+int HTTPDoneParsingMessage(HTTPMessageParser p, int * errored);
 // Free all HTTPMessageParser-Related memory
 
 void freeHTTPMessageParser(HTTPMessageParser p);
