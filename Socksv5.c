@@ -3,6 +3,8 @@
 
 int udpSocket(int port);
 
+void error(const char *msg) { perror(msg); exit(0); }
+
 int main(int argc, char ** argv){
     int opt = TRUE;
     int master_socket , addrlen , new_socket , client_socket[MAX_SOCKETS] , max_clients = MAX_SOCKETS , activity, i , sd;
@@ -197,12 +199,78 @@ int main(int argc, char ** argv){
                     printf("Received %zu bytes from socket %d\n", valread, sd);
                     // activamos el socket para escritura y almacenamos en el buffer de salida
                     FD_SET(sd, &writefds);
+
+                    char *host = malloc(val_read + 1);
+                    strcpy(host, buffer);
+                    
+
+                    int portno = 80;
+                    struct hostent *server;
+                    struct sockaddr_in serv_addr;
+                    int sockfd, bytes, sent, received, total, message_size;
+                    char *message, response[4096];
+                            /* What are we going to send? */
+
+                    
+
+                    /* create the socket */
+                    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+                    if (sockfd < 0) error("ERROR opening socket");
+
+                    /* lookup the ip address */
+                    server = gethostbyname(host);
+                    if (server == NULL) error("ERROR, no such host");
+
+
+
+
+                    char peer0_0[] = { /* Packet 57 */
+                    0x47, 0x45, 0x54, 0x20, 0x2f, 0x20, 0x48, 0x54, 
+                    0x54, 0x50, 0x2f, 0x31, 0x2e, 0x31, 0x0d, 0x0a, 
+                    0x48, 0x6f, 0x73, 0x74, 0x3a, 0x20, 0x67, 0x6f, 
+                    0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x63, 0x6f, 0x6d, 
+                    0x0d, 0x0a, 0x55, 0x73, 0x65, 0x72, 0x2d, 0x41, 
+                    0x67, 0x65, 0x6e, 0x74, 0x3a, 0x20, 0x63, 0x75, 
+                    0x72, 0x6c, 0x2f, 0x37, 0x2e, 0x36, 0x34, 0x2e, 
+                    0x31, 0x0d, 0x0a, 0x41, 0x63, 0x63, 0x65, 0x70, 
+                    0x74, 0x3a, 0x20, 0x2a, 0x2f, 0x2a, 0x0d, 0x0a, 
+                    0x0d, 0x0a };
+
+                     memset(&serv_addr,0,sizeof(serv_addr));
+                    serv_addr.sin_family = AF_INET;
+                    serv_addr.sin_port = htons(portno);
+                    memcpy(&serv_addr.sin_addr.s_addr,server->h_addr,server->h_length);
+
+                    /* connect the socket */
+                    if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0)
+                        error("ERROR connecting");
+
+                    /* send the request */
+                    total = strlen(peer0_0);
+                    sent = 0;
+                    do {
+                        bytes = write(sockfd,peer0_0+sent,total-sent);
+                        if (bytes < 0)
+                            error("ERROR writing message to socket");
+                        if (bytes == 0)
+                            break;
+                        sent+=bytes;
+                    } while (sent < total);
+
+                    /* receive the response */
+                    memset(response,0,sizeof(response));
+                    total = sizeof(response)-1;
+                    received = 0;
+                    bytes = read(sockfd,response+received,total - received); //have to do it while there is no more to read but it gets stucked
+
+
+
                     
                     // Tal vez ya habia datos en el buffer
                     // TODO: validar realloc != NULL
-                    bufferWrite[i].buffer = realloc(bufferWrite[i].buffer, bufferWrite[i].len + valread);
-                    memcpy(bufferWrite[i].buffer + bufferWrite[i].len, buffer, valread);
-                    bufferWrite[i].len += valread;
+                    bufferWrite[i].buffer = realloc(bufferWrite[i].buffer, bufferWrite[i].len + bytes);
+                    memcpy(bufferWrite[i].buffer + bufferWrite[i].len, response, bytes);
+                    bufferWrite[i].len += bytes;
                 }
             }
         }
@@ -217,27 +285,3 @@ int main(int argc, char ** argv){
 
 }
 
-    int udpSocket(int port) {
-    
-    int sock;
-    struct sockaddr_in serverAddr;
-    if ( (sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
-        //log(ERROR, "UDP socket creation failed, errno: %d %s", errno, strerror(errno));
-        return sock;
-    }
-    //log(DEBUG, "UDP socket %d created", sock);
-    memset(&serverAddr, 0, sizeof(serverAddr));
-    serverAddr.sin_family    = AF_INET; // IPv4cle
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
-    serverAddr.sin_port = htons(port);
-    
-    if ( bind(sock, (const struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0 )
-    {
-        //log(ERROR, "UDP bind failed, errno: %d %s", errno, strerror(errno));
-        close(sock);
-        return -1;
-    }
-    //log(DEBUG, "UDP socket bind OK ");
-    
-    return sock;
-}

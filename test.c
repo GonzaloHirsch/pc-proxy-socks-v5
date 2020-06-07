@@ -79,7 +79,7 @@ int main(int argc, char ** argv){
     memset(response,0,sizeof(response));
     total = sizeof(response)-1;
     received = 0;
-    bytes = read(sockfd,response+received,total - received);
+    bytes = read(sockfd,response+received,total - received); //have to do it while there is no more to read but it gets stucked
 
 
 
