@@ -3,19 +3,27 @@
 
 #include "io_utils/buffer.h"
 #include "parsers/HelloParser.h"
-
+#include "parsers/SOCKS5AddrParser.h"
+#include "parsers/ConnectionReqParser.h"
 #include "../include/socksv5.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <netdb.h>
 #include <errno.h>
-#include <unistd.h>   
-#include <arpa/inet.h>    
+#include <unistd.h>
+#include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <sys/time.h> 
+#include <sys/time.h>
+
+#define TRUE 1
+#define FALSE 0
+#define PORT 8888
+#define MAX_SOCKETS 20
+#define BUFFERSIZE 2048
+#define MAX_PENDING_CONNECTIONS 5
 
 typedef enum AuthOType
 {
@@ -32,8 +40,8 @@ typedef enum AddrType
 
 typedef enum ClientFdOperation
 {
-    OP_READ = 0x01,
-    OP_WRITE = 0x02
+    OP_READ = 0x00,
+    OP_WRITE = 0x01
 } ClientFdOperation;
 
 /** General State Machine for a server connection */
@@ -137,14 +145,15 @@ typedef enum socks_v5state
     ERROR,
 } socks_v5state;
 
-typedef struct state_machine {
+typedef struct state_machine
+{
     socks_v5state state;
 } state_machine;
 
-typedef state_machine * state_machine;
+typedef state_machine *state_machine;
 
-/** Used by  */
-struct hello_st
+/** Used by the HELLO_READ and HELLO_WRITE states */
+typdef struct hello_st
 {
     /** Buffers used for IO */
     buffer *rb, *wb;
@@ -152,7 +161,27 @@ struct hello_st
     HelloParser parser;
     /** Selected auth method */
     uint8_t method;
-};
+} hello_st;
+
+/** Used by the RESOLVE state */
+typdef struct resolve_st
+{
+    /** Buffers used for IO */
+    buffer *rb, *wb;
+    /** Pointer to hello parser */
+    Socks5AddrParser parser;
+    /** Resolved ip address */
+    char * resolvedAddress;
+} resolve_st;
+
+/** Used by the REQUEST_READ state */
+typdef struct request_st
+{
+    /** Buffer used for IO */
+    buffer *rb;
+    /** Pointer to hello parser */
+    ConnectionReqParser parser;
+} request_st;
 
 typedef struct socks5
 {
