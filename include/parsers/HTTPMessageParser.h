@@ -38,6 +38,13 @@ enum HTTPMessageState HTTPMessageReadNextByte(HTTPMessageParser p, const uint8_t
 enum HTTPMessageState HTTPConsumeMessage(buffer * b, HTTPMessageParser p, int *errored);
 const char * httpErrorString(const HTTPMessageParser p);
 int HTTPDoneParsingMessage(HTTPMessageParser p, int * errored);
+
+int getNumericHeaderValue(HTTPMessageParser p, const char * headerName);
+HTTPHeader ** getHeaders(HTTPMessageParser p);
+int getNumberOfHeaders(HTTPMessageParser p);
+const char * getBody(HTTPMessageParser p);
+
+
 // Free all HTTPMessageParser-Related memory
 
 void freeHTTPMessageParser(HTTPMessageParser p);
