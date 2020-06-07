@@ -80,15 +80,39 @@ enum socks_v5state
      * State when connecting to the server the client request is headed to
      * 
      * Interests:
-     *  - OP_WRITE -> Writing the request to the server
      * 
      * Transitions:
-     *  - CONNECTING -> While the 
-     *  - REPLY -> When the name is resolved and the IP address obtained
+     *  - CONNECTING -> While the server is establishing the connection with the destination of the request
+     *  - REPLY -> When the connection is successful and our server can send the request
      *  - ERROR -> In case of an error
      * */
     CONNECTING,
+
+    /**
+     * State when sending/receiving the request to/from the destination server
+     * 
+     * Interests:
+     *  - OP_READ -> Reading over the server response
+     *  - OP_WRITE -> Writing to server the request
+     * 
+     * Transitions:
+     *  - REPLY -> While the request is being sent and the response is still being copied
+     *  - COPY -> When the server response is finished
+     *  - ERROR -> In case of an error
+     * */
     REPLY,
+
+    /**
+     * State when copying the response to the client fd
+     * 
+     * Interests:
+     *  - OP_WRITE -> Writing to client fd
+     * 
+     * Transitions:
+     *  - COPY -> While the server is still copying the response
+     *  - DONE -> When the copy process is finished
+     *  - ERROR -> In case of an error
+     * */
     COPY,
 
     // estados terminales
