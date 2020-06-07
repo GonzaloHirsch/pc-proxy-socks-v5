@@ -206,8 +206,6 @@ enum HTTPMessageState HTTPMessageReadNextByte(HTTPMessageParser p, const uint8_t
     }
 }
 
-
-
 enum HTTPMessageState HTTPConsumeMessage(buffer * b, HTTPMessageParser p, int *errored) {
     HTTPMessageState st = p->state;
     while(buffer_can_read(b) && !HTTPDoneParsingMessage(p, errored)) {
@@ -220,6 +218,26 @@ enum HTTPMessageState HTTPConsumeMessage(buffer * b, HTTPMessageParser p, int *e
 int HTTPDoneParsingMessage(HTTPMessageParser p, int * errored) {
     return (p->state >= HTTP_F);
 }
+
+const char * httpErrorString(const HTTPMessageParser p) {
+    switch (p->state) {
+        case HTTP_ERR_INV_MSG:
+            return "Invalid HTTP Message";
+        case HTTP_ERR_INV_STATUS_LINE:
+            return "Invalid Status Line";
+        case HTTP_ERR_INV_VERSION:
+            return "Invalid HTTP Version";
+        case HTTP_ERR_INV_STATUS_CODE:
+            return "Invalid Status Code";
+        case HTTP_ERR_INV_HK:
+            return "Invalid Header Name";
+        case HTTP_ERR_INV_HV:
+            return "Invalid Header Value";
+        case HTTP_ERR_INV_BODY:
+            return "Invalid Header Body";
+    }
+}
+
 // Free all HTTPMessageParser-Related memory
 
 void freeHTTPMessageParser(HTTPMessageParser p) {
