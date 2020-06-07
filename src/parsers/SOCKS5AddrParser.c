@@ -18,14 +18,15 @@ typedef enum S5AddrType {
 
 typedef enum AddressSize {
     IP_V4_ADDR_SIZE = 4,
-    IP_V6_ADDR_SIZE = 6
+    IP_V6_ADDR_SIZE = 16
 } AddressSize;
 
 Socks5AddrParser newSocks5AddrParser() {
-    Socks5AddrParser s5ap = malloc(sizeof(Socks5AddrParser));
+    Socks5AddrParser s5ap = malloc(sizeof(struct Socks5AddrParser));
     s5ap->type = 0;
     s5ap->bytesToRead = 0;
     s5ap->addrLen = 0;
+    s5ap->state = SOCKS5ADDR_TYPE;
     return s5ap;
 }
 
@@ -36,14 +37,17 @@ enum Socks5AddrState socks5AddrReadNextByte(Socks5AddrParser p, const uint8_t b)
                 p->bytesToRead = IP_V4_ADDR_SIZE;
                 p->addrLen = IP_V4_ADDR_SIZE;
                 p->addr = malloc(IP_V4_ADDR_SIZE);
+                p->state = SOCKS5ADDR_IP_V4;
             }
             else if (b == DNAME_T) {
                 p->bytesToRead = 1;
+                p->state = SOCKS5ADDR_DNAME_LEN;
             }
             else if (b == IP_V6_T) {
                 p->bytesToRead = IP_V6_ADDR_SIZE;
-                p->addrLen = IP_V4_ADDR_SIZE;
+                p->addrLen = IP_V6_ADDR_SIZE;
                 p->addr = malloc(IP_V6_ADDR_SIZE);
+                p->state = SOCKS5ADDR_IP_V6;
             }
             else
                 p->state = SOCKS5ADDR_ERR_INV_TYPE;
@@ -53,6 +57,7 @@ enum Socks5AddrState socks5AddrReadNextByte(Socks5AddrParser p, const uint8_t b)
             p->bytesToRead = b;
             p->addrLen = b;
             p->addr = malloc(b+1);
+            p->state = SOCKS5ADDR_DNAME;
             break;
         case SOCKS5ADDR_DNAME:
         case SOCKS5ADDR_IP_V4:
@@ -60,6 +65,8 @@ enum Socks5AddrState socks5AddrReadNextByte(Socks5AddrParser p, const uint8_t b)
             if (p->bytesToRead) {
                 p->addr[p->addrLen - p->bytesToRead] = b;
                 p->bytesToRead--;
+                if (p->bytesToRead == 0)
+                    p->state = SOCKS5ADDR_DONE;
             }
             else {
                 if (p->state == SOCKS5ADDR_DNAME)
@@ -73,6 +80,8 @@ enum Socks5AddrState socks5AddrReadNextByte(Socks5AddrParser p, const uint8_t b)
         case SOCKS5ADDR_ERR_INV_TYPE:
             
             break;
+        case SOCKS5ADDR_ERR_INV_ADDRESS:
+            break;
     }
 }
 enum Socks5AddrState socks5AddrConsumeMessage(buffer * b, Socks5AddrParser p, int *errored) {
@@ -80,6 +89,9 @@ enum Socks5AddrState socks5AddrConsumeMessage(buffer * b, Socks5AddrParser p, in
     while(buffer_can_read(b) && !socks5AddrDoneParsing(p, errored)) {
         const uint8_t c = buffer_read(b);
         st = socks5AddrReadNextByte(p, c);
+    }
+    if (!buffer_can_read(b) && !socks5AddrDoneParsing(p, errored)) {
+        p->state = st = SOCKS5ADDR_ERR_INV_ADDRESS;
     }
     return st;
 }

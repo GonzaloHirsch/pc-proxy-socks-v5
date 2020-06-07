@@ -14,7 +14,8 @@ typedef enum Socks5AddrState {
     SOCKS5ADDR_DNAME,
     SOCKS5ADDR_IP_V6,
     SOCKS5ADDR_DONE,
-    SOCKS5ADDR_ERR_INV_TYPE
+    SOCKS5ADDR_ERR_INV_TYPE,
+    SOCKS5ADDR_ERR_INV_ADDRESS
 } Socks5AddrState;
 
 typedef struct Socks5AddrParser * Socks5AddrParser;
