@@ -6,7 +6,7 @@
 
 
 int main() {
-    int opt = true;
+    int opt = TRUE;
     int master_socket , addrlen , new_socket , client_socket[MAX_SOCKETS] , max_clients = MAX_SOCKETS , activity, i , sd;
     long val_read;
     int max_sd;
