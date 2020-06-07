@@ -74,6 +74,13 @@ int helloDoneParsing(HelloParser p, int * errored) {
     return p->state >= HELLO_DONE;
 }
 
+uint8_t getNAuth(HelloParser p) {
+    return p->nauth;
+}
+const uint8_t * getAuthTypes(HelloParser p) {
+    return p->auth;
+}
+
 // Free all HelloParser-Related memory
 void freeHelloParser(HelloParser p) {
     free(p->auth);

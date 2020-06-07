@@ -25,6 +25,10 @@ HelloParser newHelloParser();
 enum HelloState helloReadNextByte(HelloParser p, const uint8_t b);
 enum HelloState helloConsumeMessage(buffer * b, HelloParser p, int *errored);
 int helloDoneParsing(HelloParser p, int * errored);
+
+uint8_t getNAuth(HelloParser p);
+const uint8_t * getAuthTypes(HelloParser p);
+
 // Free all HelloParser-Related memory
 
 void freeHelloParser(HelloParser p);
