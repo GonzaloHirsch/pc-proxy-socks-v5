@@ -1,6 +1,19 @@
 #ifndef __SOCKSV5_H__
 #define __SOCKSV5_H__
 
+#include "../include/socksv5.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <netdb.h>
+#include <errno.h>
+#include <unistd.h>   
+#include <arpa/inet.h>    
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <sys/time.h> 
+
 typedef enum AuthOType
 {
     NO_AUTH = 0x00,
@@ -94,6 +107,22 @@ enum socks_v5state
     // estados terminales
     DONE,
     ERROR,
+};
+
+
+#define TRUE 1
+#define FALSE 0
+#define PORT 8888
+#define MAX_SOCKETS 20
+#define BUFFERSIZE 2048
+#define MAX_PENDING_CONNECTIONS 5
+
+
+struct  buffer
+{
+    char * buffer;
+    size_t len;
+    size_t from;
 };
 
 #endif
