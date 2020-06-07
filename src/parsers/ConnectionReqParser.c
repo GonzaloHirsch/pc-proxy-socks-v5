@@ -56,7 +56,10 @@ enum ConnectionReqState connectionReqReadNextByte(ConnectionReqParser p, const u
             if (b == 0) {
                 p->finalMessage.rsv = 0;
                 p->state = CONN_REQ_DSTADDR;
+                p->bytesToRead = 2; // Untidy, this is for BND_PORT
             }
+            else 
+                p->state = CONN_REQ_ERR_INV_RSV;
             break;
         case CONN_REQ_DSTADDR:
             // this state is just for consume function
@@ -89,6 +92,7 @@ enum ConnectionReqState connectionReqReadNextByte(ConnectionReqParser p, const u
             
             break;
         }
+    return p->state;
 }
 enum ConnectionReqState connectionReqConsumeMessage(buffer * b, ConnectionReqParser p, int *errored) {
     ConnectionReqState st = p->state;
@@ -103,6 +107,8 @@ enum ConnectionReqState connectionReqConsumeMessage(buffer * b, ConnectionReqPar
         st = p->state = CONN_REQ_ERR_INV_DSTADDR;
         return st;
     }
+    else if (s5st == SOCKS5ADDR_DONE)
+        st = p->state = CONN_REQ_BND_PORT;
     // Successfully read Address
     while(buffer_can_read(b) && !connectionReqDoneParsing(p, errored)) {
         const uint8_t c = buffer_read(b);

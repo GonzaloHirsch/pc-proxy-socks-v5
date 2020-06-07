@@ -25,8 +25,11 @@ Socks5AddrParser newSocks5AddrParser();
 enum Socks5AddrState socks5AddrReadNextByte(Socks5AddrParser p, const uint8_t b);
 enum Socks5AddrState socks5AddrConsumeMessage(buffer * b, Socks5AddrParser p, int *errored);
 int socks5AddrDoneParsing(Socks5AddrParser p, int * errored);
-// Free all Socks5AddrParser-Related memory
 
+const char * getSocks5Address(Socks5AddrParser p);
+const int getSocks5Type(Socks5AddrParser p);
+
+// Free all Socks5AddrParser-Related memory
 void freeSocks5AddrParser(Socks5AddrParser p);
 
 #endif
