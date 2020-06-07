@@ -1,6 +1,9 @@
 #ifndef __SOCKSV5_H__
 #define __SOCKSV5_H__
 
+#include "io_utils/buffer.h"
+#include "parsers/HelloParser.h"
+
 #include "../include/socksv5.h"
 #include <stdio.h>
 #include <string.h>
@@ -33,8 +36,8 @@ typedef enum ClientFdOperation
     OP_WRITE = 0x02
 } ClientFdOperation;
 
-/* General State Machine for a server connection */
-enum socks_v5state
+/** General State Machine for a server connection */
+typedef enum socks_v5state
 {
     /**
      * State when receiving the client initial "hello" and processing
@@ -128,25 +131,44 @@ enum socks_v5state
      * */
     COPY,
 
-    // estados terminales
+    /** Terminal state */
     DONE,
+    /** Terminal state */
     ERROR,
-};
+} socks_v5state;
 
+typedef struct state_machine {
+    socks_v5state state;
+} state_machine;
 
-#define TRUE 1
-#define FALSE 0
-#define PORT 8888
-#define MAX_SOCKETS 20
-#define BUFFERSIZE 2048
-#define MAX_PENDING_CONNECTIONS 5
+typedef state_machine * state_machine;
 
-
-struct  buffer
+/** Used by  */
+struct hello_st
 {
-    char * buffer;
-    size_t len;
-    size_t from;
+    /** Buffers used for IO */
+    buffer *rb, *wb;
+    /** Pointer to hello parser */
+    HelloParser parser;
+    /** Selected auth method */
+    uint8_t method;
 };
+
+typedef struct socks5
+{
+    /** maquinas de estados */
+    state_machine stm;
+    /** estados para el client_fd */
+    union {
+        hello_st hello;
+        request_st request;
+        copy copy;
+    } client;
+    /** estados para el origin_fd */
+    union {
+        connecting conn;
+        copy copy;
+    } orig;
+} Socks5;
 
 #endif
