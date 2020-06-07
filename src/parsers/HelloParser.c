@@ -25,6 +25,8 @@ enum HelloState helloReadNextByte(HelloParser p, const uint8_t b) {
         case HELLO_NAUTH:
             // No rules established to know which 
             // cases should be considered as errors
+            if (b == 0)
+                p->state = HELLO_ERR_INV_NAUTH;
             p->nauth = b;
             p->auth = malloc(b);
             p->bytesToRead = b;
@@ -44,6 +46,9 @@ enum HelloState helloReadNextByte(HelloParser p, const uint8_t b) {
             
             break;
         case HELLO_ERR_INV_VERSION:
+            
+            break;
+        case HELLO_ERR_INV_NAUTH:
             
             break;
         case HELLO_ERR_UNASSIGNED_METHOD:
