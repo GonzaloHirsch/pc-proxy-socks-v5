@@ -1,5 +1,10 @@
 #include "parsers/HTTPMessageParser.h"
 
+#include <string.h>
+#include "http_utils/httpUtils.h"
+#include "io_utils/strings.h"
+
+#define MAX_HEADERS 30
 #define MAX_HEADER_NAME_LEN 40
 #define MAX_HEADER_VALUE_LEN 100
 
@@ -12,9 +17,12 @@ struct HTTPMessageParser {
     HTTPMessageState state;
     char version[5];
     char status[4];
+    char * body;
+    int headersNum;
+    HTTPHeader * headers[MAX_HEADERS];
     // private:
-    // char headerName[MAX_HEADER_NAME_LEN+1];
-    // char headerValue[MAX_HEADER_VALUE_LEN+1];
+    char headerName[MAX_HEADER_NAME_LEN+1];
+    char headerValue[MAX_HEADER_VALUE_LEN+1];
     char * cursor;
     int bytesToRead;
     int bodyLen;
@@ -23,7 +31,7 @@ struct HTTPMessageParser {
 
 HTTPMessageParser newHTTPMessageParser() {
     // TODO augment struct and manage initialization if necessary
-    HTTPMessageParser mp = malloc(sizeof(struct HTTPMessageParser));
+    HTTPMessageParser mp = calloc(1, sizeof(struct HTTPMessageParser));
     mp->cursor = mp->version;
     return mp;
 }
@@ -116,7 +124,6 @@ enum HTTPMessageState HTTPMessageReadNextByte(HTTPMessageParser p, const uint8_t
             }
             else if (b == CLRF) {
                 *p->cursor = '\0';
-                // Process status code - save?
                 p->state = HTTP_I1;
                 p->cursor = p->buff;
             }
@@ -125,9 +132,14 @@ enum HTTPMessageState HTTPMessageReadNextByte(HTTPMessageParser p, const uint8_t
             break;
         case HTTP_I1:
             if (b == CLRF) {
+                // TODO check content-length
+                p->bodyLen = getNumericHeaderValue(p, "content-length");
+                p->body = malloc(p->bodyLen);
+                p->cursor = p->body;
                 p->state = HTTP_B;
             }
             else if (IS_HEADER_NAME_SYMBOL(b)) {
+                p->cursor = p->headerName;
                 *p->cursor = b;
                 p->cursor++;
                 p->state = HTTP_HK;
@@ -144,7 +156,7 @@ enum HTTPMessageState HTTPMessageReadNextByte(HTTPMessageParser p, const uint8_t
                 *p->cursor = '\0';
                 // Process Header key
                 p->state = HTTP_HV;
-                p->cursor = p->buff;
+                p->cursor = p->headerValue;
             }
             else
                 p->state = HTTP_ERR_INV_HK;
@@ -156,7 +168,14 @@ enum HTTPMessageState HTTPMessageReadNextByte(HTTPMessageParser p, const uint8_t
             }
             else {
                 *p->cursor = '\0';
-                // Process Header Value
+                // Save new header
+                p->headers[p->headersNum] = malloc(sizeof(HTTPHeader));
+                p->headers[p->headersNum]->type = malloc(strlen(p->headerName)+1);
+                p->headers[p->headersNum]->value = malloc(strlen(p->headerValue)+1);
+                strcpy(p->headers[p->headersNum]->type, p->headerName);
+                strcpy(p->headers[p->headersNum]->value, p->headerValue);
+                p->headersNum++;
+
                 p->state = HTTP_I1;
                 p->cursor = p->buff;
             }
@@ -165,9 +184,13 @@ enum HTTPMessageState HTTPMessageReadNextByte(HTTPMessageParser p, const uint8_t
             if (b == CLRF) {
                 p->state = HTTP_I2;
             }
-            else {
+            else if (p->cursor - p->body < p->bodyLen) {
                 *p->cursor = b;
                 p->cursor++;
+            }
+            else {
+                // ERROR with lengths
+                p->state = HTTP_ERR_INV_BODY;
             }
             break;
         case HTTP_I2:
@@ -204,6 +227,7 @@ enum HTTPMessageState HTTPMessageReadNextByte(HTTPMessageParser p, const uint8_t
             
             break;
     }
+    return p->state;
 }
 
 enum HTTPMessageState HTTPConsumeMessage(buffer * b, HTTPMessageParser p, int *errored) {
@@ -238,8 +262,35 @@ const char * httpErrorString(const HTTPMessageParser p) {
     }
 }
 
+int getNumericHeaderValue(HTTPMessageParser p, const char * headerName) {
+    char * pointer;
+    for (int i = 0; i < p->headersNum; i++) {
+        if (i_strcmp(p->headers[i]->type, headerName) == 0) {
+            return (int) strtol(p->headers[i]->value, &pointer, 10);
+        } 
+    }
+}
+
+HTTPHeader ** getHeaders(HTTPMessageParser p){
+    return p->headers;
+}
+
+int getNumberOfHeaders(HTTPMessageParser p) {
+    return p->headersNum;
+}
+
+const char * getBody(HTTPMessageParser p) {
+    return p->body;
+}
+
 // Free all HTTPMessageParser-Related memory
 
 void freeHTTPMessageParser(HTTPMessageParser p) {
+    for (int i = 0; i < p->headersNum; i++) {
+        free(p->headers[i]->type);
+        free(p->headers[i]->value);
+        free(p->headers[i]); 
+    }
+    free(p->body);
     free(p);
 }
