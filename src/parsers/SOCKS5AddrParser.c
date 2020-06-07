@@ -83,6 +83,7 @@ enum Socks5AddrState socks5AddrReadNextByte(Socks5AddrParser p, const uint8_t b)
         case SOCKS5ADDR_ERR_INV_ADDRESS:
             break;
     }
+    return p->state;
 }
 enum Socks5AddrState socks5AddrConsumeMessage(buffer * b, Socks5AddrParser p, int *errored) {
     Socks5AddrState st = p->state;
@@ -98,6 +99,14 @@ enum Socks5AddrState socks5AddrConsumeMessage(buffer * b, Socks5AddrParser p, in
 int socks5AddrDoneParsing(Socks5AddrParser p, int * errored) {
     return p->state >= SOCKS5ADDR_DONE;
 }
+
+const char * getSocks5Address(Socks5AddrParser p) {
+    return p->addr;
+}
+const int getSocks5Type(Socks5AddrParser p) {
+    return p->type;
+}
+
 // Free all Socks5AddrParser-Related memory
 
 void freeSocks5AddrParser(Socks5AddrParser p) {
