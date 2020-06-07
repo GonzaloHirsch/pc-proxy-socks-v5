@@ -12,11 +12,6 @@ typedef enum AddrType {
     IPv6 = 0x04
 } AddrType;
 
-typedef enum ConnType {
-    TCP_IP_STREAM = 0x01,
-    TCP_IP_PORT_BINDING = 0x02,
-    UDP = 0x03
-} ConnType;
 
 
 
