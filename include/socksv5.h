@@ -171,7 +171,7 @@ typdef struct resolve_st
     /** Pointer to hello parser */
     Socks5AddrParser parser;
     /** Resolved ip address */
-    char * resolvedAddress;
+    char *resolvedAddress;
 } resolve_st;
 
 /** Used by the REQUEST_READ state */

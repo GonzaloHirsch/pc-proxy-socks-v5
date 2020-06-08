@@ -13,16 +13,18 @@ typedef struct state_machine
 typedef struct state {
     /** State type of the state */
     PossibleStates state;
+    /** Next state to move */
+    state next_state;
     /** Executed on state enter */
-    void (*on_enter)
+    void (*on_enter) (state_machine sm);
     /** Executed on state exit */
-    void (*on_exit) 
+    void (*on_exit) (state_machine sm);
     /** Executed on error */
-    void (*on_error)
+    void (*on_error) (state_machine sm);
     /** Executed on available information to read */
-    void (*on_available_read)
+    void (*on_available_read) (state_machine sm);
     /** Executed on available information to write */
-    void (*on_available_write)
+    void (*on_available_write) (state_machine sm);
 };
 
 void init_state_machine(state_machine sm){
