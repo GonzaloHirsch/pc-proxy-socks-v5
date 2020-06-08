@@ -1,9 +1,13 @@
 
-#include "../include/Socksv5.h"
+#include "../include/socksv5.h"
 
-//#include "Utility.h"
+#include "../include/utility.h"
 
 Socks5 *socks_state[MAX_SOCKETS];
+
+// INTERNAL FUNCTIONS
+void masterSocketHandler(struct selector_key *key);
+
 
 int main()
 {
@@ -78,7 +82,7 @@ int main()
 
     // TODO: CREATE SCTP SOCKET HERE!
 
-    // ----------------- REGISTERING THE SELECTOR -----------------
+    // ----------------- CREATE THE SELECTOR -----------------
 
     // Creating the configuration for the select
     const struct selector_init selector_configuration = {
@@ -102,11 +106,17 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    // Setting the desired capacity
+    // Selector key for the masterSocketHandler
+    struct selector_key masterSelectorKey;
+    masterSelectorKey.s = selector;
+    masterSelectorKey.fd = master_socket;
+    masterSelectorKey.data = NULL;
+    // Add the master socket to the managed fds.
+    // TODO: Review this
+    selector_register(selector, master_socket, masterSocketHandler(&masterSelectorKey), OP_READ, NULL);
 
     // TODO: POR AHORA TODO LO QUE ESTA ACA ABAJO NO SIRVE, LA LOGICA ESTA EN EL SELECTOR
     // ----------------- OTHER CODE - FORM PREVIOUS FILE -----------------
-
 
 
     //accept the incoming connection
@@ -114,7 +124,7 @@ int main()
     printf("Waiting for connections on socket %d\n", master_socket);
 
     // Limpiamos el conjunto de escritura
-    FD_ZERO(&writefds);
+    //FD_ZERO(&writefds);
 
     while (TRUE)
     {
@@ -352,4 +362,9 @@ void render_to_state(char *received, int sock_num, int valread, buffer *b)
     default:
         break;
     }
+}
+
+//TODO: Implement this
+void masterSocketHandler(struct selector_key *key){
+
 }
