@@ -1,6 +1,5 @@
 
-#include "../include/socksv5.h"
-#include "../Utility.h"
+#include "socksv5.h"
 
 Socks5 *socks_state[MAX_SOCKETS];
 
@@ -304,7 +303,7 @@ void init_socks_state(int i)
     }
 
     socks_state[i]->stm->state = HELLO_READ;
-    socks_state[i]->client.hello.parser = newHelloParser();
+    socks_state[i]->client.hello.parser = new_hello_parser();
 }
 
 void free_socks_state(int i)
@@ -324,8 +323,8 @@ void render_to_state(char *received, int sock_num, int valread, buffer *b)
             buffer_write(b, received[i]);
         }
 
-        HelloState hs;
-        hs = helloConsumeMessage(b, socks_state[sock_num]->client.hello.parser, &errored);
+        hello_state hs;
+        hs = hello_consume_message(b, socks_state[sock_num]->client.hello.parser, &errored);
 
         if (errored)
         {
@@ -337,7 +336,7 @@ void render_to_state(char *received, int sock_num, int valread, buffer *b)
         {
 
             socks_state[sock_num]->stm = HELLO_WRITE;
-            freeHelloParser(socks_state[sock_num]->client.hello.parser);
+            free_hello_parser(socks_state[sock_num]->client.hello.parser);
         }
 
         break;
