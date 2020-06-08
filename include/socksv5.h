@@ -153,7 +153,7 @@ typedef struct state_machine
 typedef state_machine *state_machine;
 
 /** Used by the HELLO_READ and HELLO_WRITE states */
-typdef struct hello_st
+typedef struct hello_st
 {
     /** Buffers used for IO */
     buffer *rb, *wb;
@@ -164,7 +164,7 @@ typdef struct hello_st
 } hello_st;
 
 /** Used by the RESOLVE state */
-typdef struct resolve_st
+typedef struct resolve_st
 {
     /** Buffers used for IO */
     buffer *rb, *wb;
@@ -175,7 +175,7 @@ typdef struct resolve_st
 } resolve_st;
 
 /** Used by the REQUEST_READ state */
-typdef struct request_st
+typedef struct request_st
 {
     /** Buffer used for IO */
     buffer *rb;
