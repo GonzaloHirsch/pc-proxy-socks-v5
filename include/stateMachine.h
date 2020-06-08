@@ -1,50 +1,21 @@
-#ifndef __SOCKSV5_H__
-#define __SOCKSV5_H__
+#ifndef __STATE_MACHINE_H__
+#define __STATE_MACHINE_H__
 
-#include "io_utils/buffer.h"
-#include "parsers/HelloParser.h"
-#include "parsers/SOCKS5AddrParser.h"
-#include "parsers/ConnectionReqParser.h"
-#include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <netdb.h>
-#include <errno.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <sys/time.h>
+#include "selector.h"
 
-#define TRUE 1
-#define FALSE 0
-#define PORT 8888
-#define MAX_SOCKETS 20
-#define BUFFERSIZE 2048
-#define MAX_PENDING_CONNECTIONS 5
-
-typedef enum AuthOType
-{
-    NO_AUTH = 0x00,
-    USER_PASSWORD = 0x02
-} AuthType;
-
-typedef enum AddrType
-{
-    IPv4 = 0x01,
-    DOMAIN_NAME = 0x03,
-    IPv6 = 0x04
-} AddrType;
-
-typedef enum ClientFdOperation
-{
-    OP_READ = 0x00,
-    OP_WRITE = 0x01
-} ClientFdOperation;
+/**
+ * State Machine for the Socks5 general states
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+*/
 
 /** General State Machine for a server connection */
-typedef enum socks_v5state
+typedef enum PossibleStates
 {
     /**
      * State when receiving the client initial "hello" and processing
@@ -142,61 +113,25 @@ typedef enum socks_v5state
     DONE,
     /** Terminal state */
     ERROR,
-} socks_v5state;
+} PossibleStates;
 
-typedef struct state_machine
-{
-    socks_v5state state;
-} state_machine;
+typedef struct state_machine * state_machine;
+typedef struct state * state;
 
-typedef state_machine *state_machine;
+void init_state_machine(state_machine sm);
 
-/** Used by the HELLO_READ and HELLO_WRITE states */
-typedef struct hello_st
-{
-    /** Buffers used for IO */
-    buffer *rb, *wb;
-    /** Pointer to hello parser */
-    HelloParser parser;
-    /** Selected auth method */
-    uint8_t method;
-} hello_st;
+void destroy_state_machine(state_machine sm);
 
-/** Used by the RESOLVE state */
-typedef struct resolve_st
-{
-    /** Buffers used for IO */
-    buffer *rb, *wb;
-    /** Pointer to hello parser */
-    Socks5AddrParser parser;
-    /** Resolved ip address */
-    char *resolvedAddress;
-} resolve_st;
+state get_current_state(state_machine sm);
 
-/** Used by the REQUEST_READ state */
-typedef struct request_st
-{
-    /** Buffer used for IO */
-    buffer *rb;
-    /** Pointer to hello parser */
-    ConnectionReqParser parser;
-} request_st;
+state handle_on_state_exit(state_machine sm);
 
-typedef struct socks5
-{
-    /** maquinas de estados */
-    state_machine stm;
-    /** estados para el client_fd */
-    union {
-        hello_st hello;
-        request_st request;
-        copy copy;
-    } client;
-    /** estados para el origin_fd */
-    union {
-        connecting conn;
-        copy copy;
-    } orig;
-} Socks5;
+state handle_on_state_enter(state_machine sm);
+
+state handle_on_error(state_machine sm);
+
+state handle_on_available_read(state_machine sm);
+
+state handle_on_available_write(state_machine sm);
 
 #endif
