@@ -10,8 +10,11 @@ void slaveSocketHandleWrite(struct selector_key *key);
 void slaveSocketHandleBlock(struct selector_key *key);
 void slaveSocketHandleClose(struct selector_key *key);
 
-struct sockaddr_in * address;
+void initSocksState(Socks5 * sockState);
+void freeSocksState(Socks5 * sockState);
 
+// Address for socket binding
+struct sockaddr_in * address;
 
 int main()
 {
@@ -20,7 +23,6 @@ int main()
 
     // Selector for concurrent connexions
     fd_selector selector = NULL; 
-
 
     // Setting the socket binding for the server to work ok
     address = malloc(sizeof(address));
@@ -151,10 +153,7 @@ void masterSocketHandle(struct selector_key *key){
 
         // Initialize the Socks5 structure which contain the state machine and other info for the socket.
         Socks5 * sockState = malloc(sizeof(Socks5));
-        // Write Buffer for the socket(Initialized)
-        buffer * writeBuffer = malloc(sizeof(buffer));
-        buffer_init(writeBuffer, BUFFERSIZE+1, malloc(BUFFERSIZE+1));
-        sockState->writeBuffer = writeBuffer;
+        initSockState(sockState);
 
         // Register the new file descriptor.
         selector_status resultStatus;
@@ -240,32 +239,31 @@ void slaveSocketHandleWrite(struct selector_key *key){
     }
 }
 
+// TODO: Implement
 void slaveSocketHandleBlock(struct selector_key *key){
 
 }
+
+//TODO: Implement
 void slaveSocketHandleClose(struct selector_key *key){
 
 }
 
-void init_socks_state(int i)
-{
-
-    socks_state[i] = malloc(sizeof(socks_state));
-
-    if (socks_state[i] == NULL)
-    {
-        perror("state machine malloc failure");
-        exit(EXIT_FAILURE);
+void initSocksState(Socks5 * sockState){
+    if (sockState == NULL){
+        perror("Error: Initizalizing null Socks5\n");
     }
 
-    socks_state[i]->stm->state = HELLO_READ;
-    socks_state[i]->client.hello.parser = newHelloParser();
+    sockState->stm = malloc(sizeof(state_machine)); // CHECK THIS SIZEOF
+     // Write Buffer for the socket(Initialized)
+    buffer * writeBuffer = malloc(sizeof(buffer));
+    buffer_init(writeBuffer, BUFFERSIZE+1, malloc(BUFFERSIZE+1));
+    sockState->writeBuffer = writeBuffer;
 }
 
-void free_socks_state(int i)
-{
-    int i = 0;
-    free(socks_state[i]);
+// Todo: Implement
+void freeSocksState(Socks5 * sockState){
+    
 }
 
 void render_to_state(char *received, int sock_num, int valread, buffer *b)
