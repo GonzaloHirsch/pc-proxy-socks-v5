@@ -1,20 +1,20 @@
-#include "parsers/HelloParser.h"
+#include "parsers/hello_parser.h"
 
-struct HelloParser {
+struct hello_parser {
     // public:
     uint8_t nauth;
     uint8_t * auth;
     // private:
-    unsigned int bytesToRead;
-    HelloState state;
+    unsigned int bytes_to_read;
+    hello_state state;
 };
 
-HelloParser newHelloParser() {
-    HelloParser hp = calloc(1, sizeof(struct HelloParser));
+hello_parser new_hello_parser() {
+    hello_parser hp = calloc(1, sizeof(struct hello_parser));
     return hp;
 }
 
-enum HelloState helloReadNextByte(HelloParser p, const uint8_t b) {
+enum hello_state hello_read_next_byte(hello_parser p, const uint8_t b) {
     switch(p->state) {
         case HELLO_VER:
             if (b == 0x05) // TODO do sth about magic number (?) 
@@ -29,14 +29,14 @@ enum HelloState helloReadNextByte(HelloParser p, const uint8_t b) {
                 p->state = HELLO_ERR_INV_NAUTH;
             p->nauth = b;
             p->auth = malloc(b);
-            p->bytesToRead = b;
+            p->bytes_to_read = b;
             p->state = HELLO_AUTH;
             break;
         case HELLO_AUTH:
-            if (p->bytesToRead) {
-                p->auth[p->nauth - p->bytesToRead] = b;
-                p->bytesToRead--;
-                if (p->bytesToRead == 0)
+            if (p->bytes_to_read) {
+                p->auth[p->nauth - p->bytes_to_read] = b;
+                p->bytes_to_read--;
+                if (p->bytes_to_read == 0)
                     p->state = HELLO_DONE;
             }
             else 
@@ -61,28 +61,28 @@ enum HelloState helloReadNextByte(HelloParser p, const uint8_t b) {
     return p->state;
 }
 
-enum HelloState helloConsumeMessage(buffer * b, HelloParser p, int *errored) {
-    HelloState st = p->state;
-    while(buffer_can_read(b) && !helloDoneParsing(p, errored)) {
+enum hello_state hello_consume_message(buffer * b, hello_parser p, int *errored) {
+    hello_state st = p->state;
+    while(buffer_can_read(b) && !hello_done_parsing(p, errored)) {
         const uint8_t c = buffer_read(b);
-        st = helloReadNextByte(p, c);
+        st = hello_read_next_byte(p, c);
     }
     return st;
 }
 
-int helloDoneParsing(HelloParser p, int * errored) {
+int hello_done_parsing(hello_parser p, int * errored) {
     return p->state >= HELLO_DONE;
 }
 
-uint8_t getNAuth(HelloParser p) {
+uint8_t get_n_auth(hello_parser p) {
     return p->nauth;
 }
-const uint8_t * getAuthTypes(HelloParser p) {
+const uint8_t * get_auth_types(hello_parser p) {
     return p->auth;
 }
 
-// Free all HelloParser-Related memory
-void freeHelloParser(HelloParser p) {
+// Free all hello_parser-Related memory
+void free_hello_parser(hello_parser p) {
     free(p->auth);
     free(p);
 }

@@ -4,13 +4,9 @@
 #define IS_HEADER_NAME_SYMBOL(x) ((x) >= 'a' && (x) <= 'z' || (x) >= 'A' && (x) <= 'Z'\
                              || (x) == '-' || (x) == '\'')
 
-// typedef enum HTTPHeaderType {
-    
-// } HTTPHeaderType;
-
-typedef struct HTTPHeader{
+typedef struct http_header{
     char * type;
     char * value;
-} HTTPHeader;
+} http_header;
 
 #endif

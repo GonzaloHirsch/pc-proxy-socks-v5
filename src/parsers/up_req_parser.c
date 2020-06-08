@@ -1,24 +1,24 @@
-#include "parsers/UPReqParser.h"
+#include "parsers/up_req_parser.h"
 
-struct UPReqParser {
+struct up_req_parser {
     // public:      //
     void * data;
     char * uid;
     char * pw;
     // private:     //
-    UPReqState state;
+    up_req_state state;
     uint8_t uidLen;
     uint8_t pwLen;
-    uint8_t bytesToRead;
+    uint8_t bytes_to_read;
 };
 
-UPReqParser newUPReqParser() {
-    UPReqParser uprp = malloc(sizeof(struct UPReqParser));
+up_req_parser new_up_req_parser() {
+    up_req_parser uprp = malloc(sizeof(struct up_req_parser));
     uprp->state = UP_REQ_VERSION;
     return uprp;
 }
 
-enum UPReqState upReadNextByte(UPReqParser p, const uint8_t b) {   
+enum up_req_state up_read_next_byte(up_req_parser p, const uint8_t b) {   
     switch(p->state) {
         case UP_REQ_VERSION:
             if (0x01 == b)
@@ -34,14 +34,14 @@ enum UPReqState upReadNextByte(UPReqParser p, const uint8_t b) {
                 p->uidLen = b;
                 // TODO RFC doesn't specify null-terminator. Add one either way
                 p->uid = malloc(p->uidLen + 1);
-                p->bytesToRead = b;
+                p->bytes_to_read = b;
             }
             break;
         case UP_REQ_ID:
-            // if (p->bytesToRead > 0) {
-            p->uid[p->uidLen - p->bytesToRead] = b;
-            p->bytesToRead--;
-            if (p->bytesToRead <= 0) {
+            // if (p->bytes_to_read > 0) {
+            p->uid[p->uidLen - p->bytes_to_read] = b;
+            p->bytes_to_read--;
+            if (p->bytes_to_read <= 0) {
                 p->uid[p->uidLen+1] = '\0';
                 p->state = UP_REQ_PWLEN;            
             }
@@ -53,13 +53,13 @@ enum UPReqState upReadNextByte(UPReqParser p, const uint8_t b) {
                 p->state = UP_REQ_PW;
                 p->pwLen = b;
                 p->pw = malloc(p->pwLen + 1);
-                p->bytesToRead = b;
+                p->bytes_to_read = b;
             }
             break;
         case UP_REQ_PW:
-            p->pw[p->pwLen - p->bytesToRead] = b;
-            p->bytesToRead--;
-            if (p->bytesToRead <= 0) {
+            p->pw[p->pwLen - p->bytes_to_read] = b;
+            p->bytes_to_read--;
+            if (p->bytes_to_read <= 0) {
                 p->pw[p->pwLen+1] = '\0';
                 p->state = UP_REQ_DONE;            
             }
@@ -80,17 +80,17 @@ enum UPReqState upReadNextByte(UPReqParser p, const uint8_t b) {
     }
 }
 
-enum UPReqState consumeMessage(buffer * b, UPReqParser p, int *errored) {
-    enum UPReqState st = p->state;
+enum up_req_state up_consume_message(buffer * b, up_req_parser p, int *errored) {
+    enum up_req_state st = p->state;
 
-    while (buffer_can_read(b) && !upDoneParsing(p, errored)) {
+    while (buffer_can_read(b) && !up_done_parsing(p, errored)) {
         const uint8_t c = buffer_read(b);
-        st = upReadNextByte(p, c);
+        st = up_read_next_byte(p, c);
     }
     return st;
 }
 
-const char * upErrorString(const UPReqParser p) {
+const char * upErrorString(const up_req_parser p) {
     switch (p->state) {
         case UP_ERROR_INV_VERSION:
             return "Invalid (Unsupported) Version"; 
@@ -103,7 +103,7 @@ const char * upErrorString(const UPReqParser p) {
         }
 }
 
-int upDoneParsing(UPReqParser p, int * errored) {
+int up_done_parsing(up_req_parser p, int * errored) {
     switch(p->state) {
         case UP_REQ_DONE:
             *errored = 0; 
@@ -123,7 +123,7 @@ int upDoneParsing(UPReqParser p, int * errored) {
     }
 }
 
-void freeUPReqParser(UPReqParser p) {
+void free_up_req_parser(up_req_parser p) {
     free(p->data);
     free(p->uid);
     free(p->pw);
