@@ -3,6 +3,9 @@
 
 //#include "Utility.h"
 
+
+Socks5  * socks_state[MAX_SOCKETS];
+
 int main()
 {
     int opt = TRUE;
@@ -12,7 +15,17 @@ int main()
     struct sockaddr_in address;
     long valread;
 
-    char buffer[BUFFERSIZE + 1]; //data buffer of 2K
+    buffer buff;
+
+    char received[BUFFERSIZE + 1];
+
+    
+
+
+
+    char data[BUFFERSIZE + 1]; //data buffer of 2K
+
+    buffer_init(&buff, BUFFERSIZE - 1, data);
 
     fd_set readfds;
     fd_set writefds;
@@ -79,6 +92,8 @@ int main()
         {
             //socket descriptor
             sd = client_socket[i];
+
+            init_socks_state(i);
 
             //if valid socket descriptor then add to read list
             if (sd > 0)
@@ -185,7 +200,7 @@ int main()
             if (FD_ISSET(sd, &readfds))
             {
                 //Check if it was for closing , and also read the incoming message
-                if ((valread = read(sd, buffer, BUFFERSIZE)) <= 0)
+                if ((valread = read(sd, received, BUFFERSIZE)) <= 0)
                 {
                     //Somebody disconnected , get his details and print
                     getpeername(sd, (struct sockaddr *)&address, (socklen_t *)&addrlen);
@@ -204,24 +219,108 @@ int main()
                 else
                 {
                     printf("Received %zu bytes from socket %d\n", valread, sd);
-                    // activamos el socket para escritura y almacenamos en el buffer de salida
-                    FD_SET(sd, &writefds);
 
-                    /* receive the response */
-                    //memset(response,0,sizeof(response));
-                    //total = sizeof(response)-1;
-                    //received = 0;
-                    //bytes = read(sockfd,response+received,total - received); //have to do it while there is no more to read but it gets stucked
+                    render_to_state(received, i, val_read, &buff);
 
-                    // Tal vez ya habia datos en el buffer
-                    // TODO: validar realloc != NULL
-                    //bufferWrite[i].buffer = realloc(bufferWrite[i].buffer, bufferWrite[i].len + bytes);
-                    //memcpy(bufferWrite[i].buffer + bufferWrite[i].len, response, bytes);
-                    //bufferWrite[i].len += bytes;
+
+
                 }
             }
         }
     }
 
     return 0;
+}
+
+
+
+
+void init_socks_state(int i){
+
+    socks_state[i] = malloc(sizeof(socks_state));
+
+    if(socks_state[i] == NULL){
+        perror("state machine malloc failure");
+        exit(EXIT_FAILURE);
+    }
+
+    socks_state[i] -> stm -> state = HELLO_READ;
+    socks_state[i] -> client.hello.parser =  newHelloParser();
+
+
+}
+
+
+void free_socks_state(int i){
+    int i = 0;
+    free(socks_state[i]); 
+}
+
+
+void render_to_state(char * received, int sock_num, int valread, buffer * b){
+    int errored = 0;
+    switch (socks_state[sock_num] -> stm ->state)
+    {
+    case HELLO_READ:
+        for(int i = 0; i < valread; i++){
+            buffer_write(b, received[i]);
+        }
+
+        HelloState hs;
+        hs = helloConsumeMessage(b, socks_state[sock_num] -> client.hello.parser, &errored);
+
+        if(errored){
+            perror("Error during hello parsing");
+            exit(EXIT_FAILURE);
+        }
+
+        if(hs == DONE){
+
+            socks_state[sock_num] -> stm = HELLO_WRITE;
+            freeHelloParser(socks_state[sock_num] -> client.hello.parser);
+
+
+        }
+
+
+
+
+
+        break;
+
+    case HELLO_WRITE:
+
+        break;
+    
+    case REQUEST_READ:
+
+        break;
+
+    case RESOLVE:
+
+        break;
+
+    case CONNECTING:
+
+        break;
+    
+    case REPLY:
+
+        break;
+    
+    case COPY:
+
+        break;
+    
+    case DONE:
+
+        break;
+    
+    case ERROR:
+
+        break;
+    
+    default:
+        break;
+    }
 }
