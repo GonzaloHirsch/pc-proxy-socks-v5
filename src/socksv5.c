@@ -1,12 +1,16 @@
 
 #include "../include/socksv5.h"
-
-#include "../include/utility.h"
+#include "../Utility.h"
 
 Socks5 *socks_state[MAX_SOCKETS];
 
-// INTERNAL FUNCTIONS
-void masterSocketHandler(struct selector_key *key);
+// -------------- INTERNAL FUNCTIONS-----------------------------------
+void masterSocketHandle(struct selector_key *key);
+void masterSocketHandleClose(struct selector_key *key);
+void slaveSocketHandleRead(struct selector_key *key);
+void slaveSocketHandleWrite(struct selector_key *key);
+void slaveSocketHandleBlock(struct selector_key *key);
+void slaveSocketHandleClose(struct selector_key *key);
 
 
 int main()
@@ -46,6 +50,8 @@ int main()
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
 
+    // ----------------- INITIALIZE THE MAIN SOCKET -----------------
+
     // Creating the server socket to listen
     const int master_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (master_socket <= 0)
@@ -54,8 +60,6 @@ int main()
         //log(FATAL, "socket failed");
         exit(EXIT_FAILURE);
     }
-
-    // ----------------- INITIALIZING THE MAIN SOCKET -----------------
 
     // Setting the master socket to allow multiple connections, not required, just good habit
     if (setsockopt(master_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0)
@@ -106,85 +110,39 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    // Selector key for the masterSocketHandler
-    struct selector_key masterSelectorKey;
-    masterSelectorKey.s = selector;
-    masterSelectorKey.fd = master_socket;
-    masterSelectorKey.data = NULL;
+    // Create socket handler for the master socket
+    fd_handler * masterSocketHandler = malloc(sizeof(fd_handler));
+    masterSocketHandler->handle_read = masterSocketHandle;
+    masterSocketHandler->handle_write = NULL;
+    masterSocketHandler->handle_block = NULL;
+    masterSocketHandler->handle_close = masterSocketHandleClose;
+
     // Add the master socket to the managed fds.
     // TODO: Review this
-    selector_register(selector, master_socket, masterSocketHandler(&masterSelectorKey), OP_READ, NULL);
+    selector_status resultStatus;
+    resultStatus = selector_register(selector, master_socket, masterSocketHandler, OP_READ, (void *)&address);
+    if(resultStatus != SELECTOR_SUCCESS){
+        printf("Error in master socket: %s", selector_error(resultStatus));
+    }
 
-    // TODO: POR AHORA TODO LO QUE ESTA ACA ABAJO NO SIRVE, LA LOGICA ESTA EN EL SELECTOR
-    // ----------------- OTHER CODE - FORM PREVIOUS FILE -----------------
 
-
-    //accept the incoming connection
+    // Accept the incoming connection
     addrlen = sizeof(address);
     printf("Waiting for connections on socket %d\n", master_socket);
 
-    // Limpiamos el conjunto de escritura
-    //FD_ZERO(&writefds);
-
+    // Forever cicle until fatal error.
     while (TRUE)
     {
-        //clear the socket set
-        FD_ZERO(&readfds);
-
-        //add master socket to set
-        FD_SET(master_socket, &readfds);
-        max_sd = master_socket;
-
-        //add child sockets to set
-        for (i = 0; i < max_clients; i++)
-        {
-            //socket descriptor
-            sd = client_socket[i];
-
-            init_socks_state(i);
-
-            //if valid socket descriptor then add to read list
-            if (sd > 0)
-                FD_SET(sd, &readfds);
-
-            //highest file descriptor number, need it for the select function
-            if (sd > max_sd)
-                max_sd = sd;
+        // Wait for activiy of one of the sockets:
+        // -Master Socket --> New connection.
+        // -Child Sockets --> Read or write operation
+        resultStatus = selector_select(selector);
+        if(resultStatus != SELECTOR_SUCCESS){
+            printf("Error awaiting for select: %s", selector_error(resultStatus));
         }
-
-        //wait for an activity on one of the sockets , timeout is NULL , so wait indefinitely
-        activity = select(max_sd + 1, &readfds, &writefds, NULL, NULL);
-
-        if ((activity < 0) && (errno != EINTR))
-        {
-            printf("select error");
-        }
-
-        //If something happened on the master socket , then its an incoming connection
-        if (FD_ISSET(master_socket, &readfds))
-        {
-            if ((new_socket = accept(master_socket, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0)
-            {
-                perror("accept");
-                exit(EXIT_FAILURE);
-            }
-
-            //inform user of socket number - used in send and receive commands
-            printf("New connection , socket fd is %d , ip is : %s , port : %d \n", new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-
-            //add new socket to array of sockets
-            for (i = 0; i < max_clients; i++)
-            {
-                //if position is empty
-                if (client_socket[i] == 0)
-                {
-                    client_socket[i] = new_socket;
-                    printf("Adding to list of sockets as %d\n", i);
-
-                    break;
-                }
-            }
-        }
+        
+        // ----------------------------------TODO--------------------------------
+        // From here on, its not implemented with selector.
 
         // Hay algo para escribir?
         // Si está listo para escribir, escribimos. El problema es que a pesar de tener buffer para poder
@@ -277,6 +235,63 @@ int main()
     return 0;
 }
 
+
+/*  Handle for the master socket.
+    Used to handle new connections.
+*/
+void masterSocketHandle(struct selector_key *key){
+
+    int newSocket;
+    struct sockaddr * address = (struct sockaddr *) key->data;
+    socklen_t socklen = (socklen_t) sizeof(*address);
+
+    // Accpet the new socket.
+    if (newSocket = accept(newSocket, address, &socklen) < 0){
+            perror("Error: Error accepting new socket\n");
+            exit(EXIT_FAILURE);
+        }
+
+        // Inform user of socket number - used in send and receive commands
+        printf("New connection , socket fd is %d , ip is : %s , port : %d \n", newSocket, inet_ntoa(address->sin_addr), ntohs(address->sin_port));
+
+        // Handler for the slave sockets.
+        // Create socket handler for the master socket
+        fd_handler * slaveSocketHandler = malloc(sizeof(fd_handler));
+        slaveSocketHandler->handle_read = slaveSocketHandleRead;
+        slaveSocketHandler->handle_write = slaveSocketHandleWrite;
+        slaveSocketHandler->handle_block = slaveSocketHandleBlock;
+        slaveSocketHandler->handle_close = masterSocketHandleClose;
+
+        // Register the new file descriptor.
+        selector_status resultStatus;
+        resultStatus = selector_register(key->s, newSocket, slaveSocketHandler, OP_READ + OP_WRITE, NULL);
+        if(resultStatus != SELECTOR_SUCCESS){
+            printf("Error: %s while creating registering new fd", selector_error(resultStatus));
+        }
+}
+
+// TODO: implement this
+void masterSocketHandleClose(struct selector_key *key){
+
+}
+
+// TODO: Implement
+void slaveSocketHandleRead(struct selector_key *key){
+
+}
+
+// TODO: Implement
+void slaveSocketHandleWrite(struct selector_key *key){
+
+}
+
+void slaveSocketHandleBlock(struct selector_key *key){
+
+}
+void slaveSocketHandleClose(struct selector_key *key){
+
+}
+
 void init_socks_state(int i)
 {
 
@@ -362,9 +377,4 @@ void render_to_state(char *received, int sock_num, int valread, buffer *b)
     default:
         break;
     }
-}
-
-//TODO: Implement this
-void masterSocketHandler(struct selector_key *key){
-
 }
