@@ -5,7 +5,6 @@
 #include "parsers/HelloParser.h"
 #include "parsers/SOCKS5AddrParser.h"
 #include "parsers/ConnectionReqParser.h"
-#include "../include/socksv5.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

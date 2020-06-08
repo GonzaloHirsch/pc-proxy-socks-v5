@@ -2,6 +2,7 @@
 #define __STATE_MACHINE_H__
 
 #include <stdlib.h>
+#include "selector.h"
 
 /**
  * State Machine for the Socks5 general states

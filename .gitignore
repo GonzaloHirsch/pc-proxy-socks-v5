@@ -1,2 +1,6 @@
 
 .DS_Store
+
+a.out.dSYM/Contents/
+
+server.dSYM/Contents/

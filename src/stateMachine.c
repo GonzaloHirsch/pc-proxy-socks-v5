@@ -1,4 +1,4 @@
-#include "stateMachine.h"
+#include "StateMachine.h"
 
 typedef struct state_machine
 {
@@ -16,15 +16,15 @@ typedef struct state {
     /** Next state to move */
     state next_state;
     /** Executed on state enter */
-    void (*on_enter) (state_machine sm);
+    void (*on_enter) (state_machine sm, selector_key sk);
     /** Executed on state exit */
-    void (*on_exit) (state_machine sm);
+    void (*on_exit) (state_machine sm, selector_key sk);
     /** Executed on error */
-    void (*on_error) (state_machine sm);
+    void (*on_error) (state_machine sm, selector_key sk);
     /** Executed on available information to read */
-    void (*on_available_read) (state_machine sm);
+    void (*on_available_read) (state_machine sm, selector_key sk);
     /** Executed on available information to write */
-    void (*on_available_write) (state_machine sm);
+    void (*on_available_write) (state_machine sm, selector_key sk);
 };
 
 void init_state_machine(state_machine sm){

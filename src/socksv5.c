@@ -1,5 +1,5 @@
 
-#include "../include/socksv5.h"
+#include "../include/Socksv5.h"
 
 //#include "Utility.h"
 
