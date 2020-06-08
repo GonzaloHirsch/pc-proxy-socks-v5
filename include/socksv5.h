@@ -17,6 +17,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/time.h>
+#include <sys/signal.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -199,6 +200,10 @@ typedef struct socks5
         connecting conn;
         copy copy;
     } orig;
+
+    buffer * writeBuffer;
+    buffer * readBuffer;
+
 } Socks5;
 
 #endif
