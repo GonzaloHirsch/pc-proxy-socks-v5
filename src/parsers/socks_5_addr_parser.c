@@ -1,13 +1,13 @@
-#include "parsers/SOCKS5AddrParser.h"
+#include "parsers/socks_5_addr_parser.h"
 
-struct Socks5AddrParser {
+struct socks_5_addr_parser {
     // public:
     uint8_t type; // TODO uint8 + packed? Worth it?
     uint8_t * addr;
     // private:
     uint8_t addrLen;
-    Socks5AddrState state;
-    int bytesToRead;
+    socks_5_addr_state state;
+    int bytes_to_read;
 };
 
 typedef enum S5AddrType {
@@ -21,30 +21,30 @@ typedef enum AddressSize {
     IP_V6_ADDR_SIZE = 16
 } AddressSize;
 
-Socks5AddrParser newSocks5AddrParser() {
-    Socks5AddrParser s5ap = malloc(sizeof(struct Socks5AddrParser));
+socks_5_addr_parser new_socks_5_addr_parser() {
+    socks_5_addr_parser s5ap = malloc(sizeof(struct socks_5_addr_parser));
     s5ap->type = 0;
-    s5ap->bytesToRead = 0;
+    s5ap->bytes_to_read = 0;
     s5ap->addrLen = 0;
     s5ap->state = SOCKS5ADDR_TYPE;
     return s5ap;
 }
 
-enum Socks5AddrState socks5AddrReadNextByte(Socks5AddrParser p, const uint8_t b) {
+enum socks_5_addr_state socks_5_addr_read_next_byte(socks_5_addr_parser p, const uint8_t b) {
     switch(p->state) {
         case SOCKS5ADDR_TYPE:
             if (b == IP_V4_T) {
-                p->bytesToRead = IP_V4_ADDR_SIZE;
+                p->bytes_to_read = IP_V4_ADDR_SIZE;
                 p->addrLen = IP_V4_ADDR_SIZE;
                 p->addr = malloc(IP_V4_ADDR_SIZE);
                 p->state = SOCKS5ADDR_IP_V4;
             }
             else if (b == DNAME_T) {
-                p->bytesToRead = 1;
+                p->bytes_to_read = 1;
                 p->state = SOCKS5ADDR_DNAME_LEN;
             }
             else if (b == IP_V6_T) {
-                p->bytesToRead = IP_V6_ADDR_SIZE;
+                p->bytes_to_read = IP_V6_ADDR_SIZE;
                 p->addrLen = IP_V6_ADDR_SIZE;
                 p->addr = malloc(IP_V6_ADDR_SIZE);
                 p->state = SOCKS5ADDR_IP_V6;
@@ -54,7 +54,7 @@ enum Socks5AddrState socks5AddrReadNextByte(Socks5AddrParser p, const uint8_t b)
             p->type = b;
             break;
         case SOCKS5ADDR_DNAME_LEN:
-            p->bytesToRead = b;
+            p->bytes_to_read = b;
             p->addrLen = b;
             p->addr = malloc(b+1);
             p->state = SOCKS5ADDR_DNAME;
@@ -62,10 +62,10 @@ enum Socks5AddrState socks5AddrReadNextByte(Socks5AddrParser p, const uint8_t b)
         case SOCKS5ADDR_DNAME:
         case SOCKS5ADDR_IP_V4:
         case SOCKS5ADDR_IP_V6:
-            if (p->bytesToRead) {
-                p->addr[p->addrLen - p->bytesToRead] = b;
-                p->bytesToRead--;
-                if (p->bytesToRead == 0)
+            if (p->bytes_to_read) {
+                p->addr[p->addrLen - p->bytes_to_read] = b;
+                p->bytes_to_read--;
+                if (p->bytes_to_read == 0)
                     p->state = SOCKS5ADDR_DONE;
             }
             else {
@@ -85,31 +85,31 @@ enum Socks5AddrState socks5AddrReadNextByte(Socks5AddrParser p, const uint8_t b)
     }
     return p->state;
 }
-enum Socks5AddrState socks5AddrConsumeMessage(buffer * b, Socks5AddrParser p, int *errored) {
-    Socks5AddrState st = p->state;
-    while(buffer_can_read(b) && !socks5AddrDoneParsing(p, errored)) {
+enum socks_5_addr_state socks_5_addr_consume_message(buffer * b, socks_5_addr_parser p, int *errored) {
+    socks_5_addr_state st = p->state;
+    while(buffer_can_read(b) && !socks_5_addr_done_parsing(p, errored)) {
         const uint8_t c = buffer_read(b);
-        st = socks5AddrReadNextByte(p, c);
+        st = socks_5_addr_read_next_byte(p, c);
     }
-    if (!buffer_can_read(b) && !socks5AddrDoneParsing(p, errored)) {
+    if (!buffer_can_read(b) && !socks_5_addr_done_parsing(p, errored)) {
         p->state = st = SOCKS5ADDR_ERR_INV_ADDRESS;
     }
     return st;
 }
-int socks5AddrDoneParsing(Socks5AddrParser p, int * errored) {
+int socks_5_addr_done_parsing(socks_5_addr_parser p, int * errored) {
     return p->state >= SOCKS5ADDR_DONE;
 }
 
-const char * getSocks5Address(Socks5AddrParser p) {
+const char * get_socks_5_address(socks_5_addr_parser p) {
     return p->addr;
 }
-const int getSocks5Type(Socks5AddrParser p) {
+const int get_socks_5_type(socks_5_addr_parser p) {
     return p->type;
 }
 
-// Free all Socks5AddrParser-Related memory
+// Free all socks_5_addr_parser-Related memory
 
-void freeSocks5AddrParser(Socks5AddrParser p) {
+void free_socks_5_addr_parser(socks_5_addr_parser p) {
     free(p->addr);
     free(p);
 }

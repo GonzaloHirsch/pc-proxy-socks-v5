@@ -1,5 +1,5 @@
-#include "parsers/ConnectionReqParser.h"
-#include "parsers/SOCKS5AddrParser.h"
+#include "parsers/connection_req_parser.h"
+#include "parsers/socks_5_addr_parser.h"
 
 typedef struct ConnectionReq {
     // public:
@@ -9,13 +9,13 @@ typedef struct ConnectionReq {
     uint8_t dstPort[2];
 } ConnectionReq;
 
-struct ConnectionReqParser {
+struct connection_req_parser {
     // public:
     ConnectionReq finalMessage;
-    ConnectionReqState state;
+    connection_req_state state;
     // private:
-    Socks5AddrParser socks5AddrParser;
-    unsigned int bytesToRead;
+    socks_5_addr_parser socks_5_addr_parser;
+    unsigned int bytes_to_read;
 };
 
 typedef enum CMDType {
@@ -25,13 +25,13 @@ typedef enum CMDType {
 } CMDType;
 
 
-ConnectionReqParser newConnectionReqParser() {
-    ConnectionReqParser crp = malloc(sizeof(struct ConnectionReqParser));
-    crp->socks5AddrParser = NULL;
+connection_req_parser new_connection_req_parser() {
+    connection_req_parser crp = malloc(sizeof(struct connection_req_parser));
+    crp->socks_5_addr_parser = NULL;
     return crp;
 }
 
-enum ConnectionReqState connectionReqReadNextByte(ConnectionReqParser p, const uint8_t b) {
+enum connection_req_state connection_req_read_next_byte(connection_req_parser p, const uint8_t b) {
     switch (p->state) {
         case CONN_REQ_VERSION:
             if (b == 0x05) {
@@ -56,19 +56,19 @@ enum ConnectionReqState connectionReqReadNextByte(ConnectionReqParser p, const u
             if (b == 0) {
                 p->finalMessage.rsv = 0;
                 p->state = CONN_REQ_DSTADDR;
-                p->bytesToRead = 2; // Untidy, this is for BND_PORT
+                p->bytes_to_read = 2; // Untidy, this is for BND_PORT
             }
             else 
                 p->state = CONN_REQ_ERR_INV_RSV;
             break;
         case CONN_REQ_DSTADDR:
             // this state is just for consume function
-            // to know when to use socks5addrParser
+            // to know when to use socks_5_addr_parser
             break;
         case CONN_REQ_BND_PORT:
-            if (p->bytesToRead) {
-                p->finalMessage.dstPort[2-p->bytesToRead] = b; //TODO do sth about magic number
-                p->bytesToRead--;
+            if (p->bytes_to_read) {
+                p->finalMessage.dstPort[2-p->bytes_to_read] = b; //TODO do sth about magic number
+                p->bytes_to_read--;
             }
             else
                 p->state = CONN_REQ_DONE;            
@@ -94,15 +94,15 @@ enum ConnectionReqState connectionReqReadNextByte(ConnectionReqParser p, const u
         }
     return p->state;
 }
-enum ConnectionReqState connectionReqConsumeMessage(buffer * b, ConnectionReqParser p, int *errored) {
-    ConnectionReqState st = p->state;
-    while(buffer_can_read(b) && p->state != CONN_REQ_DSTADDR && !connectionReqDoneParsing(p, errored)) {
+enum connection_req_state connection_req_consume_message(buffer * b, connection_req_parser p, int *errored) {
+    connection_req_state st = p->state;
+    while(buffer_can_read(b) && p->state != CONN_REQ_DSTADDR && !connection_req_done_parsing(p, errored)) {
         const uint8_t c = buffer_read(b);
-        st = connectionReqReadNextByte(p, c);
+        st = connection_req_read_next_byte(p, c);
     }
     // Reading Address Part...
-    p->socks5AddrParser = newSocks5AddrParser();
-    Socks5AddrState s5st = socks5AddrConsumeMessage(b, p->socks5AddrParser, errored);
+    p->socks_5_addr_parser = new_socks_5_addr_parser();
+    socks_5_addr_state s5st = socks_5_addr_consume_message(b, p->socks_5_addr_parser, errored);
     if (s5st > SOCKS5ADDR_DONE) {
         st = p->state = CONN_REQ_ERR_INV_DSTADDR;
         return st;
@@ -110,18 +110,18 @@ enum ConnectionReqState connectionReqConsumeMessage(buffer * b, ConnectionReqPar
     else if (s5st == SOCKS5ADDR_DONE)
         st = p->state = CONN_REQ_BND_PORT;
     // Successfully read Address
-    while(buffer_can_read(b) && !connectionReqDoneParsing(p, errored)) {
+    while(buffer_can_read(b) && !connection_req_done_parsing(p, errored)) {
         const uint8_t c = buffer_read(b);
-        st = connectionReqReadNextByte(p, c);
+        st = connection_req_read_next_byte(p, c);
     }
     return st;
 }
-int connectionReqDoneParsing(ConnectionReqParser p, int * errored) {
+int connection_req_done_parsing(connection_req_parser p, int * errored) {
     return p->state >= CONN_REQ_DONE;
 }
-// Free all ConnectionReqParser-Related memory
+// Free all connection_req_parser-Related memory
 
-void freeConnectionReqParser(ConnectionReqParser p) {
-    freeSocks5AddrParser(p->socks5AddrParser);
+void free_connection_req_parser(connection_req_parser p) {
+    free_socks_5_addr_parser(p->socks_5_addr_parser);
     free(p);
 }
