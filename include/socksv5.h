@@ -5,6 +5,7 @@
 #include "parsers/HelloParser.h"
 #include "parsers/SOCKS5AddrParser.h"
 #include "parsers/ConnectionReqParser.h"
+#include "selector.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -23,6 +24,7 @@
 #define MAX_SOCKETS 20
 #define BUFFERSIZE 2048
 #define MAX_PENDING_CONNECTIONS 5
+#define SELECTOR_MAX_ELEMENTS 1024
 
 typedef enum AuthOType
 {

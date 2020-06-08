@@ -3,8 +3,7 @@
 
 //#include "Utility.h"
 
-
-Socks5  * socks_state[MAX_SOCKETS];
+Socks5 *socks_state[MAX_SOCKETS];
 
 int main()
 {
@@ -12,16 +11,14 @@ int main()
     int master_socket, addrlen, new_socket, client_socket[MAX_SOCKETS], max_clients = MAX_SOCKETS, activity, i, sd;
     long val_read;
     int max_sd;
-    struct sockaddr_in address;
     long valread;
+
+    // Selector for concurrent connexions
+    fd_selector selector = NULL; 
 
     buffer buff;
 
     char received[BUFFERSIZE + 1];
-
-    
-
-
 
     char data[BUFFERSIZE + 1]; //data buffer of 2K
 
@@ -38,38 +35,79 @@ int main()
         client_socket[i] = 0;
     }
 
-    if ((master_socket = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+    // Creating the socket binding for the server to work ok
+    struct sockaddr_in address;
+    memset(&address, 0, sizeof(address));
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
+
+    // Creating the server socket to listen
+    const int master_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (master_socket <= 0)
     {
         printf("socket failed");
         //log(FATAL, "socket failed");
         exit(EXIT_FAILURE);
     }
-    //set master socket to allow multiple connections , this is just a good habit, it will work without this
+
+    // ----------------- INITIALIZING THE MAIN SOCKET -----------------
+
+    // Setting the master socket to allow multiple connections, not required, just good habit
     if (setsockopt(master_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0)
     {
         perror("setsockopt");
         exit(EXIT_FAILURE);
     }
 
-    //we could allow multiple connections to master
-
-    //type of socket created
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
-
-    //bind the socket to localhost port 1080
+    // Binding the socket to localhost:1080
     if (bind(master_socket, (struct sockaddr *)&address, sizeof(address)) < 0)
     {
         //log(FATAL, "bind failed");
         exit(EXIT_FAILURE);
     }
 
+    // Checking if the socket is able to listen
     if (listen(master_socket, MAX_PENDING_CONNECTIONS) < 0)
     {
         //log(FATAL, "listen");
         exit(EXIT_FAILURE);
     }
+
+    // ----------------- INITIALIZING THE SCTP SOCKET -----------------
+
+    // TODO: CREATE SCTP SOCKET HERE!
+
+    // ----------------- REGISTERING THE SELECTOR -----------------
+
+    // Creating the configuration for the select
+    const struct selector_init selector_configuration = {
+        .signal = SIGALRM,
+        .select_timeout = {
+            .tv_sec = 10, // Time in seconds
+            .tv_nsec = 0  // Time in nanos
+        }
+    };
+
+    // Initializing the selector using the created configuration
+    if (selector_init(&selector_configuration) == 0){
+        perror("Initializing the selector");
+        exit(EXIT_FAILURE);
+    }
+
+    // Instancing the selector
+    selector = selector_new(SELECTOR_MAX_ELEMENTS);
+    if (selector == NULL){
+        perror("Creating the selector");
+        exit(EXIT_FAILURE);
+    }
+
+    // Setting the desired capacity
+
+    // TODO: POR AHORA TODO LO QUE ESTA ACA ABAJO NO SIRVE, LA LOGICA ESTA EN EL SELECTOR
+    // ----------------- OTHER CODE - FORM PREVIOUS FILE -----------------
+
+
 
     //accept the incoming connection
     addrlen = sizeof(address);
@@ -221,9 +259,6 @@ int main()
                     printf("Received %zu bytes from socket %d\n", valread, sd);
 
                     render_to_state(received, i, val_read, &buff);
-
-
-
                 }
             }
         }
@@ -232,66 +267,60 @@ int main()
     return 0;
 }
 
-
-
-
-void init_socks_state(int i){
+void init_socks_state(int i)
+{
 
     socks_state[i] = malloc(sizeof(socks_state));
 
-    if(socks_state[i] == NULL){
+    if (socks_state[i] == NULL)
+    {
         perror("state machine malloc failure");
         exit(EXIT_FAILURE);
     }
 
-    socks_state[i] -> stm -> state = HELLO_READ;
-    socks_state[i] -> client.hello.parser =  newHelloParser();
-
-
+    socks_state[i]->stm->state = HELLO_READ;
+    socks_state[i]->client.hello.parser = newHelloParser();
 }
 
-
-void free_socks_state(int i){
+void free_socks_state(int i)
+{
     int i = 0;
-    free(socks_state[i]); 
+    free(socks_state[i]);
 }
 
-
-void render_to_state(char * received, int sock_num, int valread, buffer * b){
+void render_to_state(char *received, int sock_num, int valread, buffer *b)
+{
     int errored = 0;
-    switch (socks_state[sock_num] -> stm ->state)
+    switch (socks_state[sock_num]->stm->state)
     {
     case HELLO_READ:
-        for(int i = 0; i < valread; i++){
+        for (int i = 0; i < valread; i++)
+        {
             buffer_write(b, received[i]);
         }
 
         HelloState hs;
-        hs = helloConsumeMessage(b, socks_state[sock_num] -> client.hello.parser, &errored);
+        hs = helloConsumeMessage(b, socks_state[sock_num]->client.hello.parser, &errored);
 
-        if(errored){
+        if (errored)
+        {
             perror("Error during hello parsing");
             exit(EXIT_FAILURE);
         }
 
-        if(hs == DONE){
+        if (hs == DONE)
+        {
 
-            socks_state[sock_num] -> stm = HELLO_WRITE;
-            freeHelloParser(socks_state[sock_num] -> client.hello.parser);
-
-
+            socks_state[sock_num]->stm = HELLO_WRITE;
+            freeHelloParser(socks_state[sock_num]->client.hello.parser);
         }
-
-
-
-
 
         break;
 
     case HELLO_WRITE:
 
         break;
-    
+
     case REQUEST_READ:
 
         break;
@@ -303,23 +332,23 @@ void render_to_state(char * received, int sock_num, int valread, buffer * b){
     case CONNECTING:
 
         break;
-    
+
     case REPLY:
 
         break;
-    
+
     case COPY:
 
         break;
-    
+
     case DONE:
 
         break;
-    
+
     case ERROR:
 
         break;
-    
+
     default:
         break;
     }
