@@ -63,7 +63,7 @@ typedef struct resolve_st
 {
     /** Buffers used for IO */
     buffer *rb, *wb;
-    /** Pointer to hello parser */
+    /** Pointer to the resolve parser */
     socks_5_addr_parser parser;
     /** Resolved ip address */
     char *resolvedAddress;
@@ -74,11 +74,40 @@ typedef struct request_st
 {
     /** Buffer used for IO */
     buffer *rb;
-    /** Pointer to hello parser */
+    /** Pointer to request parser */
     connection_req_parser parser;
 } request_st;
 
-typedef struct socks5
+/** Used by the COPY state */
+typedef struct copy_st
+{
+    /** Buffer used for IO */
+    buffer *rb;
+    
+    
+} copy_st;
+
+/** Used by the CONNECTING state */
+typedef struct connecting_st
+{
+    /** Buffer used for IO */
+    buffer *rb;
+    
+    
+} connecting_st;
+
+/** Used by REPLY the state */
+typedef struct reply_st
+{
+    /** Buffer used for IO */
+    buffer *rb;
+    
+    
+} reply_st;
+
+
+// Struct used to store all the relevant info for a socket.
+typedef struct Socks5
 {
     //maquinas de estados
     state_machine stm;
@@ -87,12 +116,12 @@ typedef struct socks5
     union {
         hello_st hello;
         request_st request;
-        copy copy;
+        copy_st copy;
     } client;
     // estados para el origin_fd 
     union {
-        connecting conn;
-        copy copy;
+        connecting_st conn;
+        reply_st reply;
     } orig;
 
     buffer * writeBuffer;
