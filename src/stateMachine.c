@@ -1,30 +1,29 @@
-#include "StateMachine.h"
+#include "../include/stateMachine.h"
 
-typedef struct state_machine
-{
+typedef struct stateMachine{
     /** Current state the machine is on */
     state current_state;
     /** Array with all the available states */
     state all_states;
     /** Count of all available states */
     uint8_t state_count;
-};
+} stateMachine;
 
-typedef struct state {
+typedef struct State {
     /** State type of the state */
     PossibleStates state;
     /** Next state to move */
     state next_state;
     /** Executed on state enter */
-    void (*on_enter) (state_machine sm, selector_key sk);
+    void (*on_enter) (state_machine sm, struct selector_key sk);
     /** Executed on state exit */
-    void (*on_exit) (state_machine sm, selector_key sk);
+    void (*on_exit) (state_machine sm, struct selector_key sk);
     /** Executed on error */
-    void (*on_error) (state_machine sm, selector_key sk);
+    void (*on_error) (state_machine sm, struct selector_key sk);
     /** Executed on available information to read */
-    void (*on_available_read) (state_machine sm, selector_key sk);
+    void (*on_available_read) (state_machine sm, struct selector_key sk);
     /** Executed on available information to write */
-    void (*on_available_write) (state_machine sm, selector_key sk);
+    void (*on_available_write) (state_machine sm, struct selector_key sk);
 };
 
 void init_state_machine(state_machine sm){

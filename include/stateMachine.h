@@ -2,7 +2,10 @@
 #define __STATE_MACHINE_H__
 
 #include <stdlib.h>
-#include "selector.h"
+#include <stdio.h>
+#include "../include/selector.h"
+#include <stdint.h>
+
 
 /**
  * State Machine for the Socks5 general states
@@ -115,8 +118,8 @@ typedef enum PossibleStates
     ERROR,
 } PossibleStates;
 
-typedef struct state_machine * state_machine;
-typedef struct state * state;
+typedef struct stateMachine * state_machine;
+typedef struct State * state;
 
 void init_state_machine(state_machine sm);
 
