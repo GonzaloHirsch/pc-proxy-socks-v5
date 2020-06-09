@@ -274,7 +274,7 @@ void renderToState(struct selector_key * key, char * received, int valread){
     switch (sockState->stm->current_state){
         case HELLO_READ:
             hello_state hs;
-            hs = helloConsumeMessage(received, sockState->client.hello.parser, &errored);
+            hs = hello_consume_message(received, sockState->client.hello.parser, &errored);
 
             if (errored){
                 perror("Error during hello parsing");
@@ -282,7 +282,7 @@ void renderToState(struct selector_key * key, char * received, int valread){
             }
             if (hs == DONE){
                 sockState->stm = HELLO_WRITE;
-                freeHelloParser(sockState->client.hello.parser);
+                free_hello_parser(sockState->client.hello.parser);
             }
 
             break;
