@@ -1,4 +1,4 @@
-#include "../include/stateMachine.h"
+#include "stateMachine.h"
 
 void init_state_machine(state_machine sm){
     // TODO: CREATE ALL STATES AND INIT MACHINE

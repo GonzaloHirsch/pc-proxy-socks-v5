@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "../include/selector.h"
+#include "selector.h"
 #include <stdint.h>
 
 

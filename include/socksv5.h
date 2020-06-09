@@ -2,11 +2,11 @@
 #define __SOCKSV5_H__
 
 #include "io_utils/buffer.h"
-#include "../include/parsers/hello_parser.h"
-#include "../include/parsers/socks_5_addr_parser.h"
-#include "../include/parsers/connection_req_parser.h"
-#include "../include/selector.h"
-#include "../include/stateMachine.h"
+#include "parsers/hello_parser.h"
+#include "parsers/socks_5_addr_parser.h"
+#include "parsers/connection_req_parser.h"
+#include "selector.h"
+#include "stateMachine.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
