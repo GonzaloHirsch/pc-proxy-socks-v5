@@ -1,9 +1,8 @@
 #include "parsers/up_req_parser.h"
 
-up_req_parser new_up_req_parser() {
-    up_req_parser uprp = malloc(sizeof(struct up_req_parser));
+void up_req_parser_init(up_req_parser uprp) {
+    memset(uprp, 0, sizeof(struct up_req_parser));
     uprp->state = UP_REQ_VERSION;
-    return uprp;
 }
 
 enum up_req_state up_read_next_byte(up_req_parser p, const uint8_t b) {   

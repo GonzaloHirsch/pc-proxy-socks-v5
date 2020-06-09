@@ -5,11 +5,10 @@
 
 #define CLRF '\n' // I know...
 
-http_message_parser new_http_message_parser() {
+void http_message_parser_init(http_message_parser hmp) {
     // TODO augment struct and manage initialization if necessary
-    http_message_parser mp = calloc(1, sizeof(struct http_message_parser));
-    mp->cursor = mp->version;
-    return mp;
+    memset(hmp, 0, sizeof(struct http_message_parser));
+    hmp->cursor = hmp->version;
 }
 
 enum http_message_state http_message_read_next_byte(http_message_parser p, const uint8_t b) {

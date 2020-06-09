@@ -30,7 +30,9 @@ struct socks_5_addr_parser {
 
 typedef struct socks_5_addr_parser * socks_5_addr_parser;
 
-socks_5_addr_parser new_socks_5_addr_parser();
+// socks_5_addr_parser new_socks_5_addr_parser(); // deprecated
+
+void socks_5_addr_parser_init(socks_5_addr_parser s5ap);
 
 enum socks_5_addr_state socks_5_addr_read_next_byte(socks_5_addr_parser p, const uint8_t b);
 enum socks_5_addr_state socks_5_addr_consume_message(buffer * b, socks_5_addr_parser p, int *errored);

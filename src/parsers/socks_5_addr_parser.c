@@ -11,13 +11,9 @@ typedef enum AddressSize {
     IP_V6_ADDR_SIZE = 16
 } AddressSize;
 
-socks_5_addr_parser new_socks_5_addr_parser() {
-    socks_5_addr_parser s5ap = malloc(sizeof(struct socks_5_addr_parser));
-    s5ap->type = 0;
-    s5ap->bytes_to_read = 0;
-    s5ap->addrLen = 0;
+void socks_5_addr_parser_init(socks_5_addr_parser s5ap) {
+    memset(s5ap, 0, sizeof(struct socks_5_addr_parser));
     s5ap->state = SOCKS5ADDR_TYPE;
-    return s5ap;
 }
 
 enum socks_5_addr_state socks_5_addr_read_next_byte(socks_5_addr_parser p, const uint8_t b) {

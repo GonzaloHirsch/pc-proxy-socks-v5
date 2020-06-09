@@ -34,7 +34,9 @@ struct up_req_parser {
 
 typedef struct up_req_parser * up_req_parser;
 
-up_req_parser new_up_req_parser();
+// up_req_parser new_up_req_parser(); // deprecated
+
+void up_req_parser_init(up_req_parser uprp);
 
 enum up_req_state up_read_next_byte(up_req_parser p, const uint8_t b);
 enum up_req_state up_consume_message(buffer * b, up_req_parser p, int *errored);

@@ -8,10 +8,9 @@ typedef enum CMDType {
 } CMDType;
 
 
-connection_req_parser new_connection_req_parser() {
-    connection_req_parser crp = malloc(sizeof(struct connection_req_parser));
+void connection_req_parser_init(connection_req_parser crp) {
+    memset(crp, 0, sizeof(struct connection_req_parser));
     crp->socks_5_addr_parser = NULL;
-    return crp;
 }
 
 enum connection_req_state connection_req_read_next_byte(connection_req_parser p, const uint8_t b) {
@@ -84,7 +83,8 @@ enum connection_req_state connection_req_consume_message(buffer * b, connection_
         st = connection_req_read_next_byte(p, c);
     }
     // Reading Address Part...
-    p->socks_5_addr_parser = new_socks_5_addr_parser();
+    p->socks_5_addr_parser = malloc(sizeof(struct socks_5_addr_parser));
+    socks_5_addr_parser_init(p->socks_5_addr_parser);
     socks_5_addr_state s5st = socks_5_addr_consume_message(b, p->socks_5_addr_parser, errored);
     if (s5st > SOCKS5ADDR_DONE) {
         st = p->state = CONN_REQ_ERR_INV_DSTADDR;

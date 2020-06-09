@@ -38,11 +38,13 @@ static const uint8_t SOCKS_HELLO_NO_ACCEPTABLE_METHODS = 0xFF;
 
 typedef struct hello_parser * hello_parser;
 
-hello_parser new_hello_parser();
+// hello_parser new_hello_parser(); // deprecated
+
+void hello_parser_init(hello_parser hp);
 
 enum hello_state hello_read_next_byte(hello_parser p, const uint8_t b);
-enum hello_state hello_consume_message(buffer * b, hello_parser p, int *errored);
-int hello_done_parsing(hello_parser p, int * errored);
+enum hello_state hello_consume(buffer * b, hello_parser p, bool *errored);
+int hello_done_parsing(hello_parser p, bool * errored);
 
 uint8_t get_n_auth(hello_parser p);
 const uint8_t * get_auth_types(hello_parser p);

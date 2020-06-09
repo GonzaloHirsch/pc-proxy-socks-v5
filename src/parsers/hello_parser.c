@@ -1,8 +1,7 @@
 #include "parsers/hello_parser.h"
 
-hello_parser new_hello_parser() {
-    hello_parser hp = calloc(1, sizeof(struct hello_parser));
-    return hp;
+void hello_parser_init(hello_parser hp) {
+    memset(hp, 0, sizeof(struct hello_parser));
 }
 
 enum hello_state hello_read_next_byte(hello_parser p, const uint8_t b) {
@@ -52,7 +51,7 @@ enum hello_state hello_read_next_byte(hello_parser p, const uint8_t b) {
     return p->state;
 }
 
-enum hello_state hello_consume_message(buffer * b, hello_parser p, int *errored) {
+enum hello_state hello_consume(buffer * b, hello_parser p, bool *errored) {
     hello_state st = p->state;
     while(buffer_can_read(b) && !hello_done_parsing(p, errored)) {
         const uint8_t c = buffer_read(b);
@@ -61,7 +60,9 @@ enum hello_state hello_consume_message(buffer * b, hello_parser p, int *errored)
     return st;
 }
 
-int hello_done_parsing(hello_parser p, int * errored) {
+int hello_done_parsing(hello_parser p, bool * errored) {
+    if (p->state > HELLO_DONE)
+        *errored = true;
     return p->state >= HELLO_DONE;
 }
 

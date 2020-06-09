@@ -55,7 +55,9 @@ typedef enum http_message_state {
 
 typedef struct http_message_parser * http_message_parser;
 
-http_message_parser new_http_message_parser();
+// http_message_parser new_http_message_parser(); // deprecated
+
+void http_message_parser_init(http_message_parser hmp); 
 
 enum http_message_state http_message_read_next_byte(http_message_parser p, const uint8_t b);
 enum http_message_state http_consume_message(buffer * b, http_message_parser p, int *errored);

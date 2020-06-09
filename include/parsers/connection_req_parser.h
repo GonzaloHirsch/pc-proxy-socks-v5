@@ -41,7 +41,9 @@ struct connection_req_parser {
 
 typedef struct connection_req_parser * connection_req_parser;
 
-connection_req_parser new_connection_req_parser();
+// connection_req_parser new_connection_req_parser(); // deprecated
+
+void connection_req_parser_init(connection_req_parser crp);
 
 enum connection_req_state connection_req_read_next_byte(connection_req_parser p, const uint8_t b);
 enum connection_req_state connection_req_consume_message(buffer * b, connection_req_parser p, int *errored);
