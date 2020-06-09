@@ -2,15 +2,6 @@
 #include "../include/socksv5.h"
 
 // -------------- INTERNAL FUNCTIONS-----------------------------------
-void masterSocketHandle(struct selector_key *key);
-void masterSocketHandleClose(struct selector_key *key);
-void slaveSocketHandleRead(struct selector_key *key);
-void slaveSocketHandleWrite(struct selector_key *key);
-void slaveSocketHandleBlock(struct selector_key *key);
-void slaveSocketHandleClose(struct selector_key *key);
-
-void initSocksState(Socks5 *sockState);
-void freeSocksState(Socks5 *sockState);
 
 void renderToState(struct selector_key *key, char *received, int valread);
 
@@ -115,10 +106,11 @@ int main()
 
     // Create socket handler for the master socket
     fd_handler *masterSocketHandler = malloc(sizeof(fd_handler));
-    masterSocketHandler->handle_read = masterSocketHandle;
+    masterSocketHandler->handle_read = socksv5_passive_accept;
     masterSocketHandler->handle_write = NULL;
     masterSocketHandler->handle_block = NULL;
-    masterSocketHandler->handle_close = masterSocketHandleClose;
+    //TODO: define on close
+    masterSocketHandler->handle_close = NULL;
 
     // TODO: Create socket handler for the SCTP socket
 
@@ -153,148 +145,10 @@ int main()
     return 0;
 }
 
-/*  Handle for the master socket.
-    Used to handle new connections.
-*/
-void masterSocketHandle(struct selector_key *key)
-{
 
-    int newSocket;
-    socklen_t addrlen = (socklen_t)sizeof(*address);
 
-    // Accpet the new socket.
-    if (newSocket = accept(newSocket, (struct sockaddr *)address, &addrlen) < 0)
-    {
-        perror("Error: Error accepting new socket\n");
-        exit(EXIT_FAILURE);
-    }
 
-    // Inform user of socket number - used in send and receive commands
-    printf("New connection , socket fd is %d , ip is : %s , port : %d \n", newSocket, inet_ntoa(address->sin_addr), ntohs(address->sin_port));
 
-    // Handler for the slave sockets.
-    // Create socket handler for the master socket
-    fd_handler *slaveSocketHandler = malloc(sizeof(fd_handler));
-    slaveSocketHandler->handle_read = slaveSocketHandleRead;
-    slaveSocketHandler->handle_write = slaveSocketHandleWrite;
-    slaveSocketHandler->handle_block = slaveSocketHandleBlock;
-    slaveSocketHandler->handle_close = masterSocketHandleClose;
-
-    // Initialize the Socks5 structure which contain the state machine and other info for the socket.
-    Socks5 *sockState = malloc(sizeof(Socks5));
-    initSocksState(sockState);
-
-    // Register the new file descriptor.
-    selector_status resultStatus;
-    resultStatus = selector_register(key->s, newSocket, slaveSocketHandler, OP_READ + OP_WRITE, (void *)sockState);
-    if (resultStatus != SELECTOR_SUCCESS)
-    {
-        printf("Error: %s while creating registering new fd", selector_error(resultStatus));
-    }
-}
-
-// TODO: implement
-void masterSocketHandleClose(struct selector_key *key)
-{
-}
-
-void slaveSocketHandleRead(struct selector_key *key)
-{
-
-    int sd = key->fd, valread;
-    char received[BUFFERSIZE + 1];
-    socklen_t addrlen = (socklen_t)sizeof(*address);
-
-    //Check if it was for closing , and also read the incoming message
-    if ((valread = read(sd, received, BUFFERSIZE)) <= 0)
-    {
-        // Remove from selector.
-        // This will call slaveSocketHandleClose --> All cleaning ops go there.
-        selector_status responseStatus = selector_unregister_fd(key->s, key->fd);
-        if (responseStatus != SELECTOR_SUCCESS)
-        {
-            printf("Error: %s while processing read\n", selector_error(responseStatus));
-        }
-    }
-    else
-    {
-        printf("Received %d bytes from socket %d\n", valread, sd);
-
-        //TODO: To implement shortly
-        //render_to_state();
-    }
-}
-
-/*  Handle for write of slave socket.
-*/
-void slaveSocketHandleWrite(struct selector_key *key)
-{
-
-    Socks5 *sockState = (Socks5 *)key->data;
-    buffer *writeBuffer = (buffer *)sockState->writeBuffer;
-    int sd = key->fd;
-
-    size_t bytesToSend = writeBuffer->read - writeBuffer->write;
-    if (bytesToSend > 0)
-    { // Puede estar listo para enviar, pero no tenemos nada para enviar
-        printf("Trying to send %zu bytes to socket %d\n", bytesToSend, sd);
-        size_t bytesSent = send(sd, writeBuffer->read, bytesToSend, MSG_DONTWAIT); // | MSG_NOSIGNAL
-        printf("Sent %zu bytes\n", bytesSent);
-
-        if (bytesSent < 0)
-        {
-            // Esto no deberia pasar ya que el socket estaba listo para escritura
-            // TODO: manejar el error
-            perror(" ");
-        }
-        else
-        {
-            size_t bytesLeft = bytesSent - bytesToSend;
-
-            // Si se pudieron mandar todos los bytes limpiamos el buffer
-            // y sacamos el fd para el select
-            if (bytesLeft == 0)
-            {
-                buffer_reset(writeBuffer);
-            }
-            else
-            {
-                writeBuffer->read += bytesSent;
-                buffer_compact(writeBuffer);
-            }
-        }
-    }
-}
-
-// TODO: Implement
-void slaveSocketHandleBlock(struct selector_key *key)
-{
-}
-
-//TODO: Implement
-void slaveSocketHandleClose(struct selector_key *key)
-{
-}
-
-void initSocksState(Socks5 *sockState)
-{
-    if (sockState == NULL)
-    {
-        perror("Error: Initizalizing null Socks5\n");
-    }
-
-    stm_init(&(sockState->stm));
-
-    // Write Buffer for the socket(Initialized)
-    buffer *writeBuffer = malloc(sizeof(buffer));
-    buffer_init(writeBuffer, BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
-    sockState->writeBuffer = writeBuffer;
-}
-
-// Todo: Implement
-void freeSocksState(Socks5 *sockState)
-{
-}
 
 /*
 void renderToState(struct selector_key * key, char * received, int valread){

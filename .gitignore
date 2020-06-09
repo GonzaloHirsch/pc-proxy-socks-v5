@@ -4,3 +4,5 @@
 a.out.dSYM/Contents/
 
 server.dSYM/Contents/
+
+.vscode/settings.json
