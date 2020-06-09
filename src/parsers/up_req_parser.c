@@ -1,17 +1,5 @@
 #include "parsers/up_req_parser.h"
 
-struct up_req_parser {
-    // public:      //
-    void * data;
-    char * uid;
-    char * pw;
-    // private:     //
-    up_req_state state;
-    uint8_t uidLen;
-    uint8_t pwLen;
-    uint8_t bytes_to_read;
-};
-
 up_req_parser new_up_req_parser() {
     up_req_parser uprp = malloc(sizeof(struct up_req_parser));
     uprp->state = UP_REQ_VERSION;

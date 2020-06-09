@@ -1,33 +1,9 @@
 #include "parsers/http_message_parser.h"
 
 #include <string.h>
-#include "http_utils/http_utils.h"
 #include "io_utils/strings.h"
 
-#define MAX_HEADERS 30
-#define MAX_HEADER_NAME_LEN 40
-#define MAX_HEADER_VALUE_LEN 100
-
-#define BLOCK_SIZE 512
 #define CLRF '\n' // I know...
-
-struct http_message_parser {
-    // public:
-    // list of pairs or hash?
-    http_message_state state;
-    char version[5];
-    char status[4];
-    char * body;
-    int headers_num;
-    http_header * headers[MAX_HEADERS];
-    // private:
-    char header_name[MAX_HEADER_NAME_LEN+1];
-    char header_value[MAX_HEADER_VALUE_LEN+1];
-    char * cursor;
-    int bytes_to_read;
-    int body_len;
-    char buff[BLOCK_SIZE];
-};
 
 http_message_parser new_http_message_parser() {
     // TODO augment struct and manage initialization if necessary

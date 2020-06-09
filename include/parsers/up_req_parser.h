@@ -20,6 +20,18 @@ typedef enum up_req_state {
     UP_ERROR_INV_AUTH
 } up_req_state;
 
+struct up_req_parser {
+    // public:      //
+    void * data;
+    char * uid;
+    char * pw;
+    // private:     //
+    up_req_state state;
+    uint8_t uidLen;
+    uint8_t pwLen;
+    uint8_t bytes_to_read;
+};
+
 typedef struct up_req_parser * up_req_parser;
 
 up_req_parser new_up_req_parser();

@@ -1,14 +1,5 @@
 #include "parsers/hello_parser.h"
 
-struct hello_parser {
-    // public:
-    uint8_t nauth;
-    uint8_t * auth;
-    // private:
-    unsigned int bytes_to_read;
-    hello_state state;
-};
-
 hello_parser new_hello_parser() {
     hello_parser hp = calloc(1, sizeof(struct hello_parser));
     return hp;

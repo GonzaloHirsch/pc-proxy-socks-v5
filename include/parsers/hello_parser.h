@@ -18,6 +18,16 @@ typedef enum hello_state {
     HELLO_ERR_UNSUPPORTED_METHOD,
 } hello_state;
 
+struct hello_parser {
+    // public:
+    uint8_t nauth;
+    uint8_t * auth;
+    // private:
+    unsigned int bytes_to_read;
+    hello_state state;
+};
+
+
 /** Constant for no authentication required for the user */
 static const uint8_t SOCKS_HELLO_NOAUTHENTICATION_REQUIRED = 0x00;
 /*

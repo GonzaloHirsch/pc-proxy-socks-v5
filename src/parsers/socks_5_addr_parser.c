@@ -1,15 +1,5 @@
 #include "parsers/socks_5_addr_parser.h"
 
-struct socks_5_addr_parser {
-    // public:
-    uint8_t type; // TODO uint8 + packed? Worth it?
-    uint8_t * addr;
-    // private:
-    uint8_t addrLen;
-    socks_5_addr_state state;
-    int bytes_to_read;
-};
-
 typedef enum S5AddrType {
     IP_V4_T = 0x01,
     DNAME_T = 0x03,

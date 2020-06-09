@@ -21,6 +21,24 @@ typedef enum connection_req_state {
     CONN_REQ_GENERIC_ERR
 } connection_req_state;
 
+typedef struct connection_req {
+    // public:
+    uint8_t ver;
+    uint8_t cmd;
+    uint8_t rsv;
+    uint8_t dstPort[2];
+} connection_req;
+
+
+struct connection_req_parser {
+    // public:
+    connection_req finalMessage;
+    connection_req_state state;
+    // private:
+    socks_5_addr_parser socks_5_addr_parser;
+    unsigned int bytes_to_read;
+};
+
 typedef struct connection_req_parser * connection_req_parser;
 
 connection_req_parser new_connection_req_parser();

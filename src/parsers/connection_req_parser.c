@@ -1,23 +1,6 @@
 #include "parsers/connection_req_parser.h"
 #include "parsers/socks_5_addr_parser.h"
 
-typedef struct ConnectionReq {
-    // public:
-    uint8_t ver;
-    uint8_t cmd;
-    uint8_t rsv;
-    uint8_t dstPort[2];
-} ConnectionReq;
-
-struct connection_req_parser {
-    // public:
-    ConnectionReq finalMessage;
-    connection_req_state state;
-    // private:
-    socks_5_addr_parser socks_5_addr_parser;
-    unsigned int bytes_to_read;
-};
-
 typedef enum CMDType {
     TCP_IP_STREAM = 0x01,
     TCP_IP_PORT_BINDING = 0x02,

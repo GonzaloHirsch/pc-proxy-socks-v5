@@ -18,6 +18,16 @@ typedef enum socks_5_addr_state {
     SOCKS5ADDR_ERR_INV_ADDRESS
 } socks_5_addr_state;
 
+struct socks_5_addr_parser {
+    // public:
+    uint8_t type; // TODO uint8 + packed? Worth it?
+    uint8_t * addr;
+    // private:
+    uint8_t addrLen;
+    socks_5_addr_state state;
+    int bytes_to_read;
+};
+
 typedef struct socks_5_addr_parser * socks_5_addr_parser;
 
 socks_5_addr_parser new_socks_5_addr_parser();
