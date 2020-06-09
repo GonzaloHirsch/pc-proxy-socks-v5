@@ -23,6 +23,9 @@ static struct socks5 * socks5_new(const int client){
         perror("Error: Initizalizing null Socks5\n");
     }
 
+////////////////////////////////////////////////////////////////////
+// STATE VARIABLES
+////////////////////////////////////////////////////////////////////
 
     sockState->stm.current = HELLO_READ;
     sockState->stm.initial = HELLO_READ;
@@ -156,8 +159,13 @@ fail:
     socks5_destroy(state);
 }
 
-//------------------------------CALLBACKS DE ESTADOS--------------------------------
+////////////////////////////////////////////////////////////////////////////////
+// STATE FUNCTION HANDLERS
+////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////
+// HELLO
+////////////////////////////////////////
 
 /** callback del parser utilizado en `read_hello' */
 static void
@@ -183,6 +191,13 @@ hello_read_init(const unsigned state, struct selector_key *key)
     d->parser.on_authentication_method = on_hello_method, hello_parser_init(
                                                               &d->parser);
 }
+
+static void
+hello_read_close(const unsigned state, struct selector_key *key){
+    struct hello_st *d = &ATTACHMENT(key)->client.hello;
+    hello_done_parsing(&d->parser);
+}
+
 
 static unsigned
 hello_process(const struct hello_st *d);
@@ -243,10 +258,39 @@ hello_process(const struct hello_st *d)
     return ret;
 }
 
+////////////////////////////////////////
+// HELLO_WRITE
+////////////////////////////////////////
 
-/** definición de handlers para cada estado
- * TODO: COmplete
- */
+////////////////////////////////////////
+// REQUEST_READ
+////////////////////////////////////////
+
+////////////////////////////////////////
+// RESOLVE
+////////////////////////////////////////
+
+////////////////////////////////////////
+// CONNECTING
+////////////////////////////////////////
+
+////////////////////////////////////////
+// COPY
+////////////////////////////////////////
+
+////////////////////////////////////////
+// DONE
+////////////////////////////////////////
+
+////////////////////////////////////////
+// ERRORS
+////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// STATES DEFINITION
+////////////////////////////////////////////////////////////////////////////////
+
+/** definición de handlers para cada estado */
 static const struct state_definition client_statbl[] = {
     {
         .state = HELLO_READ,
@@ -254,10 +298,38 @@ static const struct state_definition client_statbl[] = {
         .on_departure = hello_read_close,
         .on_read_ready = hello_read,
     },
-    // TODO: DEFINE OTHER STATES
-}
+    {
+        .state = HELLO_WRITE,
+        .on_arrival = hello_write_init,
+        .on_departure = hello_write_close,
+        .on_write_ready = hello_write
+    },
+    {
+        .state = REQUEST_READ,
+    },
+    {
+        .state = RESOLVE,
+    },
+    {
+        .state = CONNECTING,
+    },
+    {
+        .state = REPLY,
+    },
+    {
+        .state = COPY,
+    },
+    {
+        .state = DONE,
+    },
+    {
+        .state = ERROR,
+    }
+};
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// SOCKS5 HANDLERS
+////////////////////////////////////////////////////////////////////////////////
 // Handlers top level de la conexión pasiva.
 // son los que emiten los eventos a la maquina de estados.
 static void socksv5_done(struct selector_key * key);
