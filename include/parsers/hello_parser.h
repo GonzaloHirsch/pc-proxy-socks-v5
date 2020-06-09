@@ -18,6 +18,14 @@ typedef enum hello_state {
     HELLO_ERR_UNSUPPORTED_METHOD,
 } hello_state;
 
+/** Constant for no authentication required for the user */
+static const uint8_t SOCKS_HELLO_NOAUTHENTICATION_REQUIRED = 0x00;
+/*
+ * If the selected METHOD is X'FF', none of the methods listed by the
+   client are acceptable, and the client MUST close the connection.
+ */
+static const uint8_t SOCKS_HELLO_NO_ACCEPTABLE_METHODS = 0xFF;
+
 typedef struct hello_parser * hello_parser;
 
 hello_parser new_hello_parser();

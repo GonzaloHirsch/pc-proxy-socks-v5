@@ -3,29 +3,37 @@
  * socks5nio.c  - controla el flujo de un proxy SOCKSv5 (sockets no bloqueantes)
  */
 
-
-
-
-
 // Tabla con informacion de todos los estados.
 static const struct state_definition client_statbl[];
+
+/*
+    Pool for the reusing of instances
+*/
+/** Max amount of items in pool */
+static const unsigned max_pool = 50;
+/** Actual pool size */
+static unsigned pool_size = 0;
+/** Actual pool of objects */
+static struct socks5 *pool = 0;
 
 //-----------------------FUNCIONES DE MANEJO DE SOCKSv5----------------------------
 
 /** 
  * Creacion de un nuevo socks5.
  */
-static struct socks5 * socks5_new(const int client){
+static struct socks5 *socks5_new(const int client)
+{
 
     // Initialize the Socks5 structure which contain the state machine and other info for the socket.
-    struct socks5 * sockState = malloc(sizeof(struct socks5));
-    if (sockState == NULL){
+    struct socks5 *sockState = malloc(sizeof(struct socks5));
+    if (sockState == NULL)
+    {
         perror("Error: Initizalizing null Socks5\n");
     }
 
-////////////////////////////////////////////////////////////////////
-// STATE VARIABLES
-////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////
+    // STATE VARIABLES
+    ////////////////////////////////////////////////////////////////////
 
     sockState->stm.current = HELLO_READ;
     sockState->stm.initial = HELLO_READ;
@@ -36,11 +44,8 @@ static struct socks5 * socks5_new(const int client){
     // Write Buffer for the socket(Initialized)
     //buffer *writeBuffer = malloc(sizeof(buffer));
     //buffer_init(writeBuffer, BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
-    //sockState->writeBuffer = writeBuffer;
-
-    
-} 
-
+    //sockState->writeBuffer = writeBuffer
+}
 
 /** realmente destruye */
 static void
@@ -96,7 +101,6 @@ void socksv5_pool_destroy(void)
         free(s);
     }
 }
-
 
 //--------------------------------HANDLERS----------------------------------
 
@@ -187,17 +191,16 @@ hello_read_init(const unsigned state, struct selector_key *key)
 
     d->rb = &(ATTACHMENT(key)->read_buffer);
     d->wb = &(ATTACHMENT(key)->write_buffer);
-    d->parser.data = &d->method;
-    d->parser.on_authentication_method = on_hello_method, hello_parser_init(
-                                                              &d->parser);
+    d.parser.data = &d->method;
+    d->parser.on_authentication_method = on_hello_method, hello_parser_init(&d->parser);
 }
 
 static void
-hello_read_close(const unsigned state, struct selector_key *key){
+hello_read_close(const unsigned state, struct selector_key *key)
+{
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
     hello_done_parsing(&d->parser);
 }
-
 
 static unsigned
 hello_process(const struct hello_st *d);
@@ -262,6 +265,68 @@ hello_process(const struct hello_st *d)
 // HELLO_WRITE
 ////////////////////////////////////////
 
+/** inicializa las variables de los estados HELLO_… */
+static void
+hello_write_init(const unsigned state, struct selector_key *key)
+{
+    /*
+    struct hello_st *d = &ATTACHMENT(key)->client.hello;
+
+    d->rb = &(ATTACHMENT(key)->read_buffer);
+    d->wb = &(ATTACHMENT(key)->write_buffer);
+    d->parser.data = &d->method;
+    d->parser.on_authentication_method = on_hello_method, hello_parser_init(&d->parser);
+    */
+}
+
+static void
+hello_write_close(const unsigned state, struct selector_key *key)
+{
+    /*
+    struct hello_st *d = &ATTACHMENT(key)->client.hello;
+    hello_done_parsing(&d->parser);
+    */
+}
+
+/** lee todos los bytes del mensaje de tipo `hello' y inicia su proceso */
+static unsigned
+hello_write(struct selector_key *key)
+{
+    /*
+    struct hello_st *d = &ATTACHMENT(key)->client.hello;
+    unsigned ret = HELLO_READ;
+    bool error = false;
+    uint8_t *ptr;
+    size_t count;
+    ssize_t n;
+
+    ptr = buffer_write_ptr(d->rb, &count);
+    n = recv(key->fd, ptr, count, 0);
+    if (n > 0)
+    {
+        buffer_write_adv(d->rb, n);
+        const enum hello_state st = hello_consume(d->rb, &d->parser, &error);
+        if (hello_is_done(st, 0))
+        {
+            if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
+            {
+                ret = hello_process(d);
+            }
+            else
+            {
+                ret = ERROR;
+            }
+        }
+    }
+    else
+    {
+        ret = ERROR;
+    }
+
+    return error ? ERROR : ret;
+    */
+}
+
 ////////////////////////////////////////
 // REQUEST_READ
 ////////////////////////////////////////
@@ -302,8 +367,7 @@ static const struct state_definition client_statbl[] = {
         .state = HELLO_WRITE,
         .on_arrival = hello_write_init,
         .on_departure = hello_write_close,
-        .on_write_ready = hello_write
-    },
+        .on_write_ready = hello_write},
     {
         .state = REQUEST_READ,
     },
@@ -324,15 +388,14 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state = ERROR,
-    }
-};
+    }};
 
 ////////////////////////////////////////////////////////////////////////////////
 // SOCKS5 HANDLERS
 ////////////////////////////////////////////////////////////////////////////////
 // Handlers top level de la conexión pasiva.
 // son los que emiten los eventos a la maquina de estados.
-static void socksv5_done(struct selector_key * key);
+static void socksv5_done(struct selector_key *key);
 
 static void
 socksv5_read(struct selector_key *key)

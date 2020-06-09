@@ -212,26 +212,40 @@ typedef struct reply_st
 // Struct used to store all the relevant info for a socket.
 typedef struct socks5
 {
-    //maquinas de estados
+    /** State machine for the connection */
     struct state_machine stm;
+
+    /** File descriptor number for the client */
+    int client_fd;
+    /** File descriptor number for the origin */
+    int origin_fd;
     
-    //estados para el client_fd
+    /** States for the client fd */
     union {
         hello_st hello;
         request_st request;
         copy_st copy;
     } client;
-    // estados para el origin_fd 
+    /** States for the origin fd */
     union {
         connecting_st conn;
         reply_st reply;
     } orig;
 
+    /** Address info for the origin server */
+    struct addrinfo * origin_resolution;
+
+    /** Amount of references to this instance of the socks5 struct, if the amount is 1, it can be deleted */
+    unsigned references;
+
     struct sockaddr_storage client_addr;
     socklen_t client_addr_len;
 
-    buffer * writeBuffer;
-    buffer * readBuffer;
+    /** Buffers for reading and writing */
+    buffer read_buffer, write_buffer;
+
+    /** Next item in the pool */
+    struct socks5 * next;
 
 } socks5;
 
