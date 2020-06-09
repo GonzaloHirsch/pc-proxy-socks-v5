@@ -4,7 +4,8 @@
  */
 
 /** General state machine */
-enum socks_v5state {
+enum socks_v5state
+{
     /**
      * State when receiving the client initial "hello" and processing
      * 
@@ -140,6 +141,8 @@ struct socks5
         struct connecting conn;
         struct copy copy;
     } orig;
+
+    // TODO: CONTINUE DEFINITON
 };
 
 /** realmente destruye */

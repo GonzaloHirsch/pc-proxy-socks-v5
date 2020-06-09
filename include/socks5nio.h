@@ -24,4 +24,10 @@
 
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 
+/** Function to try to accept requests */
+void socksv5_passive_accept(struct selector_key *key);
+
+/** Function to free the pool of socks5 instances */
+void socksv5_pool_destroy(void);
+
 #endif
