@@ -3,11 +3,10 @@ GCCFLAGS=-Wall -g
 # LDFLAGS=-lrt -pthread
 
 SOURCES=$(wildcard src/*.c)
-SOURCES_ASM=$(wildcard asm/*.asm)
-OBJECTS=$(SOURCES:.c=.o)
-OBJECTS_ASM=$(SOURCES_ASM:.asm=.o)
-LOADERSRC=loader.asm
+INCLUDE=include
 
+all:
+	gcc -g $(SOURCES) -I$(INCLUDE) -o server
 
 clean:
-        rm -rf application slaveProcess view
+	rm -rf application slaveProcess view
