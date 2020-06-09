@@ -32,4 +32,6 @@ int connection_req_done_parsing(connection_req_parser p, int * errored);
 
 void free_connection_req_parser(connection_req_parser p);
 
+connection_req_state get_con_state(connection_req_parser parser);
+
 #endif

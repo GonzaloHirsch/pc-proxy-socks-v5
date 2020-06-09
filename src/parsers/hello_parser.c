@@ -86,3 +86,6 @@ void free_hello_parser(hello_parser p) {
     free(p->auth);
     free(p);
 }
+
+
+hello_state get_hello_state(hello_parser parser){ return parser -> state;}

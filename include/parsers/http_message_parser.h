@@ -49,4 +49,6 @@ const char * get_body(http_message_parser p);
 
 void free_http_message_parser(http_message_parser p);
 
+http_message_state get_http_state(http_message_parser parser);
+
 #endif

@@ -294,3 +294,6 @@ void free_http_message_parser(http_message_parser p) {
     free(p->body);
     free(p);
 }
+
+
+http_message_state get_http_state(http_message_parser parser){ return parser -> state;}

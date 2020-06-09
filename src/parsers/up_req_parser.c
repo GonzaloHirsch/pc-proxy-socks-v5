@@ -129,3 +129,5 @@ void free_up_req_parser(up_req_parser p) {
     free(p->pw);
     free(p);
 }
+
+up_req_state get_up_req_state(up_req_parser parser){ return parser -> state; }

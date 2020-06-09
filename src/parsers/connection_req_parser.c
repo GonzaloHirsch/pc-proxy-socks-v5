@@ -125,3 +125,7 @@ void free_connection_req_parser(connection_req_parser p) {
     free_socks_5_addr_parser(p->socks_5_addr_parser);
     free(p);
 }
+
+
+
+connection_req_state get_con_state(connection_req_parser parser){ return parser -> state;}

@@ -33,4 +33,7 @@ const uint8_t * get_auth_types(hello_parser p);
 
 void free_hello_parser(hello_parser p);
 
+
+hello_state get_hello_state(hello_parser parser);
+
 #endif

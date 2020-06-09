@@ -32,4 +32,6 @@ const int get_socks_5_type(socks_5_addr_parser p);
 // Free all socks_5_addr_parser-Related memory
 void free_socks_5_addr_parser(socks_5_addr_parser p);
 
+socks_5_addr_state get_socks5_state(socks_5_addr_parser parser);
+
 #endif

@@ -31,4 +31,6 @@ int up_done_parsing(up_req_parser p, int * errored);
 
 void free_up_req_parser(up_req_parser p);
 
+up_req_state get_up_req_state(up_req_parser parser);
+
 #endif

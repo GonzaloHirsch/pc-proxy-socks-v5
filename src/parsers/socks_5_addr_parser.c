@@ -113,3 +113,7 @@ void free_socks_5_addr_parser(socks_5_addr_parser p) {
     free(p->addr);
     free(p);
 }
+
+
+
+socks_5_addr_state get_socks5_state(socks_5_addr_parser parser){return parser -> state;}
