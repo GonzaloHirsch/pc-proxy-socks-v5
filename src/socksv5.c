@@ -273,7 +273,7 @@ void renderToState(struct selector_key * key, char * received, int valread){
     //TODO: change whats in this switch based on the state structure.
     switch (sockState->stm->current_state){
         case HELLO_READ:
-            HelloState hs;
+            hello_state hs;
             hs = helloConsumeMessage(received, sockState->client.hello.parser, &errored);
 
             if (errored){

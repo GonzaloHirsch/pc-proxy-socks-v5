@@ -2,9 +2,9 @@
 #define __SOCKSV5_H__
 
 #include "io_utils/buffer.h"
-#include "../include/parsers/HelloParser.h"
-#include "../include/parsers/SOCKS5AddrParser.h"
-#include "../include/parsers/ConnectionReqParser.h"
+#include "../include/parsers/hello_parser.h"
+#include "../include/parsers/socks_5_addr_parser.h"
+#include "../include/parsers/connection_req_parser.h"
 #include "../include/selector.h"
 #include "../include/stateMachine.h"
 #include <stdio.h>
@@ -53,7 +53,7 @@ typedef struct hello_st
     /** Buffers used for IO */
     buffer *rb, *wb;
     /** Pointer to hello parser */
-    HelloParser parser;
+    hello_parser parser;
     /** Selected auth method */
     uint8_t method;
 } hello_st;
@@ -64,7 +64,7 @@ typedef struct resolve_st
     /** Buffers used for IO */
     buffer *rb, *wb;
     /** Pointer to hello parser */
-    Socks5AddrParser parser;
+    socks_5_addr_parser parser;
     /** Resolved ip address */
     char *resolvedAddress;
 } resolve_st;
@@ -75,7 +75,7 @@ typedef struct request_st
     /** Buffer used for IO */
     buffer *rb;
     /** Pointer to hello parser */
-    ConnectionReqParser parser;
+    connection_req_parser parser;
 } request_st;
 
 typedef struct socks5
