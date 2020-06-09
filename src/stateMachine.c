@@ -9,22 +9,28 @@ typedef struct stateMachine{
     uint8_t state_count;
 } stateMachine;
 
+
 typedef struct State {
-    /** State type of the state */
+    // State type of the state 
     PossibleStates state;
-    /** Next state to move */
+    // Next state to move 
     state next_state;
-    /** Executed on state enter */
+
+    /*
+    // Executed on state enter 
     void (*on_enter) (state_machine sm, struct selector_key sk);
-    /** Executed on state exit */
+    // Executed on state exit 
     void (*on_exit) (state_machine sm, struct selector_key sk);
-    /** Executed on error */
+    // Executed on error 
     void (*on_error) (state_machine sm, struct selector_key sk);
-    /** Executed on available information to read */
+    // Executed on available information to read 
     void (*on_available_read) (state_machine sm, struct selector_key sk);
-    /** Executed on available information to write */
+    // Executed on available information to write 
     void (*on_available_write) (state_machine sm, struct selector_key sk);
+    */
 };
+
+
 
 void init_state_machine(state_machine sm){
     // TODO: CREATE ALL STATES AND INIT MACHINE
