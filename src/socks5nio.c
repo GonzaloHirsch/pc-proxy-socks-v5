@@ -1,32 +1,29 @@
+#include "socks5nio.h"
 /**
  * socks5nio.c  - controla el flujo de un proxy SOCKSv5 (sockets no bloqueantes)
  */
-#include "socks5nio.h"
 
 ////////////////////////////////////////////////////////////////////
-// DefiniciÃ³n de variables para cada estado
+// Definición de variables para cada estado
 
 /** usado por HELLO_READ, HELLO_WRITE */
 struct hello_st {
     /** buffer utilizado para I/O */
     buffer               *rb, *wb;
     struct hello_parser   parser;
-    /** el mÃ©todo de autenticaciÃ³n seleccionado */
+    /** el método de autenticación seleccionado */
     uint8_t               method;
 } ;
 
-â€¦
-
 /*
  * Si bien cada estado tiene su propio struct que le da un alcance
- * acotado, disponemos de la siguiente estructura para hacer una Ãºnica
- * alocaciÃ³n cuando recibimos la conexiÃ³n.
+ * acotado, disponemos de la siguiente estructura para hacer una única
+ * alocación cuando recibimos la conexión.
  *
  * Se utiliza un contador de referencias (references) para saber cuando debemos
  * liberarlo finalmente, y un pool para reusar alocaciones previas.
  */
 struct socks5 {
-â€¦
     /** maquinas de estados */
     struct state_machine          stm;
 
@@ -41,7 +38,6 @@ struct socks5 {
         struct connecting         conn;
         struct copy               copy;
     } orig;
-â€¦
 };
 
 
@@ -87,10 +83,10 @@ socksv5_pool_destroy(void) {
     }
 }
 
-/** obtiene el struct (socks5 *) desde la llave de selecciÃ³n  */
+/** obtiene el struct (socks5 *) desde la llave de selección  */
 #define ATTACHMENT(key) ( (struct socks5 *)(key)->data)
 
-/* declaraciÃ³n forward de los handlers de selecciÃ³n de una conexiÃ³n
+/* declaración forward de los handlers de selección de una conexión
  * establecida entre un cliente y el proxy.
  */
 static void socksv5_read   (struct selector_key *key);
@@ -104,7 +100,7 @@ static const struct fd_handler socks5_handler = {
     .handle_block  = socksv5_block,
 };
 
-/** Intenta aceptar la nueva conexiÃ³n entrante*/
+/** Intenta aceptar la nueva conexión entrante*/
 void
 socksv5_passive_accept(struct selector_key *key) {
     struct sockaddr_storage       client_addr;
@@ -123,7 +119,7 @@ socksv5_passive_accept(struct selector_key *key) {
     if(state == NULL) {
         // sin un estado, nos es imposible manejaro.
         // tal vez deberiamos apagar accept() hasta que detectemos
-        // que se liberÃ³ alguna conexiÃ³n.
+        // que se liberó alguna conexión.
         goto fail;
     }
     memcpy(&state->client_addr, &client_addr, client_addr_len);
@@ -155,7 +151,7 @@ on_hello_method(struct hello_parser *p, const uint8_t method) {
     }
 }
 
-/** inicializa las variables de los estados HELLO_â€¦ */
+/** inicializa las variables de los estados HELLO_… */
 static void
 hello_read_init(const unsigned state, struct selector_key *key) {
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
@@ -215,7 +211,7 @@ hello_process(const struct hello_st* d) {
     return ret;
 }
 
-/** definiciÃ³n de handlers para cada estado */
+/** definición de handlers para cada estado */
 static const struct state_definition client_statbl[] = {
     {
         .state            = HELLO_READ,
@@ -223,10 +219,10 @@ static const struct state_definition client_statbl[] = {
         .on_departure     = hello_read_close,
         .on_read_ready    = hello_read,
     },
-â€¦
+…
 
 ///////////////////////////////////////////////////////////////////////////////
-// Handlers top level de la conexiÃ³n pasiva.
+// Handlers top level de la conexión pasiva.
 // son los que emiten los eventos a la maquina de estados.
 static void
 socksv5_done(struct selector_key* key);
