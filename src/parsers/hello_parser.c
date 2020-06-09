@@ -61,9 +61,13 @@ enum hello_state hello_consume(buffer * b, hello_parser p, bool *errored) {
 }
 
 int hello_done_parsing(hello_parser p, bool * errored) {
-    if (p->state > HELLO_DONE)
+    return hello_is_done(p->state, errored);
+}
+
+int hello_is_done(hello_state st, bool * errored) {
+    if (st > HELLO_DONE)
         *errored = true;
-    return p->state >= HELLO_DONE;
+    return st >= HELLO_DONE;
 }
 
 uint8_t get_n_auth(hello_parser p) {
