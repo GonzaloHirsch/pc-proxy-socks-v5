@@ -50,6 +50,8 @@ int hello_is_done(hello_state st, bool * errored);
 uint8_t get_n_auth(hello_parser p);
 const uint8_t * get_auth_types(hello_parser p);
 
+int hello_marshall(buffer *b, const uint8_t method);
+
 // Free all hello_parser-Related memory
 
 void free_hello_parser(hello_parser p);

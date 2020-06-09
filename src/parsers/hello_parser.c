@@ -83,5 +83,18 @@ void free_hello_parser(hello_parser p) {
     free(p);
 }
 
+extern int
+hello_marshall(buffer *b, const uint8_t method) {
+    size_t n;
+    uint8_t *buff = buffer_write_ptr(b, &n);
+    if(n < 2) {
+        return -1;
+    }
+    buff[0] = 0x05;
+    buff[1] = method;
+    buffer_write_adv(b, 2);
+    return 2;
+}
+
 
 hello_state get_hello_state(hello_parser parser){ return parser -> state;}
