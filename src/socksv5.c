@@ -1,4 +1,6 @@
-#include "socksv5.h"
+
+#include "../include/socksv5.h"
+#include "../Utility.h"
 
 // -------------- INTERNAL FUNCTIONS-----------------------------------
 void masterSocketHandle(struct selector_key *key);
@@ -269,9 +271,9 @@ void renderToState(struct selector_key * key, char * received, int valread){
     Socks5 * sockState = (Socks5 *)key->data;
 
     //TODO: change whats in this switch based on the state structure.
-    switch (sockState->stm->current_state->state){
+    switch (/*sockState->stm->current_state*/ 1){
         case HELLO_READ:
-            /*
+
             hello_state hs = hello_consume_message(received, sockState->client.hello.parser, &errored);
 
             if (errored){
@@ -282,7 +284,6 @@ void renderToState(struct selector_key * key, char * received, int valread){
                 sockState->stm = HELLO_WRITE;
                 free_hello_parser(sockState->client.hello.parser);
             }
-            */
 
             break;
 
@@ -322,6 +323,49 @@ void renderToState(struct selector_key * key, char * received, int valread){
             break;
     }
 
+
+}
+
+
+
+void write_to_client(struct selector_key * key){
+    int sd = key -> fd;
+    int errored = 0;
+    Socks5 * sock_state = (Socks5 *) key -> data;
+    int state = get_current_state(sock_state -> stm);
+
+    switch (state)
+    {
+    case HELLO_WRITE:
+        char response[] = {0x05, 0x00}; //temporary change to 0x02 when auth is done
+
+        write(sd, response, N(response));
+
+        set_current_state(sock_state, REQUEST_READ);
+
+        break;
+
+    case RESOLVE:
+
+        break;
+    
+    case CONNECTING:
+
+        break;
+
+    case REPLY:
+        char rep;
+        rep = 0x00; //just for now it succeeds every request
+
+        //need to check how to retrieve port and address
+
+        break;
+    
+
+    
+    default:
+        break;
+    }
 
 }
 

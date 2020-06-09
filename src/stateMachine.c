@@ -1,5 +1,13 @@
 #include "stateMachine.h"
 
+
+struct stateMachine
+{
+
+    PossibleStates current_state;
+};
+
+
 void init_state_machine(state_machine sm){
     // TODO: CREATE ALL STATES AND INIT MACHINE
 }
@@ -24,3 +32,9 @@ state handle_on_error(state_machine sm);
 state handle_on_available_read(state_machine sm);
 
 state handle_on_available_write(state_machine sm);
+
+
+
+void set_current_state(state_machine sm, PossibleStates ps){
+    sm -> current_state = ps;
+}
