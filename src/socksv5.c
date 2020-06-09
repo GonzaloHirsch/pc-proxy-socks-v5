@@ -252,7 +252,8 @@ void initSocksState(Socks5 * sockState){
         perror("Error: Initizalizing null Socks5\n");
     }
 
-    sockState->stm = malloc(sizeof(state_machine)); // CHECK THIS SIZEOF
+    stm_init(&(sockState->stm));
+
      // Write Buffer for the socket(Initialized)
     buffer * writeBuffer = malloc(sizeof(buffer));
     buffer_init(writeBuffer, BUFFERSIZE+1, malloc(BUFFERSIZE+1));
@@ -264,6 +265,7 @@ void freeSocksState(Socks5 * sockState){
     
 }
 
+/*
 void renderToState(struct selector_key * key, char * received, int valread){
     
     int errored = 0;
@@ -271,9 +273,10 @@ void renderToState(struct selector_key * key, char * received, int valread){
     Socks5 * sockState = (Socks5 *)key->data;
 
     //TODO: change whats in this switch based on the state structure.
-    switch (/*sockState->stm->current_state*/ 1){
-        case HELLO_READ:
+    switch (sockState->stm->current_state->state){
 
+        case HELLO_READ:
+        
             hello_state hs = hello_consume_message(received, sockState->client.hello.parser, &errored);
 
             if (errored){
@@ -286,6 +289,7 @@ void renderToState(struct selector_key * key, char * received, int valread){
             }
 
             break;
+        
 
         case HELLO_WRITE:
 
@@ -369,3 +373,4 @@ void write_to_client(struct selector_key * key){
 
 }
 
+*/

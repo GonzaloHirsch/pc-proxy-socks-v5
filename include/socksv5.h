@@ -110,7 +110,7 @@ typedef struct reply_st
 typedef struct Socks5
 {
     //maquinas de estados
-    state_machine stm;
+    struct state_machine stm;
     
     //estados para el client_fd
     union {

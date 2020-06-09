@@ -1,40 +1,103 @@
+/**
+ * stm.c - pequeño motor de maquina de estados donde los eventos son los
+ *         del selector.c
+ */
+#include <stdlib.h>
 #include "stateMachine.h"
 
+#define N(x) (sizeof(x)/sizeof((x)[0]))
 
-struct stateMachine
-{
-
-    PossibleStates current_state;
-};
-
-
-void init_state_machine(state_machine sm){
-    // TODO: CREATE ALL STATES AND INIT MACHINE
-}
-
-void destroy_state_machine(state_machine sm){
-    // TODO: FREE AL RESOURCES
-}
-
-state get_current_state(state_machine sm){
-    if (sm != NULL){
-        return sm->current_state;
+void
+stm_init(struct state_machine *stm) {
+    // verificamos que los estados son correlativos, y que están bien asignados.
+    for(unsigned i = 0 ; i <= stm->max_state; i++) {
+        if(i != stm->states[i].state) {
+            abort();
+        }
     }
-    return NULL;
+
+    if(stm->initial < stm->max_state) {
+        stm->current = NULL;
+    } else {
+        abort();
+    }
 }
 
-state handle_on_state_exit(state_machine sm);
+inline static void
+handle_first(struct state_machine *stm, struct selector_key *key) {
+    if(stm->current == NULL) {
+        stm->current = stm->states + stm->initial;
+        if(NULL != stm->current->on_arrival) {
+            stm->current->on_arrival(stm->current->state, key);
+        }
+    }
+}
 
-state handle_on_state_enter(state_machine sm);
+inline static
+void jump(struct state_machine *stm, unsigned next, struct selector_key *key) {
+    if(next > stm->max_state) {
+        abort();
+    }
+    if(stm->current != stm->states + next) {
+        if(stm->current != NULL && stm->current->on_departure != NULL) {
+            stm->current->on_departure(stm->current->state, key);
+        }
+        stm->current = stm->states + next;
 
-state handle_on_error(state_machine sm);
+        if(NULL != stm->current->on_arrival) {
+            stm->current->on_arrival(stm->current->state, key);
+        }
+    }
+}
 
-state handle_on_available_read(state_machine sm);
+unsigned
+stm_handler_read(struct state_machine *stm, struct selector_key *key) {
+    handle_first(stm, key);
+    if(stm->current->on_read_ready == 0) {
+        abort();
+    }
+    const unsigned int ret = stm->current->on_read_ready(key);
+    jump(stm, ret, key);
 
-state handle_on_available_write(state_machine sm);
+    return ret;
+}
 
+unsigned
+stm_handler_write(struct state_machine *stm, struct selector_key *key) {
+    handle_first(stm, key);
+    if(stm->current->on_write_ready == 0) {
+        abort();
+    }
+    const unsigned int ret = stm->current->on_write_ready(key);
+    jump(stm, ret, key);
 
+    return ret;
+}
 
-void set_current_state(state_machine sm, PossibleStates ps){
-    sm -> current_state = ps;
+unsigned
+stm_handler_block(struct state_machine *stm, struct selector_key *key) {
+    handle_first(stm, key);
+    if(stm->current->on_block_ready == 0) {
+        abort();
+    }
+    const unsigned int ret = stm->current->on_block_ready(key);
+    jump(stm, ret, key);
+
+    return ret;
+}
+
+void
+stm_handler_close(struct state_machine *stm, struct selector_key *key) {
+    if(stm->current != NULL && stm->current->on_departure != NULL) {
+        stm->current->on_departure(stm->current->state, key);
+    }
+}
+
+unsigned
+stm_state(struct state_machine *stm) {
+    unsigned ret = stm->initial;
+    if(stm->current != NULL) {
+        ret= stm->current->state;
+    }
+    return ret;
 }
