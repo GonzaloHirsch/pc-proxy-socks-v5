@@ -122,7 +122,7 @@ struct state {
     // State type of the state 
     PossibleStates state;
     // Next state to move 
-    state next_state;
+    struct state * next_state;
 
     /*
     // Executed on state enter 
