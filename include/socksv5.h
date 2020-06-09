@@ -43,8 +43,8 @@ typedef enum AddrType
 
 typedef enum ClientFdOperation
 {
-    OP_READ = 0x00,
-    OP_WRITE = 0x01
+    CLI_OP_READ = 0x00,
+    CLI_OP_WRITE = 0x01
 } ClientFdOperation;
 
 /** Used by the HELLO_READ and HELLO_WRITE states */

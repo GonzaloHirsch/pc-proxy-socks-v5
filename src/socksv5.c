@@ -35,7 +35,7 @@ int main()
     // ----------------- INITIALIZE THE MAIN SOCKET -----------------
 
     // Creating the server socket to listen
-    const int master_socket = socket(AF_INET, SOCK_STREAM, 0);
+    master_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (master_socket <= 0)
     {
         printf("socket failed");
@@ -137,7 +137,7 @@ void masterSocketHandle(struct selector_key *key){
     socklen_t addrlen = (socklen_t) sizeof(*address);
 
     // Accpet the new socket.
-    if (newSocket = accept(newSocket, address, &addrlen) < 0){
+    if (newSocket = accept(newSocket, (struct sockaddr *)address, &addrlen) < 0){
             perror("Error: Error accepting new socket\n");
             exit(EXIT_FAILURE);
         }
@@ -155,7 +155,7 @@ void masterSocketHandle(struct selector_key *key){
 
         // Initialize the Socks5 structure which contain the state machine and other info for the socket.
         Socks5 * sockState = malloc(sizeof(Socks5));
-        initSockState(sockState);
+        initSocksState(sockState);
 
         // Register the new file descriptor.
         selector_status resultStatus;
@@ -190,7 +190,7 @@ void slaveSocketHandleRead(struct selector_key *key){
     }
     else
     {
-        printf("Received %zu bytes from socket %d\n", valread, sd);
+        printf("Received %d bytes from socket %d\n", valread, sd);
 
         //TODO: To implement shortly
         //render_to_state();
@@ -271,10 +271,10 @@ void renderToState(struct selector_key * key, char * received, int valread){
     Socks5 * sockState = (Socks5 *)key->data;
 
     //TODO: change whats in this switch based on the state structure.
-    switch (sockState->stm->current_state){
+    switch (/*sockState->stm->current_state*/ 1){
         case HELLO_READ:
-            hello_state hs;
-            hs = hello_consume_message(received, sockState->client.hello.parser, &errored);
+
+            hello_state hs = hello_consume_message(received, sockState->client.hello.parser, &errored);
 
             if (errored){
                 perror("Error during hello parsing");

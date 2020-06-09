@@ -9,7 +9,7 @@ typedef struct stateMachine{
     uint8_t state_count;
 } stateMachine;
 
-typedef struct State {
+struct State {
     /** State type of the state */
     PossibleStates state;
     /** Next state to move */
