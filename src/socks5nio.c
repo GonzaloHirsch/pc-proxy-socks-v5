@@ -107,28 +107,15 @@ enum socks_v5state
 ////////////////////////////////////////////////////////////////////
 // Definición de variables para cada estado
 
-/** usado por HELLO_READ, HELLO_WRITE */
-struct hello_st
-{
-    /** buffer utilizado para I/O */
-    buffer *rb, *wb;
-    struct hello_parser parser;
-    /** el método de autenticación seleccionado */
-    uint8_t method;
-};
+// Tabla con informacion de todos los estados.
+static const struct state_definition client_statbl[];
 
-/*
- * Si bien cada estado tiene su propio struct que le da un alcance
- * acotado, disponemos de la siguiente estructura para hacer una única
- * alocación cuando recibimos la conexión.
- *
- * Se utiliza un contador de referencias (references) para saber cuando debemos
- * liberarlo finalmente, y un pool para reusar alocaciones previas.
+//-----------------------FUNCIONES DE MANEJO DE SOCKSv5----------------------------
+
+/** 
+ * Creacion de un nuevo socks5.
  */
-struct socks5
-{
-    /** maquinas de estados */
-    struct state_machine stm;
+static struct socks5 * socks5_new(const int client){
 
     /** estados para el client_fd */
     union {
@@ -144,6 +131,27 @@ struct socks5
 
     // TODO: CONTINUE DEFINITON
 };
+    // Initialize the Socks5 structure which contain the state machine and other info for the socket.
+    struct socks5 * sockState = malloc(sizeof(struct socks5));
+    if (sockState == NULL){
+        perror("Error: Initizalizing null Socks5\n");
+    }
+
+
+    sockState->stm.current = HELLO_READ;
+    sockState->stm.initial = HELLO_READ;
+    sockState->stm.max_state = MAX_STATES;
+    sockState->stm.states = client_statbl;
+    stm_init(&(sockState->stm));
+
+    // Write Buffer for the socket(Initialized)
+    //buffer *writeBuffer = malloc(sizeof(buffer));
+    //buffer_init(writeBuffer, BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
+    //sockState->writeBuffer = writeBuffer;
+
+    
+} 
+
 
 /** realmente destruye */
 static void
@@ -199,6 +207,9 @@ void socksv5_pool_destroy(void)
         free(s);
     }
 }
+
+
+//--------------------------------HANDLERS----------------------------------
 
 /** obtiene el struct (socks5 *) desde la llave de selección  */
 #define ATTACHMENT(key) ((struct socks5 *)(key)->data)
@@ -259,9 +270,8 @@ fail:
     socks5_destroy(state);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// HELLO
-////////////////////////////////////////////////////////////////////////////////
+//------------------------------CALLBACKS DE ESTADOS--------------------------------
+
 
 /** callback del parser utilizado en `read_hello' */
 static void
@@ -347,7 +357,10 @@ hello_process(const struct hello_st *d)
     return ret;
 }
 
-/** definición de handlers para cada estado */
+
+/** definición de handlers para cada estado
+ * TODO: COmplete
+ */
 static const struct state_definition client_statbl[] = {
     {
         .state = HELLO_READ,

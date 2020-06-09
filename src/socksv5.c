@@ -1,6 +1,5 @@
 
 #include "../include/socksv5.h"
-#include "../Utility.h"
 
 // -------------- INTERNAL FUNCTIONS-----------------------------------
 void masterSocketHandle(struct selector_key *key);
