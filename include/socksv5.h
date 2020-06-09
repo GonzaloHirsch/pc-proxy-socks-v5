@@ -80,15 +80,16 @@ typedef struct request_st
 
 typedef struct socks5
 {
-    /** maquinas de estados */
+    //maquinas de estados
     state_machine stm;
-    /** estados para el client_fd */
+    
+    //estados para el client_fd
     union {
         hello_st hello;
         request_st request;
         copy copy;
     } client;
-    /** estados para el origin_fd */
+    // estados para el origin_fd 
     union {
         connecting conn;
         copy copy;

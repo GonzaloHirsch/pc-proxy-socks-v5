@@ -13,6 +13,8 @@ void slaveSocketHandleClose(struct selector_key *key);
 void initSocksState(Socks5 * sockState);
 void freeSocksState(Socks5 * sockState);
 
+void renderToState(struct selector_key * key, char * received, int valread);
+
 // Address for socket binding
 struct sockaddr_in * address;
 
@@ -178,10 +180,6 @@ void slaveSocketHandleRead(struct selector_key *key){
     //Check if it was for closing , and also read the incoming message
     if ((valread = read(sd, received, BUFFERSIZE)) <= 0)
     {
-        //Somebody disconnected , get his details and print
-        getpeername(sd, address, (socklen_t *)&addrlen);
-        printf("Host disconnected , ip %s , port %d \n", inet_ntoa(address->sin_addr), ntohs(address->sin_port));
-
         // Remove from selector.
         // This will call slaveSocketHandleClose --> All cleaning ops go there.
         selector_status responseStatus = selector_unregister_fd(key->s, key->fd);
@@ -266,68 +264,62 @@ void freeSocksState(Socks5 * sockState){
     
 }
 
-void render_to_state(char *received, int sock_num, int valread, buffer *b)
-{
+void renderToState(struct selector_key * key, char * received, int valread){
+    
     int errored = 0;
-    switch (socks_state[sock_num]->stm->state)
-    {
-    case HELLO_READ:
-        for (int i = 0; i < valread; i++)
-        {
-            buffer_write(b, received[i]);
-        }
+    int sd = key->fd;
+    Socks5 * sockState = (Socks5 *)key->data;
 
-        HelloState hs;
-        hs = helloConsumeMessage(b, socks_state[sock_num]->client.hello.parser, &errored);
+    //TODO: change whats in this switch based on the state structure.
+    switch (sockState->stm->current_state){
+        case HELLO_READ:
+            HelloState hs;
+            hs = helloConsumeMessage(received, sockState->client.hello.parser, &errored);
 
-        if (errored)
-        {
-            perror("Error during hello parsing");
-            exit(EXIT_FAILURE);
-        }
+            if (errored){
+                perror("Error during hello parsing");
+                exit(EXIT_FAILURE);
+            }
+            if (hs == DONE){
+                sockState->stm = HELLO_WRITE;
+                freeHelloParser(sockState->client.hello.parser);
+            }
 
-        if (hs == DONE)
-        {
+            break;
 
-            socks_state[sock_num]->stm = HELLO_WRITE;
-            freeHelloParser(socks_state[sock_num]->client.hello.parser);
-        }
+        case HELLO_WRITE:
 
-        break;
+            break;
 
-    case HELLO_WRITE:
+        case REQUEST_READ:
 
-        break;
+            break;
 
-    case REQUEST_READ:
+        case RESOLVE:
 
-        break;
+            break;
 
-    case RESOLVE:
+        case CONNECTING:
 
-        break;
+            break;
 
-    case CONNECTING:
+        case REPLY:
 
-        break;
+            break;
 
-    case REPLY:
+        case COPY:
 
-        break;
+            break;
 
-    case COPY:
+        case DONE:
 
-        break;
+            break;
 
-    case DONE:
+        case ERROR:
 
-        break;
+            break;
 
-    case ERROR:
-
-        break;
-
-    default:
-        break;
+        default:
+            break;
     }
 }
