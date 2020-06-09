@@ -173,9 +173,9 @@ fail:
 
 /** callback del parser utilizado en `read_hello' */
 static void
-on_hello_method(struct hello_parser *p, const uint8_t method)
+on_hello_method(struct hello_parser * p, const uint8_t method)
 {
-    uint8_t *selected = p->data;
+    uint8_t *selected = p->auth;
 
     if (SOCKS_HELLO_NOAUTHENTICATION_REQUIRED == method)
     {
@@ -191,7 +191,7 @@ hello_read_init(const unsigned state, struct selector_key *key)
 
     d->rb = &(ATTACHMENT(key)->read_buffer);
     d->wb = &(ATTACHMENT(key)->write_buffer);
-    d.parser.data = &d->method;
+    d->parser.data = &d->method;
     d->parser.on_authentication_method = on_hello_method, hello_parser_init(&d->parser);
 }
 
@@ -199,7 +199,7 @@ static void
 hello_read_close(const unsigned state, struct selector_key *key)
 {
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
-    hello_done_parsing(&d->parser);
+    hello_done_parsing(&d->parser, NULL);
 }
 
 static unsigned
