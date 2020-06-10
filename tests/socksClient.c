@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
   /* Version 5, one method: no authentication */
 
   uint8_t data[] = {
-        0x05, 0x02, 0x00, 0x01,
+        0x05, 0x02, 0x00, 0x03,
     };
 
   // Send the string to the server
@@ -49,10 +49,10 @@ int main(int argc, char *argv[]) {
     DieWithUserMessage("send()", "sent unexpected number of bytes");
   }
     
-  // Receive the same string back from the server
+
   unsigned int totalBytesRcvd = 0; // Count of total bytes received
   fputs("Received: ", stdout);     // Setup to print the echoed string
-  while (totalBytesRcvd > 0) {
+  while (true) {
     char buffer[BUFSIZE]; // I/O buffer
    // Receive up to the buffer size (minus 1 to leave space for
     // a null terminator) bytes from the sender
