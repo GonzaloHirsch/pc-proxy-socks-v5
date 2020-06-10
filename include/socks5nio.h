@@ -22,8 +22,6 @@
 #include "stateMachine.h"
 
 #define N(x) (sizeof(x)/sizeof((x)[0]))
-/** TODO: CHANGE  */
-#define MAX_STATES 1
 /** TODO: define appropiate size */
 #define BUFFERSIZE 4096
 

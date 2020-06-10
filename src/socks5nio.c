@@ -33,7 +33,7 @@ static struct socks5 *socks5_new(const int client)
 
     // Initialize the state machine.
     sockState->stm.current = &client_statbl[0]; // The first state is the HELLO_READ state  
-    sockState->stm.max_state = MAX_STATES;
+    sockState->stm.max_state = ERROR;
     sockState->stm.states = client_statbl;
     stm_init(&(sockState->stm));
 
@@ -122,7 +122,6 @@ static const struct fd_handler socks5_handler = {
 /** Intenta aceptar la nueva conexión entrante*/
 void socksv5_passive_accept(struct selector_key *key)
 {
-
     printf("Inside passive accept\n");
 
     struct sockaddr_storage client_addr;
