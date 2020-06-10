@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
   uint8_t data[] = {
         0x05, 0x02, 0x00, 0x01,
     };
-    
+
   // Send the string to the server
   printf("Sending hello\n");
   ssize_t numBytes = send(sock, data, 4, 0);
@@ -49,11 +49,10 @@ int main(int argc, char *argv[]) {
     DieWithUserMessage("send()", "sent unexpected number of bytes");
   }
     
-/*
   // Receive the same string back from the server
   unsigned int totalBytesRcvd = 0; // Count of total bytes received
   fputs("Received: ", stdout);     // Setup to print the echoed string
-  while (totalBytesRcvd < buffer-ptrBuff) {
+  while (totalBytesRcvd > 0) {
     char buffer[BUFSIZE]; // I/O buffer
    // Receive up to the buffer size (minus 1 to leave space for
     // a null terminator) bytes from the sender
@@ -66,7 +65,7 @@ int main(int argc, char *argv[]) {
     buffer[numBytes] = '\0';    // Terminate the string!
     fputs(buffer, stdout);      // Print the echo buffer
   }
-*/
+
 printf("Hello sent\n");
   fputc('\n', stdout); // Print a final linefeed
 
