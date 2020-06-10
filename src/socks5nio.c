@@ -31,12 +31,8 @@ static struct socks5 *socks5_new(const int client)
         perror("Error: Initizalizing null Socks5\n");
     }
 
-    ////////////////////////////////////////////////////////////////////
-    // STATE VARIABLES
-    ////////////////////////////////////////////////////////////////////
-
-    sockState->stm.current = HELLO_READ;
-    sockState->stm.initial = HELLO_READ;
+    // Initialize the state machine.
+    sockState->stm.current = &client_statbl[0]; // The first state is the HELLO_READ state  
     sockState->stm.max_state = MAX_STATES;
     sockState->stm.states = client_statbl;
     stm_init(&(sockState->stm));

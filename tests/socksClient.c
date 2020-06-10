@@ -42,6 +42,8 @@ int main(int argc, char *argv[]) {
   else if (numBytes != echoStringLen)
     DieWithUserMessage("send()", "sent unexpected number of bytes");
 
+    printf("Message sent %s\n", echoString);
+
   // Receive the same string back from the server
   unsigned int totalBytesRcvd = 0; // Count of total bytes received
   fputs("Received: ", stdout);     // Setup to print the echoed string
