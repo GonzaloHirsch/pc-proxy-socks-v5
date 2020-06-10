@@ -163,9 +163,7 @@ fail:
     socks5_destroy(state);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// STATE FUNCTION HANDLERS
-////////////////////////////////////////////////////////////////////////////////
+//------------------------------STATE FUNCTION HANDLERS--------------------------------
 
 ////////////////////////////////////////
 // HELLO
@@ -193,8 +191,6 @@ hello_read_init(const unsigned state, struct selector_key *key)
 
     d->rb = &(ATTACHMENT(key)->read_buffer);
     d->wb = &(ATTACHMENT(key)->write_buffer);
-    //d->parser.data = &d->method;
-    //d->parser.on_authentication_method = on_hello_method,
     hello_parser_init(&d->parser);
 }
 
@@ -272,23 +268,13 @@ hello_process(const struct hello_st *d)
 static void
 hello_write_init(const unsigned state, struct selector_key *key)
 {
-    /*
-    struct hello_st *d = &ATTACHMENT(key)->client.hello;
-
-    d->rb = &(ATTACHMENT(key)->read_buffer);
-    d->wb = &(ATTACHMENT(key)->write_buffer);
-    d->parser.data = &d->method;
-    d->parser.on_authentication_method = on_hello_method, hello_parser_init(&d->parser);
-    */
+    
 }
 
 static void
 hello_write_close(const unsigned state, struct selector_key *key)
 {
-    /*
-    struct hello_st *d = &ATTACHMENT(key)->client.hello;
-    hello_done_parsing(&d->parser);
-    */
+    
 }
 
 /** lee todos los bytes del mensaje de tipo `hello' y inicia su proceso */
@@ -370,7 +356,8 @@ static const struct state_definition client_statbl[] = {
         .state = HELLO_WRITE,
         .on_arrival = hello_write_init,
         .on_departure = hello_write_close,
-        .on_write_ready = hello_write},
+        .on_write_ready = hello_write
+    },
     {
         .state = REQUEST_READ,
     },
