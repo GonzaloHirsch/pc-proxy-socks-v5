@@ -29,7 +29,7 @@ static struct socks5 *socks5_new(const int client)
     if (sockState == NULL)
     {
         perror("Error: Initizalizing null Socks5\n");
-    }
+    }   
 
     // Initialize the state machine.
     sockState->stm.current = &client_statbl[0]; // The first state is the HELLO_READ state  
@@ -38,10 +38,10 @@ static struct socks5 *socks5_new(const int client)
     stm_init(&(sockState->stm));
 
     // Write Buffer for the socket(Initialized)
-    //buffer *writeBuffer = malloc(sizeof(buffer));
-    //buffer_init(writeBuffer, BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
-    //sockState->writeBuffer = writeBuffer
-
+    buffer_init(&(sockState->write_buffer), BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
+     // Read Buffer for the socket(Initialized)
+    buffer_init(&(sockState->read_buffer), BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
+    
     return sockState;
 }
 

@@ -24,6 +24,8 @@
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 /** TODO: CHANGE  */
 #define MAX_STATES 1
+/** TODO: define appropiate size */
+#define BUFFERSIZE 4096
 
 /** Function to try to accept requests */
 void socksv5_passive_accept(struct selector_key *key);
