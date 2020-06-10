@@ -240,15 +240,27 @@ hello_read(struct selector_key *key)
     return error ? ERROR : ret;
 }
 
-/** procesamiento del mensaje `hello' */
+/** Process the hello message and check if its valid. */
 static unsigned
 hello_process(const struct hello_st *d)
 {
     unsigned ret = HELLO_WRITE;
+    uint8_t * methods = d->parser.auth;
+    uint8_t methods_c = d->parser.nauth;
+    uint8_t m = SOCKS_HELLO_NO_ACCEPTABLE_METHODS;
+    
+    /** TODO: Change to accept multiple methods 
+     * For now only accepting NO_AUTH
+    */
+    for(int i = 0; i < methods_c;i++){
+        
+        if(methods[i] == SOCKS_HELLO_NOAUTHENTICATION_REQUIRED){
+            m = SOCKS_HELLO_NOAUTHENTICATION_REQUIRED;
+        }
+    }
 
-    uint8_t m = d->method;
-    const uint8_t r = (m == SOCKS_HELLO_NO_ACCEPTABLE_METHODS) ? 0xFF : 0x00;
-    if (-1 == hello_marshall(d->wb, r))
+    // Save the version and the selected method in the write buffer of hello_st
+    if (-1 == hello_marshall(d->wb, m))
     {
         ret = ERROR;
     }
@@ -263,97 +275,47 @@ hello_process(const struct hello_st *d)
 // HELLO_WRITE
 ////////////////////////////////////////
 
-/** inicializa las variables de los estados HELLO_… */
+/** Writes the version and the selected method 
+ * This is done in the init because we already have the info.
+*/
 static void
-hello_write_init(const unsigned state, struct selector_key *key)
-{
+hello_write_init(const unsigned state, struct selector_key *key){
     
+
+
 }
 
 static void
 hello_write_close(const unsigned state, struct selector_key *key)
-{
-    
+{   
+
+    // All temporal for testing...
+    send(key->fd, 0, 1, 0);
+    printf("wait....\n");
+    while(1);
 }
 
 /** lee todos los bytes del mensaje de tipo `hello' y inicia su proceso */
 static unsigned
-hello_write(struct selector_key *key)
-{
-}
+hello_write(struct selector_key *key){
 
-////////////////////////////////////////
-// REQUEST_READ
-////////////////////////////////////////
-
-/** inicializa las variables de los estados HELLO_… */
-static void
-request_read_init(const unsigned state, struct selector_key *key)
-{
-    // Getting the request state from the client
-    struct request_st *d = &ATTACHMENT(key)->client.request;
-
-    // Getting the read buffer from the state
-    d->rb = &(ATTACHMENT(key)->read_buffer);
-
-    // Initializing the connection request parser
-    connection_req_parser_init(&d->parser);
-}
-
-static void
-request_read_close(const unsigned state, struct selector_key *key)
-{
-    // Getting the request state from the client
-    struct request_st *d = &ATTACHMENT(key)->client.request;
-
-    // Telling the parser it is done processing
-    connection_req_done_parsing(&d->parser, NULL);
-}
-
-static unsigned
-request_process(const struct request_st *d);
-
-static unsigned
-request_read(struct selector_key *key)
-{
-    // Getting the request state from the client
-    struct request_st *d = &ATTACHMENT(key)->client.request;
-    // Next state is RESOLVE, in case the
-    unsigned ret = RESOLVE;
-    bool error = false;
-    uint8_t *ptr;
-    size_t count;
+    struct hello_st *d = &ATTACHMENT(key)->client.hello;
     ssize_t n;
+    unsigned ret = REQUEST_READ;
+    size_t nr;
+    uint8_t * buffer_read = buffer_read_ptr(d->wb, &nr);
 
-    // Getting the pointer to available write
-    ptr = buffer_write_ptr(d->rb, &count);
-    // Receiving the data
-    n = recv(key->fd, ptr, count, 0);
-    if (n > 0)
-    {
-        // Writing the request to the buffer
-        buffer_write_adv(d->rb, n);
-        // Consuming the request
-        const enum connection_req_state st = connection_req_consume_message(d->rb, &d->parser, &error);
-        // Checking if it is a valid state
-        if (connection_req_done_parsing(st, 0))
-        {
-            if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
-            {
-                ret = request_process(d);
-            }
-            else
-            {
-                ret = ERROR;
-            }
-        }
-    }
-    else
-    {
-        ret = ERROR;
+    // Get the data from the write buffer
+    uint8_t data[] = {buffer_read[0], buffer_read[1]};
+    buffer_read_adv(d->wb, 2);
+
+    // Send the version and the method.
+    n = send(key->fd, data, 2, 0);
+    if(n < 0){
+        ret = ERROR; 
     }
 
-    return error ? ERROR : ret;
+    return ret;
 }
 
 /** 

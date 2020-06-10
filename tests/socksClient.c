@@ -50,24 +50,20 @@ int main(int argc, char *argv[]) {
   }
     
 
-  unsigned int totalBytesRcvd = 0; // Count of total bytes received
-  fputs("Received: ", stdout);     // Setup to print the echoed string
-  while (true) {
-    char buffer[BUFSIZE]; // I/O buffer
-   // Receive up to the buffer size (minus 1 to leave space for
-    // a null terminator) bytes from the sender
-    numBytes = recv(sock, buffer, BUFSIZE - 1, 0);
-    if (numBytes < 0)
-      DieWithSystemMessage("recv() failed");
-    else if (numBytes == 0)
-      DieWithUserMessage("recv()", "connection closed prematurely");
-    totalBytesRcvd += numBytes; // Keep tally of total bytes
-    buffer[numBytes] = '\0';    // Terminate the string!
-    fputs(buffer, stdout);      // Print the echo buffer
-  }
+  uint8_t buffer[3]; // I/O buffer
+  // Receive up to the buffer size (minus 1 to leave space for
+  // a null terminator) bytes from the sender
+  numBytes = recv(sock, buffer, 2, 0);
+  if (numBytes < 0)
+    DieWithSystemMessage("recv() failed");
+  else if (numBytes == 0)
+    DieWithUserMessage("recv()", "connection closed prematurely");
 
-printf("Hello sent\n");
-  fputc('\n', stdout); // Print a final linefeed
+
+  buffer[2] = '\0';    // Terminate the string!
+  printf("Version %d\n", buffer[0]);
+  printf("Method %d\n", buffer[1]);
+
 
   close(sock);
   exit(0);
