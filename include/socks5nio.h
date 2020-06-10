@@ -1,5 +1,5 @@
-#ifndef __NETUTILS_H__
-#define __NETUTILS_H__
+#ifndef __SOCKS5NIO_H__
+#define __SOCKS5NIO_H__
 
 //------------------------SACADO DE EJEMPLO PARCIAL---------------------------
 // https://campus.itba.edu.ar/webapps/blackboard/execute/content/file?cmd=view&content_id=_238320_1&course_id=_12752_1&framesetWrapped=true

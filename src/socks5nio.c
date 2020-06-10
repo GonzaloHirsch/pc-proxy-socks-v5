@@ -171,7 +171,8 @@ fail:
 // HELLO
 ////////////////////////////////////////
 
-/** callback del parser utilizado en `read_hello' */
+
+/** callback del parser utilizado en `read_hello' 
 static void
 on_hello_method(struct hello_parser * p, const uint8_t method)
 {
@@ -182,6 +183,7 @@ on_hello_method(struct hello_parser * p, const uint8_t method)
         *selected = method;
     }
 }
+*/
 
 /** inicializa las variables de los estados HELLO_… */
 static void
@@ -191,8 +193,9 @@ hello_read_init(const unsigned state, struct selector_key *key)
 
     d->rb = &(ATTACHMENT(key)->read_buffer);
     d->wb = &(ATTACHMENT(key)->write_buffer);
-    d->parser.data = &d->method;
-    d->parser.on_authentication_method = on_hello_method, hello_parser_init(&d->parser);
+    //d->parser.data = &d->method;
+    //d->parser.on_authentication_method = on_hello_method,
+    hello_parser_init(&d->parser);
 }
 
 static void
