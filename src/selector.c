@@ -451,6 +451,8 @@ handle_iteration(fd_selector s) {
         .s = s,
     };
 
+    printf("Iteration handled\n");
+
     for (int i = 0; i <= n; i++) {
         struct item *item = s->fds + i;
         if(ITEM_USED(item)) {
@@ -461,6 +463,9 @@ handle_iteration(fd_selector s) {
                     if(0 == item->handler->handle_read) {
                         assert(("OP_READ arrived but no handler. bug!" == 0));
                     } else {
+                        printf("Want to read\n");
+                        printf("My key is %d\n", &key);
+                        printf("My func is %d\n", item->handler->handle_read);
                         item->handler->handle_read(&key);
                     }
                 }
@@ -470,12 +475,15 @@ handle_iteration(fd_selector s) {
                     if(0 == item->handler->handle_write) {
                         assert(("OP_WRITE arrived but no handler. bug!" == 0));
                     } else {
+                        printf("Want to write\n");
                         item->handler->handle_write(&key);
                     }
                 }
             }
         }
     }
+
+    printf("Iteration finished handle\n");
 }
 
 static void

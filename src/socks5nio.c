@@ -29,19 +29,19 @@ static struct socks5 *socks5_new(const int client)
     if (sockState == NULL)
     {
         perror("Error: Initizalizing null Socks5\n");
-    }   
+    }
 
     // Initialize the state machine.
-    sockState->stm.current = &client_statbl[0]; // The first state is the HELLO_READ state  
+    sockState->stm.current = &client_statbl[0]; // The first state is the HELLO_READ state
     sockState->stm.max_state = ERROR;
     sockState->stm.states = client_statbl;
     stm_init(&(sockState->stm));
 
     // Write Buffer for the socket(Initialized)
     buffer_init(&(sockState->write_buffer), BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
-     // Read Buffer for the socket(Initialized)
+    // Read Buffer for the socket(Initialized)
     buffer_init(&(sockState->read_buffer), BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
-    
+
     return sockState;
 }
 
@@ -169,7 +169,6 @@ fail:
 // HELLO
 ////////////////////////////////////////
 
-
 /** callback del parser utilizado en `read_hello' 
 static void
 on_hello_method(struct hello_parser * p, const uint8_t method)
@@ -281,25 +280,67 @@ hello_write_close(const unsigned state, struct selector_key *key)
 static unsigned
 hello_write(struct selector_key *key)
 {
-    /*
-    struct hello_st *d = &ATTACHMENT(key)->client.hello;
-    unsigned ret = HELLO_READ;
+}
+
+////////////////////////////////////////
+// REQUEST_READ
+////////////////////////////////////////
+
+/** inicializa las variables de los estados HELLO_… */
+static void
+request_read_init(const unsigned state, struct selector_key *key)
+{
+    // Getting the request state from the client
+    struct request_st *d = &ATTACHMENT(key)->client.request;
+
+    // Getting the read buffer from the state
+    d->rb = &(ATTACHMENT(key)->read_buffer);
+
+    // Initializing the connection request parser
+    connection_req_parser_init(&d->parser);
+}
+
+static void
+request_read_close(const unsigned state, struct selector_key *key)
+{
+    // Getting the request state from the client
+    struct request_st *d = &ATTACHMENT(key)->client.request;
+
+    // Telling the parser it is done processing
+    connection_req_done_parsing(&d->parser, NULL);
+}
+
+static unsigned
+request_process(const struct request_st *d);
+
+static unsigned
+request_read(struct selector_key *key)
+{
+    // Getting the request state from the client
+    struct request_st *d = &ATTACHMENT(key)->client.request;
+    // Next state is RESOLVE, in case the
+    unsigned ret = RESOLVE;
     bool error = false;
     uint8_t *ptr;
     size_t count;
     ssize_t n;
 
+    // Getting the pointer to available write
     ptr = buffer_write_ptr(d->rb, &count);
+    // Receiving the data
     n = recv(key->fd, ptr, count, 0);
     if (n > 0)
     {
+        // Writing the request to the buffer
         buffer_write_adv(d->rb, n);
-        const enum hello_state st = hello_consume(d->rb, &d->parser, &error);
-        if (hello_is_done(st, 0))
+        // Consuming the request
+        const enum connection_req_state st = connection_req_consume_message(d->rb, &d->parser, &error);
+        // Checking if it is a valid state
+        if (connection_req_done_parsing(st, 0))
         {
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
             {
-                ret = hello_process(d);
+                ret = request_process(d);
             }
             else
             {
@@ -313,12 +354,38 @@ hello_write(struct selector_key *key)
     }
 
     return error ? ERROR : ret;
-    */
 }
 
-////////////////////////////////////////
-// REQUEST_READ
-////////////////////////////////////////
+/** 
+ * Processing of the request 
+ * If the request has an IPv4 or IPv6
+ * 
+ * 
+*/
+static unsigned
+request_process(const struct request_st *d)
+{
+    // Return status
+    unsigned ret = RESOLVE;
+
+    // Getting the type of address received
+    uint8_t addressType = d->parser->socks_5_addr_parser->type;
+
+    // Determine the next state depending on the type of address given
+    switch (addressType)
+    {
+    case IPv4:
+    case IPv6:
+        ret = CONNECTING;
+        break;
+    case DOMAIN_NAME:
+        ret = RESOLVE;
+        break;
+    default:
+        ret = ERROR;
+        break;
+    }
+}
 
 ////////////////////////////////////////
 // RESOLVE
@@ -352,14 +419,15 @@ static const struct state_definition client_statbl[] = {
         .on_departure = hello_read_close,
         .on_read_ready = hello_read,
     },
-    {
-        .state = HELLO_WRITE,
-        .on_arrival = hello_write_init,
-        .on_departure = hello_write_close,
-        .on_write_ready = hello_write
-    },
+    {.state = HELLO_WRITE,
+     .on_arrival = hello_write_init,
+     .on_departure = hello_write_close,
+     .on_write_ready = hello_write},
     {
         .state = REQUEST_READ,
+        .on_arrival = request_read_init,
+        .on_departure = request_read_close,
+        .on_read_ready = request_read,
     },
     {
         .state = RESOLVE,
