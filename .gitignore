@@ -8,3 +8,5 @@ server.dSYM/Contents/
 .vscode/settings.json
 
 server
+
+client
