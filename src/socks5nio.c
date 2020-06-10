@@ -53,7 +53,7 @@ socks5_destroy_(struct socks5 *s)
 {
     if (s->origin_resolution != NULL)
     {
-        freeaddrinfo(s->origin_resolution);
+        //freeaddrinfo(s->origin_resolution);
         s->origin_resolution = 0;
     }
     free(s);

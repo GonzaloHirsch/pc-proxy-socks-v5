@@ -26,6 +26,8 @@ static void signal_handler(const int signal)
 
 int main()
 {
+    printf("Starting server.\n");
+
     int opt = TRUE;
     int master_socket;
 

@@ -17,6 +17,24 @@
 // Warning! This assumes HTTP Versions of regex [0-9]\.[0-9]
 // You've been warned --
 
+typedef enum http_message_state {
+    HTTP_H, HTTP_T1, HTTP_T2, HTTP_P,
+    HTTP_SLASH, HTTP_V1, HTTP_V2,
+    HTTP_STATUS_CODE, HTTP_STATUS_MSG,
+    HTTP_I1,
+    HTTP_HK, HTTP_HV,
+    HTTP_B,
+    HTTP_I2,
+    HTTP_F,
+    HTTP_ERR_INV_MSG,
+    HTTP_ERR_INV_STATUS_LINE,
+    HTTP_ERR_INV_VERSION,
+    HTTP_ERR_INV_STATUS_CODE,
+    HTTP_ERR_INV_HK,
+    HTTP_ERR_INV_HV,
+    HTTP_ERR_INV_BODY
+} http_message_state;
+
 struct http_message_parser {
     // public:
     // list of pairs or hash?
@@ -35,23 +53,6 @@ struct http_message_parser {
     char buff[BLOCK_SIZE];
 };
 
-typedef enum http_message_state {
-    HTTP_H, HTTP_T1, HTTP_T2, HTTP_P,
-    HTTP_SLASH, HTTP_V1, HTTP_V2,
-    HTTP_STATUS_CODE, HTTP_STATUS_MSG,
-    HTTP_I1,
-    HTTP_HK, HTTP_HV,
-    HTTP_B,
-    HTTP_I2,
-    HTTP_F,
-    HTTP_ERR_INV_MSG,
-    HTTP_ERR_INV_STATUS_LINE,
-    HTTP_ERR_INV_VERSION,
-    HTTP_ERR_INV_STATUS_CODE,
-    HTTP_ERR_INV_HK,
-    HTTP_ERR_INV_HV,
-    HTTP_ERR_INV_BODY
-} http_message_state;
 
 typedef struct http_message_parser * http_message_parser;
 

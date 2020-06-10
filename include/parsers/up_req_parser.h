@@ -1,6 +1,8 @@
 #ifndef __UPREQ_PARSER_H__
 #define __UPREQ_PARSER_H__
 
+#include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdint.h>

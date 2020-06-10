@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "io_utils/buffer.h"
+#include "parsers/socks_5_addr_parser.h"
 
 typedef enum connection_req_state {
     CONN_REQ_VERSION,
