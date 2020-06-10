@@ -10,3 +10,5 @@ server.dSYM/Contents/
 server
 
 client
+
+client.dSYM/Contents/Info.plist

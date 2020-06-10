@@ -2,15 +2,14 @@
 
 int main(int argc, char *argv[]) {
 
-  if (argc < 3 || argc > 4) // Test for correct number of arguments
+  if (argc < 2 || argc > 3) // Test for correct number of arguments
     DieWithUserMessage("Parameter(s)",
         "<Server Address> <Echo Word> [<Server Port>]");
 
   char *servIP = argv[1];     // First arg: server IP address (dotted quad)
-  char *echoString = argv[2]; // Second arg: string to echo
 
   // Third arg (optional): server port (numeric).  7 is well-known echo port
-  in_port_t servPort = (argc == 4) ? atoi(argv[3]) : 7;
+  in_port_t servPort = (argc == 3) ? atoi(argv[2]) : 1080;
 
   // Create a reliable, stream socket using TCP
   int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -30,27 +29,34 @@ int main(int argc, char *argv[]) {
   servAddr.sin_port = htons(servPort);    // Server port
 
   // Establish the connection to the echo server
-  if (connect(sock, (struct sockaddr *) &servAddr, sizeof(servAddr)) < 0)
+  if (connect(sock, (struct sockaddr *) &servAddr, sizeof(servAddr)) < 0){
     DieWithSystemMessage("connect() failed");
+  }
 
-  size_t echoStringLen = strlen(echoString); // Determine input length
+  /* Version 5, one method: no authentication */
 
+  uint8_t data[] = {
+        0x05, 0x02, 0x00, 0x01,
+    };
+    
   // Send the string to the server
-  ssize_t numBytes = send(sock, echoString, echoStringLen, 0);
-  if (numBytes < 0)
-    DieWithSystemMessage("send() failed");
-  else if (numBytes != echoStringLen)
+  printf("Sending hello\n");
+  ssize_t numBytes = send(sock, data, 4, 0);
+  if (numBytes < 0){
+    DieWithSystemMessage("send() failed"); 
+  }
+  else if (numBytes != 4){
     DieWithUserMessage("send()", "sent unexpected number of bytes");
-
-    printf("Message sent %s\n", echoString);
-
+  }
+    
+/*
   // Receive the same string back from the server
   unsigned int totalBytesRcvd = 0; // Count of total bytes received
   fputs("Received: ", stdout);     // Setup to print the echoed string
-  while (totalBytesRcvd < echoStringLen) {
+  while (totalBytesRcvd < buffer-ptrBuff) {
     char buffer[BUFSIZE]; // I/O buffer
-    /* Receive up to the buffer size (minus 1 to leave space for
-     a null terminator) bytes from the sender */
+   // Receive up to the buffer size (minus 1 to leave space for
+    // a null terminator) bytes from the sender
     numBytes = recv(sock, buffer, BUFSIZE - 1, 0);
     if (numBytes < 0)
       DieWithSystemMessage("recv() failed");
@@ -60,7 +66,8 @@ int main(int argc, char *argv[]) {
     buffer[numBytes] = '\0';    // Terminate the string!
     fputs(buffer, stdout);      // Print the echo buffer
   }
-
+*/
+printf("Hello sent\n");
   fputc('\n', stdout); // Print a final linefeed
 
   close(sock);
