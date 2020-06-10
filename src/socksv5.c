@@ -7,9 +7,6 @@ void renderToState(struct selector_key *key, char *received, int valread);
 
 static void signal_handler(const int signal);
 
-// Address for socket binding
-struct sockaddr_in *address;
-
 // Static boolean to be used as a way to end the server with a signal in a more clean way
 static bool finished = false;
 
@@ -34,13 +31,15 @@ int main()
     // Selector for concurrent connexions
     fd_selector selector = NULL;
 
-    // Setting the socket binding for the server to work ok
-    address = malloc(sizeof(address));
-    address->sin_family = AF_INET;
-    address->sin_addr.s_addr = INADDR_ANY;
-    address->sin_port = htons(PORT);
+    // Address for socket binding
+    struct sockaddr_in address;
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
 
     // ----------------- INITIALIZE THE MAIN SOCKET -----------------
+
+    printf("Initializing main socket\n");
 
     // Creating the server socket to listen
     master_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -54,21 +53,21 @@ int main()
     // Setting the master socket to allow multiple connections, not required, just good habit
     if (setsockopt(master_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0)
     {
-        perror("setsockopt");
+        perror("ERROR: Failure setting setting master socket\n");
         exit(EXIT_FAILURE);
     }
 
     // Binding the socket to localhost:1080
     if (bind(master_socket, (struct sockaddr *)&address, sizeof(address)) < 0)
     {
-        //log(FATAL, "bind failed");
+        perror("ERROR: Failure binding master socket\n");
         exit(EXIT_FAILURE);
     }
 
     // Checking if the socket is able to listen
     if (listen(master_socket, MAX_PENDING_CONNECTIONS) < 0)
     {
-        //log(FATAL, "listen");
+        perror("ERROR: Failure listening master socket\n");
         exit(EXIT_FAILURE);
     }
 
@@ -83,6 +82,8 @@ int main()
 
     // ----------------- CREATE THE SELECTOR -----------------
 
+    printf("Creating selector\n");
+
     // Creating the configuration for the select
     const struct selector_init selector_configuration = {
         .signal = SIGALRM,
@@ -92,9 +93,9 @@ int main()
         }};
 
     // Initializing the selector using the created configuration
-    if (selector_init(&selector_configuration) == 0)
+    if (selector_init(&selector_configuration) != SELECTOR_SUCCESS)
     {
-        perror("Initializing the selector");
+        perror("Error: Initializing the selector");
         exit(EXIT_FAILURE);
     }
 
@@ -132,6 +133,8 @@ int main()
     // Cycle until a signal is received as finished
     while (!finished)
     {
+        printf("Awaiting connection\n");
+        
         // Wait for activiy of one of the sockets:
         // -Master Socket --> New connection.
         // -Child Sockets --> Read or write operation
