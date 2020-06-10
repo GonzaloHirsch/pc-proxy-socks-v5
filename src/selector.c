@@ -539,6 +539,8 @@ selector_select(fd_selector s) {
 
     s->selector_thread = pthread_self();
 
+    printf("Inside selector\n");
+
     int fds = pselect(s->max_fd + 1, &s->slave_r, &s->slave_w, 0, &s->slave_t,
                       &emptyset);
     if(-1 == fds) {

@@ -23,7 +23,7 @@
 
 #define TRUE 1
 #define FALSE 0
-#define PORT 8888
+#define PORT 1080
 #define MAX_SOCKETS 20
 #define BUFFERSIZE 2048
 #define MAX_PENDING_CONNECTIONS 5

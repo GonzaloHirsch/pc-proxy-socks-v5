@@ -22,7 +22,8 @@
 #include "stateMachine.h"
 
 #define N(x) (sizeof(x)/sizeof((x)[0]))
-#define MAX_STATES 9
+/** TODO: CHANGE  */
+#define MAX_STATES 1
 
 /** Function to try to accept requests */
 void socksv5_passive_accept(struct selector_key *key);

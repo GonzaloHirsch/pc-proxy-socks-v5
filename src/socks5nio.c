@@ -45,6 +45,8 @@ static struct socks5 *socks5_new(const int client)
     //buffer *writeBuffer = malloc(sizeof(buffer));
     //buffer_init(writeBuffer, BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
     //sockState->writeBuffer = writeBuffer
+
+    return sockState;
 }
 
 /** realmente destruye */
@@ -124,6 +126,9 @@ static const struct fd_handler socks5_handler = {
 /** Intenta aceptar la nueva conexión entrante*/
 void socksv5_passive_accept(struct selector_key *key)
 {
+
+    printf("Inside passive accept\n");
+
     struct sockaddr_storage client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
     struct socks5 *state = NULL;
