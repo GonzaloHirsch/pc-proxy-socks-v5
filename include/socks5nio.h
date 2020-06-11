@@ -21,7 +21,7 @@
 #include "selector.h"
 #include "stateMachine.h"
 
-#define N(x) (sizeof(x)/sizeof((x)[0]))
+#define N(x) (sizeof(x) / sizeof((x)[0]))
 /** TODO: define appropiate size */
 #define BUFFERSIZE 4096
 
@@ -187,8 +187,7 @@ typedef struct copy_st
 {
     /** Buffer used for IO */
     buffer *rb;
-    
-    
+
 } copy_st;
 
 /** Used by the CONNECTING state */
@@ -196,8 +195,7 @@ typedef struct connecting_st
 {
     /** Buffer used for IO */
     buffer *rb;
-    
-    
+
 } connecting_st;
 
 /** Used by REPLY the state */
@@ -205,10 +203,8 @@ typedef struct reply_st
 {
     /** Buffer used for IO */
     buffer *rb;
-    
-    
-} reply_st;
 
+} reply_st;
 
 // Struct used to store all the relevant info for a socket.
 typedef struct socks5
@@ -220,7 +216,7 @@ typedef struct socks5
     int client_fd;
     /** File descriptor number for the origin */
     int origin_fd;
-    
+
     /** States for the client fd */
     union {
         hello_st hello;
@@ -234,7 +230,7 @@ typedef struct socks5
     } orig;
 
     /** Address info for the origin server */
-    struct addrinfo * origin_resolution;
+    struct addrinfo *origin_resolution;
 
     /** Amount of references to this instance of the socks5 struct, if the amount is 1, it can be deleted */
     unsigned references;
@@ -246,13 +242,36 @@ typedef struct socks5
     buffer read_buffer, write_buffer;
 
     /** Next item in the pool */
-    struct socks5 * next;
+    struct socks5 *next;
 
     /** Authentication method */
-    uint8_t auth;
+    uint8_t auth;    
 
+    /** Information about the request sent */
+    socks5_request_info request_info;
+
+    /** Information about the origin server */
+    socks5_origin_info origin_info;
 } socks5;
 
+/** Struct for the request information */
+typedef struct socks5_request_info
+{
+    uint8_t ver;
+    uint8_t cmd;
+    uint8_t rsv;
+    uint8_t dstPort[2];
+    uint8_t type;
+    uint8_t *addr;
+    uint8_t addrLen;
+} socks5_request_info;
 
+/** Struct for origin server information */
+typedef struct socks5_origin_info
+{
+    /** Origin server address info */
+    struct sockaddr_storage origin_addr;
+    socklen_t origin_addr_len;
+} socks5_origin_info;
 
 #endif
