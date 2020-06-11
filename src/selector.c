@@ -464,7 +464,7 @@ handle_iteration(fd_selector s) {
                         assert(("OP_READ arrived but no handler. bug!" == 0));
                     } else {
                         printf("Want to read\n");
-                        printf("My key is %d\n", &key);
+                        printf("My key is %d\n", key.fd);
                         printf("My func is %d\n", item->handler->handle_read);
                         item->handler->handle_read(&key);
                     }

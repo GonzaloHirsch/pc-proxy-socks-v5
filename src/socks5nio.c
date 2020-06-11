@@ -410,7 +410,7 @@ request_read(struct selector_key *key)
             // TODO: SEE HOW TO RETURN ERROR
         }
         // If request is done parsing -> Process request
-        if (connection_req_done_parsing(st, NULL))
+        if (connection_req_done_parsing(d->parser, NULL))
         {
             ret = request_process(key, d);
         }
