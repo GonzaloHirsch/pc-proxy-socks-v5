@@ -330,7 +330,7 @@ static void
 request_close(const unsigned state, struct selector_key *key)
 {
     struct request_st *d = &ATTACHMENT(key)->client.request;
-    free_connection_req_parser(d->parser);
+    //free_connection_req_parser(d->parser);
 }
 
 static void
@@ -436,8 +436,20 @@ request_process(struct selector_key *key, struct request_st *d)
     // Return status
     unsigned ret = RESOLVE;
 
+    // Socks structure
+    struct socks5 *s = ATTACHMENT(key);
+
     // Getting the type of address received
     uint8_t addressType = d->parser->socks_5_addr_parser->type;
+
+    // Copying request info to the socks object
+    s->request_info.cmd = d->parser->finalMessage.cmd;
+    memcpy(&s->request_info.dstPort, d->parser->finalMessage.dstPort, sizeof(s->request_info.dstPort));
+    s->request_info.rsv = d->parser->finalMessage.rsv;
+    s->request_info.ver = d->parser->finalMessage.ver;
+    s->request_info.addr = d->parser->socks_5_addr_parser->addr;
+    s->request_info.addrLen = d->parser->socks_5_addr_parser->addrLen;
+    s->request_info.type = d->parser->socks_5_addr_parser->type;
 
     // Determine the next state depending on the type of address given
     switch (addressType)
@@ -489,11 +501,10 @@ static const struct state_definition client_statbl[] = {
         .on_departure = hello_read_close,
         .on_read_ready = hello_read,
     },
-    {
-        .state = HELLO_WRITE,
-        .on_arrival = hello_write_init,
-        .on_departure = hello_write_close,
-        .on_write_ready = hello_write},
+    {.state = HELLO_WRITE,
+     .on_arrival = hello_write_init,
+     .on_departure = hello_write_close,
+     .on_write_ready = hello_write},
     {
         .state = REQUEST_READ,
         .on_arrival = request_init,
