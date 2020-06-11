@@ -1,0 +1,219 @@
+Protocolo Propio sobre SCTP
+
+Índice:
+    1 - Introducción
+    2 - Autenticación - Usuario y Contraseña
+    3 - Procedimiento para el uso
+        3.1 - Alta, baja y modificacion de usuarios
+        3.2 - Obtención de métricas
+        3.3 - Configuración remota
+    4 - Información de los Autores
+
+1 - Introducción
+
+Este protoclo corre sobre SCTP, y especifíca la autenticación y negociación de opciones para la conexión al servidor.
+
+En todo momento que aparezca un cuadro con un número, hace referencia a la longitud del campo dentro de la request. Los valores posibles dentro de cada campo son especificados debajo del cuadro, y los valores se mostraran en formato de octetos con el valor X’hh’.
+
+2 - Autenticación - Usuario y Contraseña
+
+Una vez que el servidor está corriendo, se comienza con el cliente enviando una request Usuario+Password:
+
+            +-----+------+----------+------+----------+
+            | VER | ULEN |   UNAME  | PLEN |  PASSWD  |
+            +-----+------+----------+------+----------+
+            |  1  |   1  | 1 to 255 |   1  | 1 to 255 |
+            +-----+------+----------+------+----------+
+
+Campos:
+            VER -> Version de la negociación, X’01’
+            ULEN -> Longitud del nombre del usuario
+            UNAME -> Nombre del usuario
+            PLEN -> Longitud de la Contraseña
+            PASSWD -> contraseña
+
+El servidor verifica la contraseña y devuelve un mensaje con el siguiente contenido:
+
+            +-----+--------+
+            | VER | STATUS |
+            +-----+--------+
+            |  1  |    1   |
+            +-----+--------+
+
+Campos:
+            VER -> Version de la negociación, X’01’
+            STATUS -> X’00’ para EXITO, cualquier valor distinto de X’00’ indica error, y debe cerrar la conexión
+
+3 - Procedimiento para el uso
+
+Una vez establecido el usuario y contraseña, y verificados como correctos, se puede comenzar a utilizar el servidor.
+
+Hay varias opciones para interactuar con el servidor, especificadas en las siguientes secciones:
+    3.1 - Alta, baja y modificacion de usuarios
+    3.2 - Obtención de métricas
+    3.3 - Configuración remota
+
+3.1 - Alta, baja y modificacion de usuarios
+
+Para realizar operaciones sobre los usuarios hay distintas opciones de requests.
+
+Para realizar un listado de usuarios, simplemente se envía la siguiente request:
+
+            +------+-------+
+            | TYPE |  CMD  |
+            +------+-------+
+            |   1  |   1   | 
+            +------+-------+
+
+Campos:
+            TYPE -> Tipo de uso, X’00’ (USUARIOS)
+            CMD -> Comando a realizar, X’00’ (LISTAR)
+
+Y la respuesta del servidor sigue el siguiente formato:
+
+            +------+-------+--------+-----------+
+            | TYPE |  CMD  |  ULEN  |    DATA   |
+            +------+-------+--------+-----------+
+            |   1  |   1   |    1   |  Variable |
+            +------+-------+--------+-----------+
+
+Campos:
+            TYPE -> Tipo de uso, X’00’ (USUARIOS)
+            CMD -> Comando a realizar, X’00’ (LISTAR)
+            ULEN -> Cantidad de usuarios a devolver
+            DATA -> Nombres de los usuarios, separados por coma (",")
+
+Para realizar un alta de un usuario, se envía una request de creacion de un usuario:
+
+            +------+-------+------+----------+------+----------+
+            | TYPE |  CMD  | ULEN |   UNAME  | PLEN |  PASSWD  |
+            +------+-------+------+----------+------+----------+
+            |   1  |   1   |   1  | 1 to 255 |   1  | 1 to 255 |
+            +------+-------+------+----------+------+----------+
+
+Campos:
+            TYPE -> Tipo de uso, X’00’ (USUARIOS)
+            CMD -> Comando a realizar, X’01’ (CREAR)
+            ULEN -> Longitud del nombre del usuario
+            UNAME -> Nombre del usuario
+            PLEN -> Longitud de la Contraseña
+            PASSWD -> contraseña
+
+Y la respuesta del servidor sigue el siguiente formato:
+
+            +------+-------+----------+
+            | TYPE |  CMD  |  STATUS  |
+            +------+-------+----------+
+            |   1  |   1   |     1    |
+            +------+-------+----------+
+
+Campos:
+            TYPE -> Tipo de uso, X’00’ (USUARIOS)
+            CMD -> Comando a realizar, X’01’ (CREAR)
+            STATUS -> Estado de la creacion:
+                - EXITO -> X’00’
+                - ERROR GENERICO -> X’01’
+                - ERROR USUARIO REPETIDO -> X’02’
+                - ERROR LIMITE DE USUARIOS -> X’03’
+
+3.2 - Obtención de métricas
+
+Para realizar la obtención de las métricas, se puede realizar una request siguiendo el formato a continuación:
+
+            +------+-------+
+            | TYPE |  CMD  |
+            +------+-------+
+            |   1  |   1   | 
+            +------+-------+
+
+Campos:
+            TYPE -> Tipo de uso, X’01’ (METRICAS)
+            CMD -> Comando a realizar, X’00’ (LISTAR)
+
+Y la respuesta del servidor sigue el siguiente formato:
+
+            +------+-------+--------+-----------+
+            | TYPE |  CMD  |  MLEN  |    DATA   |
+            +------+-------+--------+-----------+
+            |   1  |   1   |    1   |  Variable |
+            +------+-------+--------+-----------+
+
+Campos:
+            TYPE -> Tipo de uso, X’01’ (METRICAS)
+            CMD -> Comando a realizar, X’00’ (LISTAR)
+            MLEN -> Cantidad de metricas a devolver
+            DATA -> Pares clave valor, siguiendo el formato "clave:valor", separadas por coma (",")
+
+3.3 - Configuración remota
+
+Para realizar la configuracion remota de parametros hay dos posibles requests para poder realizar, una para listar y otra para editar.
+
+Para poder listar todas las configuraciones se utiliza la siguiente request:
+
+            +------+-------+
+            | TYPE |  CMD  |
+            +------+-------+
+            |   1  |   1   | 
+            +------+-------+
+
+Campos:
+            TYPE -> Tipo de uso, X’02’ (CONFIGURACION)
+            CMD -> Comando a realizar, X’00’ (LISTAR)
+
+Y la respuesta del servidor sigue el siguiente formato:
+
+            +------+-------+--------+-----------+
+            | TYPE |  CMD  |  CLEN  |    DATA   |
+            +------+-------+--------+-----------+
+            |   1  |   1   |    1   |  Variable |
+            +------+-------+--------+-----------+
+
+Campos:
+            TYPE -> Tipo de uso, X’02’ (CONFIGURACION)
+            CMD -> Comando a realizar, X’00’ (LISTAR)
+            CLEN -> Cantidad de configuraciones a devolver
+            DATA -> Pares clave valor, siguiendo el formato "clave:valor", separadas por coma (",")
+
+Para poder editar la configuración de alguna métrica se utiliza la siguiente request:
+
+            +------+-------+--------+--------+---------+
+            | TYPE |  CMD  |  CONF  |  CLEN  |  VALUE  |
+            +------+-------+--------+--------+---------+
+            |   1  |   1   |    1   |    1   | 1 a 255 |
+            +------+-------+--------+--------+---------+
+
+Campos:
+            TYPE -> Tipo de uso, X’02’ (CONFIGURACION)
+            CMD -> Comando a realizar, X’01’ (EDITAR)
+            CONF -> Numero de configuración a editar
+                - LISTAR LAS CONFIGS QUE PERMITIMOS -> TODO
+            CLEN -> Longitud de la nueva configuracion
+            VALUE -> Valor de la nueva configuración
+
+Y la respuesta del servidor sigue el siguiente formato:
+
+            +------+-------+--------+----------+
+            | TYPE |  CMD  |  CONF  |  STATUS  |
+            +------+-------+--------+----------+
+            |   1  |   1   |    1   |     1    |
+            +------+-------+--------+----------+
+
+Campos:
+            TYPE -> Tipo de uso, X’02’ (CONFIGURACION)
+            CMD -> Comando a realizar, X’01’ (EDITAR)
+            CONF -> Numero de configuración a editar
+                - LISTAR LAS CONFIGS QUE PERMITIMOS -> TODO
+            STATUS -> Estado de la creacion:
+                - EXITO -> X’00’
+                - ERROR GENERICO -> X’01’
+
+4 - Información de los Autores
+
+Autores:
+    - Ignacio Ribas
+    - Augusto Henestrosa
+    - Francisco Choi
+    - Gonzalo Hirsch
+
+Materia:
+    Protoclos de Comunicación - Trabajo Práctico Especial - 1er Cuatrimestre 2020
