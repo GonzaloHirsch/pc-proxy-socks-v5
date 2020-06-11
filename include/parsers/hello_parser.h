@@ -10,7 +10,7 @@
 #include "io_utils/buffer.h"
 
 typedef enum hello_state {
-    HELLO_VER,
+    HELLO_VER = 0,
     HELLO_NAUTH,
     HELLO_AUTH,
     HELLO_DONE,

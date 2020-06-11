@@ -225,7 +225,7 @@ hello_read(struct selector_key *key)
     {
         buffer_write_adv(d->rb, n);
         const enum hello_state st = hello_consume(d->rb, &d->parser, &error);
-        if (hello_is_done(st, &error) && !error){
+        if (hello_is_done(st, &error)){
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
             {
                 ret = hello_process(d);
@@ -234,10 +234,6 @@ hello_read(struct selector_key *key)
             {
                 ret = ERROR;
             }
-        }
-        else{
-            printf("Error while reading\n");
-            ret = ERROR;
         }
     }
     else
@@ -323,6 +319,11 @@ hello_write(struct selector_key *key)
     n = send(key->fd, data, 2, 0);
     if (n < 0)
     {
+        ret = ERROR;
+    }
+
+    // Check if there is an acceptable method, if not --> Error
+    if(data[1] == SOCKS_HELLO_NO_ACCEPTABLE_METHODS){
         ret = ERROR;
     }
 
@@ -489,17 +490,9 @@ request_process(struct selector_key *key, struct request_st *d)
 // COPY
 ////////////////////////////////////////
 
-////////////////////////////////////////
-// DONE
-////////////////////////////////////////
 
-////////////////////////////////////////
-// ERRORS
-////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-// STATES DEFINITION
-////////////////////////////////////////////////////////////////////////////////
+//------------------------STATES DEFINITION--------------------------------------
 
 /** definición de handlers para cada estado */
 static const struct state_definition client_statbl[] = {
@@ -534,10 +527,11 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state = DONE,
+        // For now, no need to define any handlers, all in sockv5_done
     },
     {
         .state = ERROR,
-
+        // No now, no need to define any handlers, all in sockv5_done
     }};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -588,6 +582,7 @@ socksv5_close(struct selector_key *key)
 {
     socks5_destroy(ATTACHMENT(key));
 }
+
 
 static void
 socksv5_done(struct selector_key *key)
