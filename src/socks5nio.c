@@ -336,7 +336,49 @@ hello_write(struct selector_key *key)
 }
 
 ////////////////////////////////////////
-// RESOLVE
+// USERPASS_READ
+////////////////////////////////////////
+
+static void
+userpass_read_init(const unsigned state, struct selector_key *key){
+
+}
+
+static void
+userpass_read_close(const unsigned state, struct selector_key *key)
+{   
+ 
+}
+
+static unsigned
+userpass_read(struct selector_key *key)
+{
+
+}
+
+////////////////////////////////////////
+// USERPASS_WRITE
+////////////////////////////////////////
+
+static void
+userpass_write_init(const unsigned state, struct selector_key *key){
+
+}
+
+static void
+userpass_write_close(const unsigned state, struct selector_key *key)
+{   
+ 
+}
+
+static unsigned
+userpass_write(struct selector_key *key)
+{
+
+}
+
+////////////////////////////////////////
+// REQUEST
 ////////////////////////////////////////
 
 /** Frees the parser used */
@@ -511,6 +553,16 @@ static const struct state_definition client_statbl[] = {
         .on_arrival = hello_write_init,
         .on_departure = hello_write_close,
         .on_write_ready = hello_write
+    },
+    {  .state = USERPASS_READ,
+        .on_arrival = userpass_read_init,
+        .on_departure = userpass_read_close,
+        .on_write_ready = userpass_read,
+    },
+     {  .state = USERPASS_WRITE,
+        .on_arrival = userpass_write_init,
+        .on_departure = userpass_write_close,
+        .on_write_ready = userpass_write,
     },
     {
         .state = REQUEST_READ,
