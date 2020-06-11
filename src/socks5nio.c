@@ -42,6 +42,10 @@ static struct socks5 *socks5_new(const int client)
     // Read Buffer for the socket(Initialized)
     buffer_init(&(sockState->read_buffer), BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
 
+    // Intialize the client_fd and the server_fd
+    sockState->client_fd = client;
+    sockState->origin_fd = -1;
+
     return sockState;
 }
 
@@ -195,9 +199,10 @@ hello_read_init(const unsigned state, struct selector_key *key)
 
 static void
 hello_read_close(const unsigned state, struct selector_key *key)
-{
+{   
+    bool errored;
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
-    hello_done_parsing(&d->parser, NULL);
+    hello_done_parsing(&d->parser, &errored);
 }
 
 static unsigned
@@ -504,10 +509,11 @@ static const struct state_definition client_statbl[] = {
         .on_departure = hello_read_close,
         .on_read_ready = hello_read,
     },
-    {.state = HELLO_WRITE,
-     .on_arrival = hello_write_init,
-     .on_departure = hello_write_close,
-     .on_write_ready = hello_write},
+    {   .state = HELLO_WRITE,
+        .on_arrival = hello_write_init,
+        .on_departure = hello_write_close,
+        .on_write_ready = hello_write
+    },
     {
         .state = REQUEST_READ,
         .on_arrival = request_init,
@@ -531,6 +537,7 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state = ERROR,
+
     }};
 
 ////////////////////////////////////////////////////////////////////////////////

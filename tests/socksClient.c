@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
   if (numBytes < 0)
     DieWithSystemMessage("recv() failed");
   else if (numBytes == 0)
-    DieWithUserMessage("recv()", "connection closed prematurely");
+    DieWithUserMessage("recv()", "I was terminated by the server");
 
 
   buffer[2] = '\0';    // Terminate the string!
