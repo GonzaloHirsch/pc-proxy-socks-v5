@@ -2,136 +2,91 @@
 #define __STATE_MACHINE_H__
 
 #include <stdlib.h>
+#include <stdio.h>
 #include "selector.h"
+#include <stdint.h>
+
+//------------------------SACADO DE PARCHE 9---------------------------
 
 /**
- * State Machine for the Socks5 general states
- * 
- * 
- * 
- * 
- * 
- * 
-*/
+ * stm.c - pequeño motor de maquina de estados donde los eventos son los
+ *         del selector.c
+ *
+ * La interfaz es muy simple, y no es un ADT.
+ *
+ * Los estados se identifican con un número entero (típicamente proveniente de
+ * un enum).
+ *
+ *  - El usuario instancia un `struct state_machine'
+ *  - Describe la maquina de estados:
+ *      - describe el estado inicial en `initial'
+ *      - todos los posibles estados en `states' (el orden debe coincidir con
+ *        el identificador)
+ *      - describe la cantidad de estados en `states'.
+ *
+ * Provee todas las funciones necesitadas en un `struct fd_handler'
+ * de selector.c.
+ */
 
-/** General State Machine for a server connection */
-typedef enum PossibleStates
+struct state_machine
+{
+    /** declaración de cual es el estado inicial */
+    unsigned initial;
+    /**
+     * declaracion de los estados: deben estar ordenados segun .[].state.
+     */
+    const struct state_definition *states;
+    /** cantidad de estados */
+    unsigned max_state;
+    /** estado actual */
+    const struct state_definition *current;
+};
+
+struct selector_key *key;
+
+/**
+ * definición de un estado de la máquina de estados
+ */
+struct state_definition
 {
     /**
-     * State when receiving the client initial "hello" and processing
-     * 
-     * Interests:
-     *  - OP_READ -> Reading over the client fd
-     * 
-     * Transitions:
-     *  - HELLO_READ -> While the message is not complete
-     *  - HELLO_WRITE -> When the message is complete
-     *  - ERROR -> In case of an error
-     * */
-    HELLO_READ,
+     * identificador del estado: típicamente viene de un enum que arranca
+     * desde 0 y no es esparso.
+     */
+    unsigned state;
 
-    /**
-     * State when sending the client initial "hello" response
-     * 
-     * Interests:
-     *  - OP_WRITE -> Writing over the client fd
-     * 
-     * Transitions:
-     *  - HELLO_WRITE -> While there are bytes to send
-     *  - REQUEST_READ -> When all the bytes have been transfered
-     *  - ERROR -> In case of an error
-     * */
-    HELLO_WRITE,
+    /** ejecutado al arribar al estado */
+    void (*on_arrival)(const unsigned state, struct selector_key *key);
+    /** ejecutado al salir del estado */
+    void (*on_departure)(const unsigned state, struct selector_key *key);
+    /** ejecutado cuando hay datos disponibles para ser leidos */
+    unsigned (*on_read_ready)(struct selector_key *key);
+    /** ejecutado cuando hay datos disponibles para ser escritos */
+    unsigned (*on_write_ready)(struct selector_key *key);
+    /** ejecutado cuando hay una resolución de nombres lista */
+    unsigned (*on_block_ready)(struct selector_key *key);
+};
 
-    /**
-     * State when receiving the client request
-     * 
-     * Interests:
-     *  - OP_READ -> Reading over the client fd
-     * 
-     * Transitions:
-     *  - REQUEST_READ -> While the message is not complete
-     *  - RESOLVE -> When the message is complete
-     *  - ERROR -> In case of an error
-     * */
-    REQUEST_READ,
+/** inicializa el la máquina */
+void stm_init(struct state_machine *stm);
 
-    /**
-     * State when the client uses a FQDN to connect to another server, the name must be resolved
-     * 
-     * Interests:
-     *  - OP_READ -> Reading over the resolution response fd
-     *  - OP_WRITE -> Writing to the DNS server the request
-     * 
-     * Transitions:
-     *  - RESOLVE -> While the name is not resolved
-     *  - CONNECTING -> When the name is resolved and the IP address obtained
-     *  - ERROR -> In case of an error
-     * */
-    RESOLVE,
+/** obtiene el identificador del estado actual */
+unsigned
+stm_state(struct state_machine *stm);
 
-    /**
-     * State when connecting to the server the client request is headed to
-     * 
-     * Interests:
-     * 
-     * Transitions:
-     *  - CONNECTING -> While the server is establishing the connection with the destination of the request
-     *  - REPLY -> When the connection is successful and our server can send the request
-     *  - ERROR -> In case of an error
-     * */
-    CONNECTING,
+/** indica que ocurrió el evento read. retorna nuevo id de nuevo estado. */
+unsigned
+stm_handler_read(struct state_machine *stm, struct selector_key *key);
 
-    /**
-     * State when sending/receiving the request to/from the destination server
-     * 
-     * Interests:
-     *  - OP_READ -> Reading over the server response
-     *  - OP_WRITE -> Writing to server the request
-     * 
-     * Transitions:
-     *  - REPLY -> While the request is being sent and the response is still being copied
-     *  - COPY -> When the server response is finished
-     *  - ERROR -> In case of an error
-     * */
-    REPLY,
+/** indica que ocurrió el evento write. retorna nuevo id de nuevo estado. */
+unsigned
+stm_handler_write(struct state_machine *stm, struct selector_key *key);
 
-    /**
-     * State when copying the response to the client fd
-     * 
-     * Interests:
-     *  - OP_WRITE -> Writing to client fd
-     * 
-     * Transitions:
-     *  - COPY -> While the server is still copying the response
-     *  - DONE -> When the copy process is finished
-     *  - ERROR -> In case of an error
-     * */
-    COPY,
+/** indica que ocurrió el evento block. retorna nuevo id de nuevo estado. */
+unsigned
+stm_handler_block(struct state_machine *stm, struct selector_key *key);
 
-    /** Terminal state */
-    DONE,
-    /** Terminal state */
-    ERROR,
-} PossibleStates;
-
-typedef struct state_machine * state_machine;
-typedef struct state * state;
-
-void init_state_machine(state_machine sm);
-
-void destroy_state_machine(state_machine sm);
-
-state get_current_state(state_machine sm);
-
-state handle_on_state_exit(state_machine sm);
-
-state handle_on_state_enter(state_machine sm);
-
-state handle_on_error(state_machine sm);
-
-state handle_on_available_read(state_machine sm);
-
-state handle_on_available_write(state_machine sm);
+/** indica que ocurrió el evento close. retorna nuevo id de nuevo estado. */
+void stm_handler_close(struct state_machine *stm, struct selector_key *key);
 
 #endif

@@ -1,17 +1,7 @@
 #include "parsers/hello_parser.h"
 
-struct hello_parser {
-    // public:
-    uint8_t nauth;
-    uint8_t * auth;
-    // private:
-    unsigned int bytes_to_read;
-    hello_state state;
-};
-
-hello_parser new_hello_parser() {
-    hello_parser hp = calloc(1, sizeof(struct hello_parser));
-    return hp;
+void hello_parser_init(hello_parser hp) {
+    memset(hp, 0, sizeof(struct hello_parser));
 }
 
 enum hello_state hello_read_next_byte(hello_parser p, const uint8_t b) {
@@ -61,7 +51,7 @@ enum hello_state hello_read_next_byte(hello_parser p, const uint8_t b) {
     return p->state;
 }
 
-enum hello_state hello_consume_message(buffer * b, hello_parser p, int *errored) {
+enum hello_state hello_consume(buffer * b, hello_parser p, bool *errored) {
     hello_state st = p->state;
     while(buffer_can_read(b) && !hello_done_parsing(p, errored)) {
         const uint8_t c = buffer_read(b);
@@ -70,8 +60,14 @@ enum hello_state hello_consume_message(buffer * b, hello_parser p, int *errored)
     return st;
 }
 
-int hello_done_parsing(hello_parser p, int * errored) {
-    return p->state >= HELLO_DONE;
+int hello_done_parsing(hello_parser p, bool * errored) {
+    return hello_is_done(p->state, errored);
+}
+
+int hello_is_done(hello_state st, bool * errored) {
+    if (st > HELLO_DONE)
+        *errored = true;
+    return st >= HELLO_DONE;
 }
 
 uint8_t get_n_auth(hello_parser p) {
@@ -86,3 +82,19 @@ void free_hello_parser(hello_parser p) {
     free(p->auth);
     free(p);
 }
+
+extern int
+hello_marshall(buffer *b, const uint8_t method) {
+    size_t n;
+    uint8_t *buff = buffer_write_ptr(b, &n);
+    if(n < 2) {
+        return -1;
+    }
+    buff[0] = 0x05;
+    buff[1] = method;
+    buffer_write_adv(b, 2);
+    return 2;
+}
+
+
+hello_state get_hello_state(hello_parser parser){ return parser -> state;}

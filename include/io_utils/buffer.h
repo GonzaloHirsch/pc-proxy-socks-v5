@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <unistd.h>  // size_t, ssize_t
 #include <ctype.h>
+#include <stdint.h>
 
 
 /**

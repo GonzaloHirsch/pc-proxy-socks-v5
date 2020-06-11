@@ -10,3 +10,5 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include "Utility.h"
+
+//gcc -g ./tests/Utility.c ./tests/socksClient.c -o client
