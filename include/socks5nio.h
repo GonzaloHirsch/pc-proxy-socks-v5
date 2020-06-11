@@ -55,10 +55,36 @@ enum socks_v5state
      * 
      * Transitions:
      *  - HELLO_WRITE -> While there are bytes to send
-     *  - REQUEST_READ -> When all the bytes have been transfered
+     *  - USERPASS_READ -> When all the bytes have been transfered
      *  - ERROR -> In case of an error
      * */
     HELLO_WRITE,
+
+    /**
+     * State when receiving the user and password
+     * 
+     * Interests:
+     *  -OP_READ -> Read the info sent by the user
+     * 
+     * Transitions:
+     *  - USSERPASS_READ -> While there are bytes being read
+     *  - USSERPASS_WRITE -> When all the bytes have been read and processed
+     *  - ERROR -> In case of an error
+     * */
+    USSERPASS_READ,
+
+    /**
+     * State when receiving the user and password
+     * 
+     * Interests:
+     *  -OP_WRITE -> Write if u+p is valid or not
+     * 
+     * Transitions:
+     *  - USSERPASS_READ -> While there are bytes being sent
+     *  - REQUEST_READ -> If u+p is valid
+     *  - ERROR -> In case of u+p invalid or other error
+     * */
+    USSERPASS_WRITE,
 
     /**
      * State when receiving the client request
