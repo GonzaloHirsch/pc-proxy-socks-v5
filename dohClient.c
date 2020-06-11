@@ -1,17 +1,11 @@
-#include <netdb.h>
-#include <stdio.h>
-#include <stdlib.h> // malloc
-#include <string.h> // memset
-#include <assert.h> // assert
-#include <errno.h>
-#include <time.h>
-#include <unistd.h> // close
-#include <pthread.h>
-#include <arpa/inet.h>
+#include "dohClient.h"
+#include "dnsPacket.h"
 
 #define DOH_PORT 80
 #define BUFFERSIZE 500
 #define MAX_FDQN 256
+
+#define REQ_MAX_SIZE 65536
 
 
 /*  code from stack overflow */
@@ -63,8 +57,6 @@ char *base64_encode(const unsigned char *data,
 /* code from stack overflow */
 
 
-char * request_generate(char * domain);
-
 struct hostent * get_host_by_name(char * domain){
 
 
@@ -109,35 +101,17 @@ struct hostent * get_host_by_name(char * domain){
     }
 
 
+
+
     int final_buffer_size = 0;
 
-    //char * http_request = request_generate(domain);
-
-   char peer0_0[] = { /* Packet 45 */
-
-0x00, 0x00,  0x01, 0x00, 0x00, 0x01, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00, 0x01, 0x61, 0x3e, 0x36,
-   0x32, 0x63, 0x68, 0x61, 0x72, 0x61, 0x63, 0x74,  0x65, 0x72, 0x6c, 0x61, 0x62, 0x65, 0x6c, 0x2d,
-   0x6d, 0x61, 0x6b, 0x65, 0x73, 0x2d, 0x62, 0x61,  0x73, 0x65, 0x36, 0x34, 0x75, 0x72, 0x6c, 0x2d,
-   0x64, 0x69, 0x73, 0x74, 0x69, 0x6e, 0x63, 0x74,  0x2d, 0x66, 0x72, 0x6f, 0x6d, 0x2d, 0x73, 0x74,
-   0x61, 0x6e, 0x64, 0x61, 0x72, 0x64, 0x2d, 0x62,  0x61, 0x73, 0x65, 0x36, 0x34, 0x07, 0x65, 0x78,
-   0x61, 0x6d, 0x70, 0x6c, 0x65, 0x03, 0x63, 0x6f,  0x6d, 0x00, 0x00, 0x01, 0x00, 0x01};
-
-   // ssize_t http_request_length = strlen(http_request);
 
 
-    ssize_t numBytes = send(sockfd, peer0_0, 269, 0);
+    char * http_request = request_generate(domain, &final_buffer_size);
 
-/*
+    send(sockfd, http_request,final_buffer_size, 0);
 
-    ssize_t bytes_received = 0;
-   do {
-        bytes_received = recv(sockfd, buffer, BUFFERSIZE, 0);
-        final_buffer = realloc(final_buffer, final_buffer_size + bytes_received + 1);
-        memcpy(final_buffer + final_buffer_size, buffer, bytes_received);
-        final_buffer_size += bytes_received;
-        final_buffer[final_buffer_size + 1] = 0x00;
-    } while(bytes_received != 0);
-    */
+   
 
     ssize_t bytes = recv(sockfd, buffer, BUFFERSIZE, 0);
 
@@ -154,11 +128,86 @@ struct hostent * get_host_by_name(char * domain){
 }
 
 
-char * request_generate(char * domain){
+char * request_generate(char * domain, int *length){
 
-    char * answer;
+int request_length = 0;
 
-    return answer;
+int dns_length;
+size_t dns_encoded_length;
+
+char * dns_request = generate_dns_req(domain, &dns_length);    //gets the dns request wirh the host name 
+                                                                //returns the request and the size of the request
+
+char * encoded_dns_request = base64_encode((const unsigned char *)dns_request, dns_length,&dns_encoded_length);
+
+
+char sendline[BUFFERSIZE];
+char * ptr = sendline; //pointer used to copy the http request
+
+char * get_first_part = "GET /dns-query?dns="; 
+int get_first_part_size = strlen(get_first_part);
+
+memcpy(ptr, get_first_part, get_first_part_size);
+
+ptr += get_first_part_size; //add first part size to copy
+
+request_length += get_first_part_size;
+
+
+//same methodology with encoded dns request
+
+memcpy(ptr, encoded_dns_request, dns_encoded_length);
+
+ptr += dns_encoded_length;
+request_length += dns_encoded_length;
+
+
+//now the scheme used
+
+char * scheme = " HTTP/1.1\r\n";
+int scheme_size = strlen(scheme);
+
+memcpy(ptr, scheme, scheme_size);
+
+ptr += scheme_size;
+request_length += scheme_size;
+
+
+//host we use in this case doh
+
+char * authority = "Host: doh\r\n";
+int authority_size = strlen(authority);
+
+memcpy(ptr, authority, authority_size);
+
+ptr += authority_size;
+request_length = authority_size;
+
+//accept
+
+
+char * accept = "accept: application/dns-message\r\n";
+
+int accept_size = strlen(accept);
+
+memcpy(ptr, accept, accept_size);
+
+ptr += accept_size;
+request_length += accept_size;
+
+
+//now the request is completed
+
+char * request = malloc(request_length);
+
+memcpy(request, sendline, request_length);
+
+
+
+
+return request;
+
+
 
 }
 
@@ -191,17 +240,7 @@ int main(){
 
     char * example = "www.google.com";
 
-    char * parsed = parse_domain(example);
-
-    size_t * out_len;
-
-    size_t len = strlen(parsed);
-
-    char * b64 = base64_encode(parsed, len, out_len );
-
-    printf("%s", b64);
-
-    //get_host_by_name(example);
+    get_host_by_name(example);
 
     return 1;
 }
