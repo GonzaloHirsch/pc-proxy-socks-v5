@@ -17,6 +17,8 @@ En todo momento que aparezca un cuadro con un número, hace referencia a la long
 
 2 - Autenticación - Usuario y Contraseña
 
+La autenticación del usuario está dada siguiendo el RFC-1929 sobre autenticación.
+
 Una vez que el servidor está corriendo, se comienza con el cliente enviando una request Usuario+Password:
 
             +-----+------+----------+------+----------+
