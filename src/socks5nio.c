@@ -260,10 +260,7 @@ hello_process(const struct hello_st *d)
     {
         ret = ERROR;
     }
-    if (SOCKS_HELLO_NO_ACCEPTABLE_METHODS == m)
-    {
-        ret = ERROR;
-    }
+
     return ret;
 }
 
@@ -284,6 +281,7 @@ hello_write_close(const unsigned state, struct selector_key *key)
 {
 
     struct socks5 * sock_state = ATTACHMENT(key);
+
 
     // Reset read and write buffer for reuse.
     buffer_reset(&sock_state->write_buffer);
@@ -321,7 +319,13 @@ hello_write(struct selector_key *key)
     // Check if there is an acceptable method, if not --> Error
     if(data[1] == SOCKS_HELLO_NO_ACCEPTABLE_METHODS){
         ret = ERROR;
+
+        // Setting the fd to read.
+        if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_READ)){
+            ret = ERROR;
+        }
     }
+            
 
     return ret;
 }
