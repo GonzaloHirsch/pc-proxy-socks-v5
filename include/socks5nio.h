@@ -18,6 +18,7 @@
 #include "parsers/hello_parser.h"
 #include "parsers/socks_5_addr_parser.h"
 #include "parsers/connection_req_parser.h"
+#include "parsers/up_req_parser.h"
 #include "selector.h"
 #include "stateMachine.h"
 
@@ -71,7 +72,7 @@ enum socks_v5state
      *  - USSERPASS_WRITE -> When all the bytes have been read and processed
      *  - ERROR -> In case of an error
      * */
-    USSERPASS_READ,
+    USERPASS_READ,
 
     /**
      * State when receiving the user and password
@@ -84,7 +85,7 @@ enum socks_v5state
      *  - REQUEST_READ -> If u+p is valid
      *  - ERROR -> In case of u+p invalid or other error
      * */
-    USSERPASS_WRITE,
+    USERPASS_WRITE,
 
     /**
      * State when receiving the client request
@@ -187,6 +188,19 @@ typedef struct hello_st
     /** Selected auth method */
     uint8_t method;
 } hello_st;
+
+/** Used by the USERPASS_READ and USERPASS_WRITE states */
+typedef struct userpass_st
+{
+    /** Buffers used for IO */
+    buffer *rb, *wb;
+    /** Pointer to hello parser */
+    struct up_req_parser parser;
+    /** Selected user */
+    uint8_t * user;
+    /** Selected password */
+    uint8_t * password;
+} userpass_st;
 
 /** Used by the RESOLVE state */
 typedef struct resolve_st
