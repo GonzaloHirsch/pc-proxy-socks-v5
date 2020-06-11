@@ -245,16 +245,18 @@ static unsigned
 hello_process(const struct hello_st *d)
 {
     unsigned ret = HELLO_WRITE;
-    uint8_t * methods = d->parser.auth;
+    uint8_t *methods = d->parser.auth;
     uint8_t methods_c = d->parser.nauth;
     uint8_t m = SOCKS_HELLO_NO_ACCEPTABLE_METHODS;
-    
+
     /** TODO: Change to accept multiple methods 
      * For now only accepting NO_AUTH
     */
-    for(int i = 0; i < methods_c;i++){
-        
-        if(methods[i] == SOCKS_HELLO_NOAUTHENTICATION_REQUIRED){
+    for (int i = 0; i < methods_c; i++)
+    {
+
+        if (methods[i] == SOCKS_HELLO_NOAUTHENTICATION_REQUIRED)
+        {
             m = SOCKS_HELLO_NOAUTHENTICATION_REQUIRED;
         }
     }
@@ -279,31 +281,31 @@ hello_process(const struct hello_st *d)
  * This is done in the init because we already have the info.
 */
 static void
-hello_write_init(const unsigned state, struct selector_key *key){
-    
-
-
+hello_write_init(const unsigned state, struct selector_key *key)
+{
 }
 
 static void
 hello_write_close(const unsigned state, struct selector_key *key)
-{   
+{
 
     // All temporal for testing...
     send(key->fd, 0, 1, 0);
     printf("wait....\n");
-    while(1);
+    while (1)
+        ;
 }
 
 /** lee todos los bytes del mensaje de tipo `hello' y inicia su proceso */
 static unsigned
-hello_write(struct selector_key *key){
+hello_write(struct selector_key *key)
+{
 
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
     ssize_t n;
     unsigned ret = REQUEST_READ;
     size_t nr;
-    uint8_t * buffer_read = buffer_read_ptr(d->wb, &nr);
+    uint8_t *buffer_read = buffer_read_ptr(d->wb, &nr);
 
     // Get the data from the write buffer
     uint8_t data[] = {buffer_read[0], buffer_read[1]};
@@ -311,11 +313,115 @@ hello_write(struct selector_key *key){
 
     // Send the version and the method.
     n = send(key->fd, data, 2, 0);
-    if(n < 0){
-        ret = ERROR; 
+    if (n < 0)
+    {
+        ret = ERROR;
     }
 
     return ret;
+}
+
+////////////////////////////////////////
+// RESOLVE
+////////////////////////////////////////
+
+/** Frees the parser used */
+static void
+request_close(const unsigned state, struct selector_key *key)
+{
+    struct request_st *d = &ATTACHMENT(key)->client.request;
+    free_connection_req_parser(d->parser);
+}
+
+static void
+request_init(const unsigned state, struct selector_key *key)
+{
+    struct request_st *d = &ATTACHMENT(key)->client.request;
+
+    // Adding the read buffer
+    d->rb = &(ATTACHMENT(key)->read_buffer);
+
+    // Parser init
+    connection_req_parser_init(d->parser);
+
+    /*
+    d->parser.request = &d->request;
+    d->status = status_general_HTTP_server_failure;
+    request_parser_init(&d->parser);
+    d->client_fd = &ATTACHMENT(key)->client_fd;
+    d->origin_fd = &ATTACHMENT(key)->origin_fd;
+
+    d->origin_addr = &ATTACHMENT(key)->origin_addr;
+    d->origin_addr_len = &ATTACHMENT(key)->origin_addr_len;
+    d->origin_domain = &ATTACHMENT(key)->origin_domain;
+
+    d->request.port = (uint16_t) 80;
+    d->request.content_length = 0;
+    d->raw_buff_accum = calloc(1, 1024 * 1024);
+    buffer_init(&d->accum, 1024 * 1024, d->raw_buff_accum);
+    d->request.host = calloc(1, MAX_HEADER_FIELD_VALUE_SIZE);
+    */
+}
+
+static unsigned
+request_process(struct selector_key *key, struct request_st *d);
+
+static unsigned
+request_read(struct selector_key *key)
+{
+    // Getting the state struct
+    struct request_st *d = &ATTACHMENT(key)->client.request;
+    // Getting the read buffer
+    buffer *b = d->rb;
+    unsigned ret = RESOLVE;
+    bool error = false;
+    uint8_t *ptr;
+    size_t count;
+    ssize_t n;
+
+    // Setting the buffer to read
+    ptr = buffer_write_ptr(b, &count);
+    // Receiving data
+    n = recv(key->fd, ptr, count, 0);
+    if (n > 0)
+    {
+        // Writing the data to the buffer
+        buffer_write_adv(b, n);
+        // Consuming the message
+        int st = connection_req_consume_message(b, d->parser, NULL);
+        // In case of error
+        if (st > CONN_REQ_DONE)
+        {
+            // TODO: HANDLE ERRORS
+            switch (st)
+            {
+            case CONN_REQ_ERR_INV_VERSION:
+                break;
+            case CONN_REQ_ERR_INV_CMD:
+                break;
+            case CONN_REQ_ERR_INV_RSV:
+                break;
+            case CONN_REQ_ERR_INV_DSTADDR:
+                break;
+            case CONN_REQ_GENERIC_ERR:
+            default:
+                break;
+            }
+            // TODO: SEE HOW TO RETURN ERROR
+        }
+        // If request is done parsing -> Process request
+        if (connection_req_done_parsing(st, NULL))
+        {
+            ret = request_process(key, d);
+        }
+    }
+    else
+    {
+        ret = ERROR;
+    }
+
+    return error ? ERROR : ret;
+    //return ret;
 }
 
 /** 
@@ -325,7 +431,7 @@ hello_write(struct selector_key *key){
  * 
 */
 static unsigned
-request_process(const struct request_st *d)
+request_process(struct selector_key *key, struct request_st *d)
 {
     // Return status
     unsigned ret = RESOLVE;
@@ -357,6 +463,8 @@ request_process(const struct request_st *d)
 // CONNECTING
 ////////////////////////////////////////
 
+//request_connect(struct selector_key *key)
+
 ////////////////////////////////////////
 // COPY
 ////////////////////////////////////////
@@ -381,14 +489,15 @@ static const struct state_definition client_statbl[] = {
         .on_departure = hello_read_close,
         .on_read_ready = hello_read,
     },
-    {.state = HELLO_WRITE,
-     .on_arrival = hello_write_init,
-     .on_departure = hello_write_close,
-     .on_write_ready = hello_write},
+    {
+        .state = HELLO_WRITE,
+        .on_arrival = hello_write_init,
+        .on_departure = hello_write_close,
+        .on_write_ready = hello_write},
     {
         .state = REQUEST_READ,
-        .on_arrival = request_read_init,
-        .on_departure = request_read_close,
+        .on_arrival = request_init,
+        .on_departure = request_close,
         .on_read_ready = request_read,
     },
     {
