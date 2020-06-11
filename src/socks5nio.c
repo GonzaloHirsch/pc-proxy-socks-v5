@@ -220,8 +220,7 @@ hello_read(struct selector_key *key)
     {
         buffer_write_adv(d->rb, n);
         const enum hello_state st = hello_consume(d->rb, &d->parser, &error);
-        if (hello_is_done(st, 0))
-        {
+        if (hello_is_done(st, &error) && !error){
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
             {
                 ret = hello_process(d);
@@ -230,6 +229,10 @@ hello_read(struct selector_key *key)
             {
                 ret = ERROR;
             }
+        }
+        else{
+            printf("Error while reading\n");
+            ret = ERROR;
         }
     }
     else
@@ -291,7 +294,7 @@ hello_write_close(const unsigned state, struct selector_key *key)
 
     // All temporal for testing...
     send(key->fd, 0, 1, 0);
-    printf("wait....\n");
+    printf("Im forever stuck in hello_write_close...\n");
     while (1)
         ;
 }

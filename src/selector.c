@@ -465,7 +465,7 @@ handle_iteration(fd_selector s) {
                     } else {
                         printf("Want to read\n");
                         printf("My key is %d\n", key.fd);
-                        printf("My func is %d\n", item->handler->handle_read);
+                        //printf("My func is %d\n", item->handler->handle_read);
                         item->handler->handle_read(&key);
                     }
                 }
