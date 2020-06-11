@@ -1,5 +1,5 @@
 GCC=gcc
-GCCFLAGS=-Wall -g
+GCCFLAGS=-Wall -g -fsanitize=address
 # LDFLAGS=-lrt -pthread
 
 
