@@ -227,8 +227,11 @@ hello_read(struct selector_key *key)
         const enum hello_state st = hello_consume(d->rb, &d->parser, &error);
         if (hello_is_done(st, &error)){
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
-            {
+            {   
+                // Process the message 
                 ret = hello_process(d);
+                // Save the auth method in sockState.
+                ATTACHMENT(key)->auth = d->method;
             }
             else
             {
@@ -293,6 +296,8 @@ static void
 hello_write_close(const unsigned state, struct selector_key *key)
 {
 
+    /** TODO: Free memory of hello_st */
+    
     // All temporal for testing...
     send(key->fd, 0, 1, 0);
     printf("Im forever stuck in hello_write_close...\n");
