@@ -100,6 +100,8 @@ enum connection_req_state connection_req_consume_message(buffer * b, connection_
     return st;
 }
 int connection_req_done_parsing(connection_req_parser p, int * errored) {
+    if (p->state > CONN_REQ_DONE)
+        *errored = true;
     return p->state >= CONN_REQ_DONE;
 }
 // Free all connection_req_parser-Related memory

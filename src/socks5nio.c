@@ -173,19 +173,6 @@ fail:
 // HELLO
 ////////////////////////////////////////
 
-/** callback del parser utilizado en `read_hello' 
-static void
-on_hello_method(struct hello_parser * p, const uint8_t method)
-{
-    uint8_t *selected = p->auth;
-
-    if (SOCKS_HELLO_NOAUTHENTICATION_REQUIRED == method)
-    {
-        *selected = method;
-    }
-}
-*/
-
 /** inicializa las variables de los estados HELLO_… */
 static void
 hello_read_init(const unsigned state, struct selector_key *key)
@@ -296,13 +283,17 @@ static void
 hello_write_close(const unsigned state, struct selector_key *key)
 {
 
+    struct socks5 * sock_state = ATTACHMENT(key);
+
+    // Reset read and write buffer for reuse.
+    buffer_reset(&sock_state->write_buffer);
+    buffer_reset(&sock_state->read_buffer);
+
     /** TODO: Free memory of hello_st */
     
     // All temporal for testing...
-    send(key->fd, 0, 1, 0);
-    printf("Im forever stuck in hello_write_close...\n");
-    while (1)
-        ;
+    //printf("Im forever stuck in hello_write_close...\n");
+    //while (1);
 }
 
 /** lee todos los bytes del mensaje de tipo `hello' y inicia su proceso */
