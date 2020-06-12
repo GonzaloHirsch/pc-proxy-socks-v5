@@ -427,6 +427,11 @@ finally:
     return ret;
 }
 
+fd_interest get_interest_key(struct selector_key * key) {
+    struct item * item = key->s->fds + key->fd;
+    return item->interest;
+}
+
 selector_status
 selector_set_interest_key(struct selector_key *key, fd_interest i) {
     selector_status ret;

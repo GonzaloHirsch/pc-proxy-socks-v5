@@ -488,7 +488,6 @@ request_read(struct selector_key *key)
             ret = ERROR;
     }
 
-
     return error ? ERROR : ret;
 }
 
@@ -586,6 +585,7 @@ void connecting_init(const unsigned state, struct selector_key * key) {
 
 static unsigned connecting_read(struct selector_key * key) {
 
+    printf("Connecting read\n");
 }
 
 void connecting_close(const unsigned state, struct selector_key * key) {

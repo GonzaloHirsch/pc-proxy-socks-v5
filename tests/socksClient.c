@@ -8,8 +8,8 @@ int main(int argc, char *argv[]) {
 
   char *servIP = "127.0.0.1";     // First arg: server IP address (dotted quad)
 
-  char * reqT = argv[1];
-
+  // char * reqT = argv[1];
+  char * reqT = "ip4";
   // Third arg (optional): server port (numeric).  7 is well-known echo port
   in_port_t servPort =  1080;
 
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
     DieWithSystemMessage("send() failed"); 
   }
 
-
+  while(1);
 
   close(sock);
   exit(0);
