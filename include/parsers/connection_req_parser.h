@@ -47,8 +47,8 @@ typedef struct connection_req_parser * connection_req_parser;
 void connection_req_parser_init(connection_req_parser crp);
 
 enum connection_req_state connection_req_read_next_byte(connection_req_parser p, const uint8_t b);
-enum connection_req_state connection_req_consume_message(buffer * b, connection_req_parser p, int *errored);
-int connection_req_done_parsing(connection_req_parser p, int * errored);
+enum connection_req_state connection_req_consume_message(buffer * b, connection_req_parser p, bool *errored);
+int connection_req_done_parsing(connection_req_parser p, bool * errored);
 // Free all connection_req_parser-Related memory
 
 void free_connection_req_parser(connection_req_parser p);

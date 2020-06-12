@@ -76,7 +76,7 @@ enum connection_req_state connection_req_read_next_byte(connection_req_parser p,
         }
     return p->state;
 }
-enum connection_req_state connection_req_consume_message(buffer * b, connection_req_parser p, int *errored) {
+enum connection_req_state connection_req_consume_message(buffer * b, connection_req_parser p, bool *errored) {
     connection_req_state st = p->state;
     while(buffer_can_read(b) && p->state != CONN_REQ_DSTADDR && !connection_req_done_parsing(p, errored)) {
         const uint8_t c = buffer_read(b);
@@ -99,7 +99,7 @@ enum connection_req_state connection_req_consume_message(buffer * b, connection_
     }
     return st;
 }
-int connection_req_done_parsing(connection_req_parser p, int * errored) {
+int connection_req_done_parsing(connection_req_parser p, bool * errored) {
     if (p->state > CONN_REQ_DONE)
         *errored = true;
     return p->state >= CONN_REQ_DONE;

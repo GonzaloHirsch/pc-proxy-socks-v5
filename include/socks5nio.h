@@ -169,7 +169,7 @@ typedef enum AddrType
 {
     IPv4 = 0x01,
     DOMAIN_NAME = 0x03,
-    IPv6 = 0x04
+    IPv6 = 0x04,
 } AddrType;
 
 typedef enum ClientFdOperation
@@ -246,17 +246,6 @@ typedef struct reply_st
 
 } reply_st;
 
-/** Struct for the request information */
-typedef struct socks5_request_info
-{
-    uint8_t ver;
-    uint8_t cmd;
-    uint8_t rsv;
-    uint8_t dstPort[2];
-    uint8_t type;
-    uint8_t *addr;
-    uint8_t addrLen;
-} socks5_request_info;
 
 /** Struct for origin server information */
 typedef struct socks5_origin_info
@@ -264,6 +253,18 @@ typedef struct socks5_origin_info
     /** Origin server address info */
     struct sockaddr_storage origin_addr;
     socklen_t origin_addr_len;
+
+    /** IP Address info */
+    uint8_t ip_type;
+    uint8_t * ip_addr;
+    uint8_t ip_len;
+    uint8_t * port;
+    
+    /** Origin info in case we need to relve */
+    uint8_t * resolve_addr;
+    uint8_t resolve_addr_len;
+
+
 } socks5_origin_info;
 
 
@@ -281,6 +282,7 @@ typedef struct socks5
     /** States for the client fd */
     union {
         hello_st hello;
+        userpass_st userpass;
         request_st request;
         copy_st copy;
     } client;
@@ -307,9 +309,6 @@ typedef struct socks5
 
     /** Authentication method */
     uint8_t auth;    
-
-    /** Information about the request sent */
-    struct socks5_request_info request_info;
 
     /** Information about the origin server */
     struct socks5_origin_info origin_info;

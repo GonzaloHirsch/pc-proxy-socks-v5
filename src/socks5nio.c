@@ -212,7 +212,7 @@ hello_read(struct selector_key *key)
     {
         buffer_write_adv(d->rb, n);
         const enum hello_state st = hello_consume(d->rb, &d->parser, &error);
-        if (hello_is_done(st, &error)){
+        if (hello_is_done(st, &error) && !error){
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
             {   
                 // Process the message 
@@ -282,16 +282,13 @@ hello_write_close(const unsigned state, struct selector_key *key)
 
     struct socks5 * sock_state = ATTACHMENT(key);
 
-
     // Reset read and write buffer for reuse.
     buffer_reset(&sock_state->write_buffer);
     buffer_reset(&sock_state->read_buffer);
 
     /** TODO: Free memory of hello_st */
     
-    // All temporal for testing...
-    //printf("Im forever stuck in hello_write_close...\n");
-    //while (1);
+
 }
 
 /** lee todos los bytes del mensaje de tipo `hello' y inicia su proceso */
@@ -380,8 +377,11 @@ userpass_write(struct selector_key *key)
 static void
 request_close(const unsigned state, struct selector_key *key)
 {
-    struct request_st *d = &ATTACHMENT(key)->client.request;
-    //free_connection_req_parser(d->parser);
+    /** TODO: Free everything */
+
+    // All temporal for testing...
+    printf("Im forever stuck in request_close...\n");
+    while (1);
 }
 
 static void
@@ -439,11 +439,14 @@ request_read(struct selector_key *key)
         // Writing the data to the buffer
         buffer_write_adv(b, n);
         // Consuming the message
-        int st = connection_req_consume_message(b, d->parser, NULL);
+        const enum connection_req_state st = connection_req_consume_message(b, d->parser, &error);
         // In case of error
-        if (st > CONN_REQ_DONE)
-        {
-            // TODO: HANDLE ERRORS
+        if (connection_req_done_parsing(d->parser, &error) && !error){
+           ret = request_process(key, d);
+        }
+
+        if(error){
+            /** TODO: HANDLE ERRORS */
             switch (st)
             {
             case CONN_REQ_ERR_INV_VERSION:
@@ -458,21 +461,16 @@ request_read(struct selector_key *key)
             default:
                 break;
             }
-            // TODO: SEE HOW TO RETURN ERROR
         }
-        // If request is done parsing -> Process request
-        if (connection_req_done_parsing(d->parser, NULL))
-        {
-            ret = request_process(key, d);
-        }
+        
     }
     else
     {
         ret = ERROR;
     }
 
+
     return error ? ERROR : ret;
-    //return ret;
 }
 
 /** 
@@ -484,38 +482,52 @@ request_read(struct selector_key *key)
 static unsigned
 request_process(struct selector_key *key, struct request_st *d)
 {
-    // Return status
-    unsigned ret = RESOLVE;
-
-    // Socks structure
+    unsigned ret = ERROR; 
     struct socks5 *s = ATTACHMENT(key);
+    connection_req_parser r_parser = d->parser;
+    // Request information obtained by the parser
+    uint8_t addr_t = r_parser->socks_5_addr_parser->type;
+    uint8_t addr_l = r_parser->socks_5_addr_parser->addrLen;
+    uint8_t * addr = r_parser->socks_5_addr_parser->addr;
+    uint8_t * dst_port = r_parser->finalMessage.dstPort;
 
-    // Getting the type of address received
-    uint8_t addressType = d->parser->socks_5_addr_parser->type;
-
-    // Copying request info to the socks object
-    s->request_info.cmd = d->parser->finalMessage.cmd;
-    memcpy(&s->request_info.dstPort, d->parser->finalMessage.dstPort, sizeof(s->request_info.dstPort));
-    s->request_info.rsv = d->parser->finalMessage.rsv;
-    s->request_info.ver = d->parser->finalMessage.ver;
-    s->request_info.addr = d->parser->socks_5_addr_parser->addr;
-    s->request_info.addrLen = d->parser->socks_5_addr_parser->addrLen;
-    s->request_info.type = d->parser->socks_5_addr_parser->type;
 
     // Determine the next state depending on the type of address given
-    switch (addressType)
+    switch (addr_t)
     {
-    case IPv4:
-    case IPv6:
+    case IPv4 || IPv6:
+        // Save the ip type.
+        s->origin_info.ip_type = addr_t; //Only difference for ip will be the type.
+        // Save the address
+        s->origin_info.ip_addr = malloc(addr_l);
+        memcpy(s->origin_info.ip_addr, addr, addr_l); // Sorry ribas :/
+        s->origin_info.ip_len = addr_l;
+        //Save the port.
+        s->origin_info.port = malloc(2);
+        memcpy(s->origin_info.port, dst_port, 2);
+
+        // We have all the info to connect
         ret = CONNECTING;
         break;
     case DOMAIN_NAME:
+        // Save the domain name
+        s->origin_info.resolve_addr = malloc(addr_l);
+        memcpy(s->origin_info.resolve_addr, addr, addr_l); 
+        s->origin_info.resolve_addr_len= addr_l;
+        //Save the port.
+        s->origin_info.port = malloc(2);
+        memcpy(s->origin_info.port, dst_port, 2);
+
+        // We need to resolve the domain name.
         ret = RESOLVE;
         break;
+
     default:
         ret = ERROR;
         break;
     }
+
+    return ERROR;
 }
 
 ////////////////////////////////////////
