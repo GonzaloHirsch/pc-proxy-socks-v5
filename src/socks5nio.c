@@ -388,12 +388,27 @@ request_close(const unsigned state, struct selector_key *key)
 
     // All temporal for testing...
 
-    printf("    IP: ");
-    for(int i = 0; i < IP_V4_ADDR_SIZE ; i++) {
-        printf("%d ", s->origin_info.ipv4_addrs[0][i]);
+    if(s->origin_info.ip_selec == IPv4){
+        printf("    IPv4: ");
+        for(int i = 0; i < IP_V4_ADDR_SIZE ; i++) {
+            printf("%d ", s->origin_info.ipv4_addrs[0][i]);
+        }
+        printf("\n");
     }
-    printf("\n");
-
+    else if(s->origin_info.ip_selec == IPv6){
+        printf("    IPv6: ");
+        for(int i = 0; i < IP_V6_ADDR_SIZE ; i++) {
+            printf("%d ", s->origin_info.ipv6_addrs[0][i]);
+        }
+        printf("\n");
+    }
+    else{
+        printf("    dom: ");
+        for(int i = 0; i < s->origin_info.resolve_addr_len ; i++) {
+            printf("%d ", s->origin_info.resolve_addr[i]);
+        }
+        printf("\n");
+    }
     printf("    port: %d%d\n", s->origin_info.port[0], s->origin_info.port[1]);
 
     
@@ -467,6 +482,11 @@ request_read(struct selector_key *key)
     else
     {
         ret = ERROR;
+    }
+
+    // Setting the fd for WRITE --> RESOLVE and REQUEST both will need to write
+    if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_WRITE)){
+            ret = ERROR;
     }
 
 
