@@ -18,7 +18,7 @@ char * generate_dns_req(char * host, int * final_size){
     dns = (struct DNS_HEADER *)&buf; //overlaps header into the buffer
 
 
-    dns->id = (unsigned short) htons(getpid()); //number to identify dns request
+    dns->id = 0; //number to identify dns request (unsigned short) htons(getpid())
     dns->qr = 0; //This is a query
     dns->opcode = 0; //This is a standard query
     dns->aa = 0; //Not Authoritative

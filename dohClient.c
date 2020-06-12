@@ -30,6 +30,7 @@ char *base64_encode(const unsigned char *data,
 
     *output_length = 4 * ((input_length + 2) / 3);
 
+
     char *encoded_data = malloc(*output_length);
     if (encoded_data == NULL) return NULL;
 
@@ -60,7 +61,7 @@ char *base64_encode(const unsigned char *data,
 struct hostent * get_host_by_name(char * domain){
 
 
-    char buffer[BUFFERSIZE];
+    char buffer[BUFFERSIZE + 1];
     struct sockaddr_in serv_addr;
     struct hostent * ret;
     char * message;
@@ -111,6 +112,8 @@ struct hostent * get_host_by_name(char * domain){
 
     send(sockfd, http_request,final_buffer_size, 0);
 
+    //free("http_request");
+
    
 
     ssize_t bytes = recv(sockfd, buffer, BUFFERSIZE, 0);
@@ -119,6 +122,7 @@ struct hostent * get_host_by_name(char * domain){
 
 
     printf("%s", buffer);
+
 
 
 
@@ -175,18 +179,18 @@ request_length += scheme_size;
 
 //host we use in this case doh
 
-char * authority = "Host: doh\r\n";
+char * authority = "Host: doh\r\nUser-Agent: curl/7.54.0\r\n";
 int authority_size = strlen(authority);
 
 memcpy(ptr, authority, authority_size);
 
 ptr += authority_size;
-request_length = authority_size;
+request_length += authority_size;
 
 //accept
 
 
-char * accept = "accept: application/dns-message\r\n";
+char * accept = "accept: application/dns-message\r\n\r\n";
 
 int accept_size = strlen(accept);
 
@@ -194,6 +198,8 @@ memcpy(ptr, accept, accept_size);
 
 ptr += accept_size;
 request_length += accept_size;
+
+(*length) = request_length;
 
 
 //now the request is completed
@@ -238,9 +244,16 @@ char * parse_domain(char * domain){
 int main(){
 
 
-    char * example = "www.google.com";
+    char * example = "www.example.com";
 
-    get_host_by_name(example);
+    int size;
+    size_t size2;
+
+
+
+
+    char * example1 = get_host_by_name(example);
+
 
     return 1;
 }
