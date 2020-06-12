@@ -263,11 +263,10 @@ typedef struct socks5_origin_info
 
     /** Prefered ip type */
     uint8_t ip_selec;
-
-    /** IPv4 Address info */
+    /** IPv4 Addresses info */
     uint8_t ipv4_addrs[MAX_IPS][IP_V4_ADDR_SIZE];
     uint8_t ipv4_c;
-    /** Ipv6 Address info */
+    /** Ipv6 Addresses info */
     uint8_t ipv6_addrs[MAX_IPS][IP_V6_ADDR_SIZE];
     uint8_t ipv6_c;
 

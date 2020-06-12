@@ -2,14 +2,16 @@
 
 int main(int argc, char *argv[]) {
 
-  if (argc < 2 || argc > 3) // Test for correct number of arguments
+  if (argc != 2) // Test for correct number of arguments
     DieWithUserMessage("Parameter(s)",
-        "<Server Address> <Echo Word> [<Server Port>]");
+        "<Request type( ip4 | ip6 | dom )>");
 
-  char *servIP = argv[1];     // First arg: server IP address (dotted quad)
+  char *servIP = "127.0.0.1";     // First arg: server IP address (dotted quad)
+
+  char * reqT = argv[1];
 
   // Third arg (optional): server port (numeric).  7 is well-known echo port
-  in_port_t servPort = (argc == 3) ? atoi(argv[2]) : 1080;
+  in_port_t servPort =  1080;
 
   // Create a reliable, stream socket using TCP
   int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -84,16 +86,26 @@ int main(int argc, char *argv[]) {
 
 
 
-
+  printf("RQ: %s\n", reqT);
 
   // Send the string to the server
   printf("Sending request\n");
-  numBytes = send(sock, reqdom, 11, 0);
+
+  if(!strcmp("ip4", reqT)){
+    numBytes = send(sock, req4, 10, 0);
+  }
+  else if(!strcmp("ip6", reqT)){
+    numBytes = send(sock, req6, 22, 0);
+  }
+  else if(!strcmp("dom", reqT)){
+    numBytes = send(sock, reqdom, 11, 0);
+  }
+  else{
+    DieWithSystemMessage("invalid req"); 
+  }
+  
   if (numBytes < 0){
     DieWithSystemMessage("send() failed"); 
-  }
-  else if (numBytes != 10){
-    DieWithUserMessage("send()", "sent unexpected number of bytes");
   }
 
 
