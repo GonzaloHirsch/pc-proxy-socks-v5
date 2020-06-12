@@ -80,7 +80,7 @@ const uint8_t * get_auth_types(hello_parser p) {
 // Free all hello_parser-Related memory
 void free_hello_parser(hello_parser p) {
     free(p->auth);
-    free(p);
+    // free(p);
 }
 
 extern int

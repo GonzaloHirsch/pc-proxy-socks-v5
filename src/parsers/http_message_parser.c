@@ -267,7 +267,7 @@ void free_http_message_parser(http_message_parser p) {
         free(p->headers[i]); 
     }
     free(p->body);
-    free(p);
+    // free(p);
 }
 
 
