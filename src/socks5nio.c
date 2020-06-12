@@ -173,19 +173,6 @@ fail:
 // HELLO
 ////////////////////////////////////////
 
-/** callback del parser utilizado en `read_hello' 
-static void
-on_hello_method(struct hello_parser * p, const uint8_t method)
-{
-    uint8_t *selected = p->auth;
-
-    if (SOCKS_HELLO_NOAUTHENTICATION_REQUIRED == method)
-    {
-        *selected = method;
-    }
-}
-*/
-
 /** inicializa las variables de los estados HELLO_… */
 static void
 hello_read_init(const unsigned state, struct selector_key *key)
@@ -225,7 +212,7 @@ hello_read(struct selector_key *key)
     {
         buffer_write_adv(d->rb, n);
         const enum hello_state st = hello_consume(d->rb, &d->parser, &error);
-        if (hello_is_done(st, &error)){
+        if (hello_is_done(st, &error) && !error){
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
             {   
                 // Process the message 
@@ -273,10 +260,7 @@ hello_process(const struct hello_st *d)
     {
         ret = ERROR;
     }
-    if (SOCKS_HELLO_NO_ACCEPTABLE_METHODS == m)
-    {
-        ret = ERROR;
-    }
+
     return ret;
 }
 
@@ -296,13 +280,15 @@ static void
 hello_write_close(const unsigned state, struct selector_key *key)
 {
 
+    struct socks5 * sock_state = ATTACHMENT(key);
+
+    // Reset read and write buffer for reuse.
+    buffer_reset(&sock_state->write_buffer);
+    buffer_reset(&sock_state->read_buffer);
+
     /** TODO: Free memory of hello_st */
     
-    // All temporal for testing...
-    send(key->fd, 0, 1, 0);
-    printf("Im forever stuck in hello_write_close...\n");
-    while (1)
-        ;
+
 }
 
 /** lee todos los bytes del mensaje de tipo `hello' y inicia su proceso */
@@ -322,8 +308,13 @@ hello_write(struct selector_key *key)
 
     // Send the version and the method.
     n = send(key->fd, data, 2, 0);
-    if (n < 0)
-    {
+    if (n > 0){
+        // Setting the fd to read.
+        if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_READ)){
+            ret = ERROR;
+        }
+    }
+    else{
         ret = ERROR;
     }
 
@@ -331,6 +322,7 @@ hello_write(struct selector_key *key)
     if(data[1] == SOCKS_HELLO_NO_ACCEPTABLE_METHODS){
         ret = ERROR;
     }
+            
 
     return ret;
 }
@@ -385,8 +377,43 @@ userpass_write(struct selector_key *key)
 static void
 request_close(const unsigned state, struct selector_key *key)
 {
-    struct request_st *d = &ATTACHMENT(key)->client.request;
-    //free_connection_req_parser(d->parser);
+    // Sock5 state
+    struct socks5 * s = ATTACHMENT(key);
+
+    // Reset read and write buffer for reuse.
+    buffer_reset(&s->write_buffer);
+    buffer_reset(&s->read_buffer);
+
+    /** TODO: Free everything */
+
+    // All temporal for testing... -----> DELTE SHORTLY
+
+    if(s->origin_info.ip_selec == IPv4){
+        printf("    IPv4: ");
+        for(int i = 0; i < IP_V4_ADDR_SIZE ; i++) {
+            printf("%d ", s->origin_info.ipv4_addrs[0][i]);
+        }
+        printf("\n");
+    }
+    else if(s->origin_info.ip_selec == IPv6){
+        printf("    IPv6: ");
+        for(int i = 0; i < IP_V6_ADDR_SIZE ; i++) {
+            printf("%d ", s->origin_info.ipv6_addrs[0][i]);
+        }
+        printf("\n");
+    }
+    else{
+        printf("    dom: ");
+        for(int i = 0; i < s->origin_info.resolve_addr_len ; i++) {
+            printf("%d ", s->origin_info.resolve_addr[i]);
+        }
+        printf("\n");
+    }
+    printf("    port: %d%d\n", s->origin_info.port[0], s->origin_info.port[1]);
+
+    
+    printf("Im forever stuck in request_close...\n");
+    while (1);
 }
 
 static void
@@ -400,23 +427,6 @@ request_init(const unsigned state, struct selector_key *key)
     // Parser init
     connection_req_parser_init(d->parser);
 
-    /*
-    d->parser.request = &d->request;
-    d->status = status_general_HTTP_server_failure;
-    request_parser_init(&d->parser);
-    d->client_fd = &ATTACHMENT(key)->client_fd;
-    d->origin_fd = &ATTACHMENT(key)->origin_fd;
-
-    d->origin_addr = &ATTACHMENT(key)->origin_addr;
-    d->origin_addr_len = &ATTACHMENT(key)->origin_addr_len;
-    d->origin_domain = &ATTACHMENT(key)->origin_domain;
-
-    d->request.port = (uint16_t) 80;
-    d->request.content_length = 0;
-    d->raw_buff_accum = calloc(1, 1024 * 1024);
-    buffer_init(&d->accum, 1024 * 1024, d->raw_buff_accum);
-    d->request.host = calloc(1, MAX_HEADER_FIELD_VALUE_SIZE);
-    */
 }
 
 static unsigned
@@ -429,10 +439,10 @@ request_read(struct selector_key *key)
     struct request_st *d = &ATTACHMENT(key)->client.request;
     // Getting the read buffer
     buffer *b = d->rb;
-    unsigned ret = RESOLVE;
+    unsigned ret = REQUEST_READ;
     bool error = false;
     uint8_t *ptr;
-    size_t count;
+    size_t count;   //Maximum data that can set in the buffer
     ssize_t n;
 
     // Setting the buffer to read
@@ -440,15 +450,18 @@ request_read(struct selector_key *key)
     // Receiving data
     n = recv(key->fd, ptr, count, 0);
     if (n > 0)
-    {
-        // Writing the data to the buffer
+    {   
+        // Notifying the data to the buffer
         buffer_write_adv(b, n);
         // Consuming the message
-        int st = connection_req_consume_message(b, d->parser, NULL);
-        // In case of error
-        if (st > CONN_REQ_DONE)
-        {
-            // TODO: HANDLE ERRORS
+        const enum connection_req_state st = connection_req_consume_message(b, d->parser, &error);
+        //If done parsing and no error
+        if (connection_req_done_parsing(d->parser, &error) && !error){
+           ret = request_process(key, d);
+        }
+
+        if(error){
+            /** TODO: HANDLE ERRORS */
             switch (st)
             {
             case CONN_REQ_ERR_INV_VERSION:
@@ -463,64 +476,92 @@ request_read(struct selector_key *key)
             default:
                 break;
             }
-            // TODO: SEE HOW TO RETURN ERROR
         }
-        // If request is done parsing -> Process request
-        if (connection_req_done_parsing(d->parser, NULL))
-        {
-            ret = request_process(key, d);
-        }
+        
     }
     else
     {
         ret = ERROR;
     }
 
+    // Setting the fd for WRITE --> RESOLVE and REQUEST both will need to write
+    if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_WRITE)){
+            ret = ERROR;
+    }
+
+
     return error ? ERROR : ret;
-    //return ret;
 }
 
 /** 
  * Processing of the request 
- * If the request has an IPv4 or IPv6
- * 
  * 
 */
 static unsigned
 request_process(struct selector_key *key, struct request_st *d)
 {
-    // Return status
-    unsigned ret = RESOLVE;
-
-    // Socks structure
+    unsigned ret = ERROR; 
     struct socks5 *s = ATTACHMENT(key);
+    connection_req_parser r_parser = d->parser;
+    // Request information obtained by the parser
+    uint8_t cmd = r_parser->finalMessage.cmd;
+    uint8_t addr_t = r_parser->socks_5_addr_parser->type;
+    uint8_t addr_l = r_parser->socks_5_addr_parser->addrLen;
+    uint8_t * addr = r_parser->socks_5_addr_parser->addr;
+    uint8_t * dst_port = r_parser->finalMessage.dstPort;
 
-    // Getting the type of address received
-    uint8_t addressType = d->parser->socks_5_addr_parser->type;
+    // We just support connect cmd
+    if(cmd == TCP_IP_STREAM){
 
-    // Copying request info to the socks object
-    s->request_info.cmd = d->parser->finalMessage.cmd;
-    memcpy(&s->request_info.dstPort, d->parser->finalMessage.dstPort, sizeof(s->request_info.dstPort));
-    s->request_info.rsv = d->parser->finalMessage.rsv;
-    s->request_info.ver = d->parser->finalMessage.ver;
-    s->request_info.addr = d->parser->socks_5_addr_parser->addr;
-    s->request_info.addrLen = d->parser->socks_5_addr_parser->addrLen;
-    s->request_info.type = d->parser->socks_5_addr_parser->type;
+        // The original quantities of ips stored its 0.
+        s->origin_info.ipv4_c = s->origin_info.ipv6_c = 0;
 
-    // Determine the next state depending on the type of address given
-    switch (addressType)
-    {
-    case IPv4:
-    case IPv6:
-        ret = CONNECTING;
-        break;
-    case DOMAIN_NAME:
-        ret = RESOLVE;
-        break;
-    default:
-        ret = ERROR;
-        break;
+        // Determine the next state depending on the type of address given
+        switch (addr_t)
+        {
+        case IPv4:
+            // Save the address
+            memcpy(s->origin_info.ipv4_addrs[s->origin_info.ipv4_c++], addr, IP_V4_ADDR_SIZE);
+            s->origin_info.ip_selec =IPv4;
+            //Save the port.
+            memcpy(s->origin_info.port, dst_port, 2);
+            // We have all the info to connect
+            ret = CONNECTING;
+            break;
+
+        case IPv6:
+            // Save the address
+            memcpy(s->origin_info.ipv6_addrs[s->origin_info.ipv6_c++], addr, IP_V6_ADDR_SIZE);
+            s->origin_info.ip_selec =IPv6;
+            //Save the port.
+            memcpy(s->origin_info.port, dst_port, 2);
+            // We have all the info to connect
+            ret = CONNECTING;
+            break;
+
+        case DOMAIN_NAME:
+            // Save the domain name
+            s->origin_info.resolve_addr = malloc(addr_l);
+            memcpy(s->origin_info.resolve_addr, addr, addr_l); 
+            s->origin_info.resolve_addr_len= addr_l;
+
+            //Save the port.
+            memcpy(s->origin_info.port, dst_port, 2);
+
+            // We need to resolve the domain name.
+            ret = RESOLVE;
+            break;
+
+        default:
+            ret = ERROR;
+            break;
+        }
     }
+    else{
+        ret = ERROR;
+    }
+
+    return ret;
 }
 
 ////////////////////////////////////////
@@ -559,7 +600,7 @@ static const struct state_definition client_statbl[] = {
         .on_departure = userpass_read_close,
         .on_write_ready = userpass_read,
     },
-     {  .state = USERPASS_WRITE,
+    {  .state = USERPASS_WRITE,
         .on_arrival = userpass_write_init,
         .on_departure = userpass_write_close,
         .on_write_ready = userpass_write,

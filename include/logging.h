@@ -6,6 +6,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <stdint.h>
+
 
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 

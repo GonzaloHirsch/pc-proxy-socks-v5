@@ -25,6 +25,7 @@
 #define N(x) (sizeof(x) / sizeof((x)[0]))
 /** TODO: define appropiate size */
 #define BUFFERSIZE 4096
+#define MAX_IPS 10
 
 /** Function to try to accept requests */
 void socksv5_passive_accept(struct selector_key *key);
@@ -169,7 +170,7 @@ typedef enum AddrType
 {
     IPv4 = 0x01,
     DOMAIN_NAME = 0x03,
-    IPv6 = 0x04
+    IPv6 = 0x04,
 } AddrType;
 
 typedef enum ClientFdOperation
@@ -177,6 +178,12 @@ typedef enum ClientFdOperation
     CLI_OP_READ = 0x00,
     CLI_OP_WRITE = 0x01
 } ClientFdOperation;
+
+typedef enum AddressSize {
+    IP_V4_ADDR_SIZE = 4,
+    IP_V6_ADDR_SIZE = 16,
+    PORT_SIZE = 2,
+} AddressSize;
 
 /** Used by the HELLO_READ and HELLO_WRITE states */
 typedef struct hello_st
@@ -246,17 +253,6 @@ typedef struct reply_st
 
 } reply_st;
 
-/** Struct for the request information */
-typedef struct socks5_request_info
-{
-    uint8_t ver;
-    uint8_t cmd;
-    uint8_t rsv;
-    uint8_t dstPort[2];
-    uint8_t type;
-    uint8_t *addr;
-    uint8_t addrLen;
-} socks5_request_info;
 
 /** Struct for origin server information */
 typedef struct socks5_origin_info
@@ -264,6 +260,24 @@ typedef struct socks5_origin_info
     /** Origin server address info */
     struct sockaddr_storage origin_addr;
     socklen_t origin_addr_len;
+
+    /** Prefered ip type */
+    uint8_t ip_selec;
+    /** IPv4 Addresses info */
+    uint8_t ipv4_addrs[MAX_IPS][IP_V4_ADDR_SIZE];
+    uint8_t ipv4_c;
+    /** Ipv6 Addresses info */
+    uint8_t ipv6_addrs[MAX_IPS][IP_V6_ADDR_SIZE];
+    uint8_t ipv6_c;
+
+    /** Port info */
+    uint8_t port[PORT_SIZE];
+    
+    /** Origin info in case we need to relve */
+    uint8_t * resolve_addr;
+    uint8_t resolve_addr_len;
+
+
 } socks5_origin_info;
 
 
@@ -281,6 +295,7 @@ typedef struct socks5
     /** States for the client fd */
     union {
         hello_st hello;
+        userpass_st userpass;
         request_st request;
         copy_st copy;
     } client;
@@ -307,9 +322,6 @@ typedef struct socks5
 
     /** Authentication method */
     uint8_t auth;    
-
-    /** Information about the request sent */
-    struct socks5_request_info request_info;
 
     /** Information about the origin server */
     struct socks5_origin_info origin_info;

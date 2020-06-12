@@ -2,14 +2,16 @@
 
 int main(int argc, char *argv[]) {
 
-  if (argc < 2 || argc > 3) // Test for correct number of arguments
+  if (argc != 2) // Test for correct number of arguments
     DieWithUserMessage("Parameter(s)",
-        "<Server Address> <Echo Word> [<Server Port>]");
+        "<Request type( ip4 | ip6 | dom )>");
 
-  char *servIP = argv[1];     // First arg: server IP address (dotted quad)
+  char *servIP = "127.0.0.1";     // First arg: server IP address (dotted quad)
+
+  char * reqT = argv[1];
 
   // Third arg (optional): server port (numeric).  7 is well-known echo port
-  in_port_t servPort = (argc == 3) ? atoi(argv[2]) : 1080;
+  in_port_t servPort =  1080;
 
   // Create a reliable, stream socket using TCP
   int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -35,6 +37,8 @@ int main(int argc, char *argv[]) {
 
   /* Version 5, one method: no authentication */
 
+  //------------------------HELLO READ------------------------------
+
   uint8_t data[] = {
         0x05, 0x02, 0x00, 0x03,
     };
@@ -48,7 +52,8 @@ int main(int argc, char *argv[]) {
   else if (numBytes != 4){
     DieWithUserMessage("send()", "sent unexpected number of bytes");
   }
-    
+
+  //--------------------HELLO WRITE-----------------------  
 
   uint8_t buffer[3]; // I/O buffer
   // Receive up to the buffer size (minus 1 to leave space for
@@ -63,6 +68,46 @@ int main(int argc, char *argv[]) {
   buffer[2] = '\0';    // Terminate the string!
   printf("Version %d\n", buffer[0]);
   printf("Method %d\n", buffer[1]);
+
+  //---------------------REQUEST SEND------------------
+
+  uint8_t req4[] = {
+    // v  cmd   rsv   typ   ----------ipv4-----     ---port-- 
+    0x05, 0x01, 0x00, 0x01, 0x01, 0x02, 0x03, 0x04, 0x77, 0x77
+  };
+
+  uint8_t req6[22] = {0x05, 0x01, 0x00, 0x04,
+   0x04, 0x02, 0x01, 0x01, 0x14, 0x12, 0x11, 0x11, 0x24, 0x22, 0x21, 0x21, 0x34, 0x32, 0x31, 0x31, 
+   0x77, 0x77};
+
+  uint8_t reqdom[11] = {0x05, 0x01, 0x00, 0x03,
+  0x04, 0x01, 0x02, 0x03, 0x04,  
+  0x77, 0x77};
+
+
+
+  printf("RQ: %s\n", reqT);
+
+  // Send the string to the server
+  printf("Sending request\n");
+
+  if(!strcmp("ip4", reqT)){
+    numBytes = send(sock, req4, 10, 0);
+  }
+  else if(!strcmp("ip6", reqT)){
+    numBytes = send(sock, req6, 22, 0);
+  }
+  else if(!strcmp("dom", reqT)){
+    numBytes = send(sock, reqdom, 11, 0);
+  }
+  else{
+    DieWithSystemMessage("invalid req"); 
+  }
+  
+  if (numBytes < 0){
+    DieWithSystemMessage("send() failed"); 
+  }
+
 
 
   close(sock);

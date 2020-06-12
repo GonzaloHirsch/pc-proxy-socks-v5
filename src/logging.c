@@ -1,4 +1,5 @@
 #include "../include/logging.h"
+#include <time.h>
 
 static FILE * requests_log_ptr;
 static FILE * credentials_log_ptr;
@@ -32,7 +33,7 @@ void log_request(uint8_t * client_address, uint8_t * client_port, uint8_t * orig
         strftime(time_buff, N(time_buff), "%x %X", localtime(&now));
 
         // Generating the string to output on the log line
-        size_t size = " - : -> :\n" + strlen(time_buff) + strlen(client_address) + strlen(client_port) + strlen(origin_address) + strlen(origin_port);
+        size_t size = strlen(" - : -> :\n") + strlen(time_buff) + strlen(client_address) + strlen(client_port) + strlen(origin_address) + strlen(origin_port);
         char * log = malloc(size * sizeof(char));
         sprintf(log, "%s - %s:%s -> %s:%s\n", time_buff, client_address, client_port, origin_address, origin_port);
 
@@ -55,7 +56,7 @@ void log_credential(uint8_t * user, uint8_t * pass){
         strftime(time_buff, N(time_buff), "%x %X", localtime(&now));
 
         // Generating the string to output on the log line
-        size_t size = " - :\n" + strlen(time_buff) + strlen(user) + strlen(pass);
+        size_t size = strlen(" - :\n") + strlen(time_buff) + strlen(user) + strlen(pass);
         char * log = malloc(size * sizeof(char));
         sprintf(log, "%s - %s:%s\n", time_buff, user, pass);
 

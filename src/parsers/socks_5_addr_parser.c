@@ -71,7 +71,7 @@ enum socks_5_addr_state socks_5_addr_read_next_byte(socks_5_addr_parser p, const
     }
     return p->state;
 }
-enum socks_5_addr_state socks_5_addr_consume_message(buffer * b, socks_5_addr_parser p, int *errored) {
+enum socks_5_addr_state socks_5_addr_consume_message(buffer * b, socks_5_addr_parser p, bool *errored) {
     socks_5_addr_state st = p->state;
     while(buffer_can_read(b) && !socks_5_addr_done_parsing(p, errored)) {
         const uint8_t c = buffer_read(b);
@@ -82,7 +82,7 @@ enum socks_5_addr_state socks_5_addr_consume_message(buffer * b, socks_5_addr_pa
     }
     return st;
 }
-int socks_5_addr_done_parsing(socks_5_addr_parser p, int * errored) {
+int socks_5_addr_done_parsing(socks_5_addr_parser p, bool * errored) {
     return p->state >= SOCKS5ADDR_DONE;
 }
 
