@@ -527,7 +527,7 @@ request_process(struct selector_key *key, struct request_st *d)
         break;
     }
 
-    return ERROR;
+    return ret;
 }
 
 ////////////////////////////////////////
