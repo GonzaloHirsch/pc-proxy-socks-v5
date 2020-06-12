@@ -413,7 +413,6 @@ request_close(const unsigned state, struct selector_key *key)
 
     
     printf("Im forever stuck in request_close...\n");
-    while (1);
 }
 
 static void
@@ -572,8 +571,26 @@ request_process(struct selector_key *key, struct request_st *d)
 // CONNECTING
 ////////////////////////////////////////
 
-//request_connect(struct selector_key *key)
+void connecting_init(const unsigned state, struct selector_key * key) {
 
+    printf("Connecting Init\n");
+    struct connecting_st * d = &ATTACHMENT(key)->orig.conn;
+
+    d->rb = &(ATTACHMENT(key)->read_buffer);
+
+    struct sockaddr_storage orig_addr;
+    socklen_t orig_addr_len = sizeof(orig_addr);
+
+
+}
+
+static unsigned connecting_read(struct selector_key * key) {
+
+}
+
+void connecting_close(const unsigned state, struct selector_key * key) {
+
+}
 ////////////////////////////////////////
 // COPY
 ////////////////////////////////////////
@@ -616,6 +633,9 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state = CONNECTING,
+        .on_arrival = connecting_init,
+        .on_read_ready = connecting_read,
+        .on_departure = connecting_close,
     },
     {
         .state = REPLY,
