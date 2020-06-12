@@ -25,6 +25,7 @@
 #define N(x) (sizeof(x) / sizeof((x)[0]))
 /** TODO: define appropiate size */
 #define BUFFERSIZE 4096
+#define MAX_IPS 10
 
 /** Function to try to accept requests */
 void socksv5_passive_accept(struct selector_key *key);
@@ -178,6 +179,12 @@ typedef enum ClientFdOperation
     CLI_OP_WRITE = 0x01
 } ClientFdOperation;
 
+typedef enum AddressSize {
+    IP_V4_ADDR_SIZE = 4,
+    IP_V6_ADDR_SIZE = 16,
+    PORT_SIZE = 2,
+} AddressSize;
+
 /** Used by the HELLO_READ and HELLO_WRITE states */
 typedef struct hello_st
 {
@@ -254,11 +261,18 @@ typedef struct socks5_origin_info
     struct sockaddr_storage origin_addr;
     socklen_t origin_addr_len;
 
-    /** IP Address info */
-    uint8_t ip_type;
-    uint8_t * ip_addr;
-    uint8_t ip_len;
-    uint8_t * port;
+    /** Prefered ip type */
+    uint8_t ip_selec;
+
+    /** IPv4 Address info */
+    uint8_t ipv4_addrs[MAX_IPS][IP_V4_ADDR_SIZE];
+    uint8_t ipv4_c;
+    /** Ipv6 Address info */
+    uint8_t ipv6_addrs[MAX_IPS][IP_V6_ADDR_SIZE];
+    uint8_t ipv6_c;
+
+    /** Port info */
+    uint8_t port[PORT_SIZE];
     
     /** Origin info in case we need to relve */
     uint8_t * resolve_addr;

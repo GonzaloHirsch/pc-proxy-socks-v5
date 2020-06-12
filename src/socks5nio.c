@@ -387,12 +387,10 @@ request_close(const unsigned state, struct selector_key *key)
     /** TODO: Free everything */
 
     // All temporal for testing...
-    /** IP Address info */
-    printf("    ip type: %d\n", s->origin_info.ip_type);
 
     printf("    IP: ");
-    for(int i = 0; i < s->origin_info.ip_len ; i++) {
-        printf("%d ", s->origin_info.ip_addr[i]);
+    for(int i = 0; i < IP_V4_ADDR_SIZE ; i++) {
+        printf("%d ", s->origin_info.ipv4_addrs[0][i]);
     }
     printf("\n");
 
@@ -491,31 +489,39 @@ request_process(struct selector_key *key, struct request_st *d)
     uint8_t * addr = r_parser->socks_5_addr_parser->addr;
     uint8_t * dst_port = r_parser->finalMessage.dstPort;
 
+    // The original quantities of ips stored its 0.
+    s->origin_info.ipv4_c = s->origin_info.ipv6_c = 0;
 
     // Determine the next state depending on the type of address given
     switch (addr_t)
     {
-    case IPv4 || IPv6:
-        // Save the ip type.
-        s->origin_info.ip_type = addr_t; //Only difference for ip will be the type.
+    case IPv4:
         // Save the address
-        s->origin_info.ip_addr = malloc(addr_l);
-        memcpy(s->origin_info.ip_addr, addr, addr_l); // Sorry ribas :/
-        s->origin_info.ip_len = addr_l;
+        memcpy(s->origin_info.ipv4_addrs[s->origin_info.ipv4_c++], addr, IP_V4_ADDR_SIZE);
+        s->origin_info.ip_selec =IPv4;
         //Save the port.
-        s->origin_info.port = malloc(2);
         memcpy(s->origin_info.port, dst_port, 2);
-
         // We have all the info to connect
         ret = CONNECTING;
         break;
+
+    case IPv6:
+        // Save the address
+        memcpy(s->origin_info.ipv6_addrs[s->origin_info.ipv6_c++], addr, IP_V6_ADDR_SIZE);
+        s->origin_info.ip_selec =IPv6;
+        //Save the port.
+        memcpy(s->origin_info.port, dst_port, 2);
+        // We have all the info to connect
+        ret = CONNECTING;
+        break;
+
     case DOMAIN_NAME:
         // Save the domain name
         s->origin_info.resolve_addr = malloc(addr_l);
         memcpy(s->origin_info.resolve_addr, addr, addr_l); 
         s->origin_info.resolve_addr_len= addr_l;
+
         //Save the port.
-        s->origin_info.port = malloc(2);
         memcpy(s->origin_info.port, dst_port, 2);
 
         // We need to resolve the domain name.
