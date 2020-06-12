@@ -2,7 +2,7 @@
 #include "dnsPacket.h"
 
 #define DOH_PORT 80
-#define BUFFERSIZE 500
+#define BUFFERSIZE 700
 #define MAX_FDQN 256
 
 #define REQ_MAX_SIZE 65536
@@ -67,25 +67,14 @@ struct hostent * get_host_by_name(char * domain){
     char * message;
     int sockfd;
 
-    char * final_buffer;
+    char * final_buffer = NULL;
     char * servIP = "127.0.0.1";
 
     in_port_t servPort = DOH_PORT;
     memset(&serv_addr, 0, sizeof(serv_addr)); // Zero out structure
     serv_addr.sin_family = AF_INET;          // IPv4 address family
     serv_addr.sin_port = htons(servPort);    // Server port
-    // Convert address
 
-    /*
-    int rtnVal = inet_pton(AF_INET, servIP, &serv_addr.sin_addr.s_addr);
-
-    if (rtnVal <= 0){
-        perror("ERROR converting IP");
-        exit(EXIT_FAILURE);
-    }
-    */
-   
-   final_buffer = malloc(3);
 
 
     int portno  = DOH_PORT;
@@ -114,14 +103,29 @@ struct hostent * get_host_by_name(char * domain){
 
     //free("http_request");
 
-   
+    ssize_t bytes = 0;
+    int buf_size = 0;
 
-    ssize_t bytes = recv(sockfd, buffer, BUFFERSIZE, 0);
+  do{
 
-    buffer[bytes] = 0;
+      ssize_t bytes = recv(sockfd, buffer, BUFFERSIZE, 0);
+      printf("%d\n", bytes);
+      if(bytes < 0){
+          perror("DOH recv failed");
+          exit(EXIT_FAILURE);
+      }
+      else
+      {
+          final_buffer = realloc(final_buffer, final_buffer_size + bytes);
+          buf_size += bytes;
+          memcpy(final_buffer, buffer, bytes);
+      }
+      
+  }while (bytes > 0);
+  
 
 
-    printf("%s", buffer);
+    
 
 
 
@@ -244,7 +248,7 @@ char * parse_domain(char * domain){
 int main(){
 
 
-    char * example = "www.example.com";
+    char * example = "www.google.com";
 
     int size;
     size_t size2;
@@ -252,7 +256,7 @@ int main(){
 
 
 
-    char * example1 = get_host_by_name(example);
+    get_host_by_name(example);
 
 
     return 1;
