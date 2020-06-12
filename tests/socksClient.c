@@ -35,6 +35,8 @@ int main(int argc, char *argv[]) {
 
   /* Version 5, one method: no authentication */
 
+  //------------------------HELLO READ------------------------------
+
   uint8_t data[] = {
         0x05, 0x02, 0x00, 0x03,
     };
@@ -48,7 +50,8 @@ int main(int argc, char *argv[]) {
   else if (numBytes != 4){
     DieWithUserMessage("send()", "sent unexpected number of bytes");
   }
-    
+
+  //--------------------HELLO WRITE-----------------------  
 
   uint8_t buffer[3]; // I/O buffer
   // Receive up to the buffer size (minus 1 to leave space for
@@ -63,6 +66,23 @@ int main(int argc, char *argv[]) {
   buffer[2] = '\0';    // Terminate the string!
   printf("Version %d\n", buffer[0]);
   printf("Method %d\n", buffer[1]);
+
+  //---------------------REQUEST SEND------------------
+
+  uint8_t data2[10] = {
+      0x05, 0x01, 0x00, 0x03, 0x01, 0x01, 0x02, 0x03, 0x80, 0x80
+  };
+
+  // Send the string to the server
+  printf("Sending request\n");
+  numBytes = send(sock, data, 4, 0);
+  if (numBytes < 0){
+    DieWithSystemMessage("send() failed"); 
+  }
+  else if (numBytes != 10){
+    DieWithUserMessage("send()", "sent unexpected number of bytes");
+  }
+
 
 
   close(sock);
