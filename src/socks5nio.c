@@ -413,7 +413,7 @@ request_init(const unsigned state, struct selector_key *key)
 
     // Parser init
     connection_req_parser_init(d->parser);
-    
+
 }
 
 static unsigned
@@ -426,7 +426,7 @@ request_read(struct selector_key *key)
     struct request_st *d = &ATTACHMENT(key)->client.request;
     // Getting the read buffer
     buffer *b = d->rb;
-    unsigned ret = RESOLVE;
+    unsigned ret = REQUEST_READ;
     bool error = false;
     uint8_t *ptr;
     size_t count;
