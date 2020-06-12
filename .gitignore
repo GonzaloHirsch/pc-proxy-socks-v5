@@ -12,3 +12,7 @@ server
 client
 
 client.dSYM/Contents/Info.plist
+
+log_test
+
+logs/

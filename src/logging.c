@@ -1,4 +1,4 @@
-#include "logging.h"
+#include "../include/logging.h"
 
 static FILE * requests_log_ptr;
 static FILE * credentials_log_ptr;

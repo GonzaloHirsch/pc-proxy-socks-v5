@@ -12,8 +12,9 @@
 // To get the time in a human readable form https://www.tutorialspoint.com/c_standard_library/c_function_strftime.htm
 // To write to a file https://www.programiz.com/c-programming/c-file-input-output
 
-const char * REQUESTS_FILE = "./requests.log";
-const char * CREDENTIALS_FILE = "./credentials.log";
+// #ifndef for tests to avoid duplicate definition of constants
+const char * REQUESTS_FILE = "./logs/requests.log";
+const char * CREDENTIALS_FILE = "./logs/credentials.log";
 
 void init_requests_log();
 void init_credentials_log();
