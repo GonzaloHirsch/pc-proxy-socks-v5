@@ -484,53 +484,61 @@ request_process(struct selector_key *key, struct request_st *d)
     struct socks5 *s = ATTACHMENT(key);
     connection_req_parser r_parser = d->parser;
     // Request information obtained by the parser
+    uint8_t cmd = r_parser->finalMessage.cmd;
     uint8_t addr_t = r_parser->socks_5_addr_parser->type;
     uint8_t addr_l = r_parser->socks_5_addr_parser->addrLen;
     uint8_t * addr = r_parser->socks_5_addr_parser->addr;
     uint8_t * dst_port = r_parser->finalMessage.dstPort;
 
-    // The original quantities of ips stored its 0.
-    s->origin_info.ipv4_c = s->origin_info.ipv6_c = 0;
+    // We just support connect cmd
+    if(cmd == TCP_IP_STREAM){
 
-    // Determine the next state depending on the type of address given
-    switch (addr_t)
-    {
-    case IPv4:
-        // Save the address
-        memcpy(s->origin_info.ipv4_addrs[s->origin_info.ipv4_c++], addr, IP_V4_ADDR_SIZE);
-        s->origin_info.ip_selec =IPv4;
-        //Save the port.
-        memcpy(s->origin_info.port, dst_port, 2);
-        // We have all the info to connect
-        ret = CONNECTING;
-        break;
+        // The original quantities of ips stored its 0.
+        s->origin_info.ipv4_c = s->origin_info.ipv6_c = 0;
 
-    case IPv6:
-        // Save the address
-        memcpy(s->origin_info.ipv6_addrs[s->origin_info.ipv6_c++], addr, IP_V6_ADDR_SIZE);
-        s->origin_info.ip_selec =IPv6;
-        //Save the port.
-        memcpy(s->origin_info.port, dst_port, 2);
-        // We have all the info to connect
-        ret = CONNECTING;
-        break;
+        // Determine the next state depending on the type of address given
+        switch (addr_t)
+        {
+        case IPv4:
+            // Save the address
+            memcpy(s->origin_info.ipv4_addrs[s->origin_info.ipv4_c++], addr, IP_V4_ADDR_SIZE);
+            s->origin_info.ip_selec =IPv4;
+            //Save the port.
+            memcpy(s->origin_info.port, dst_port, 2);
+            // We have all the info to connect
+            ret = CONNECTING;
+            break;
 
-    case DOMAIN_NAME:
-        // Save the domain name
-        s->origin_info.resolve_addr = malloc(addr_l);
-        memcpy(s->origin_info.resolve_addr, addr, addr_l); 
-        s->origin_info.resolve_addr_len= addr_l;
+        case IPv6:
+            // Save the address
+            memcpy(s->origin_info.ipv6_addrs[s->origin_info.ipv6_c++], addr, IP_V6_ADDR_SIZE);
+            s->origin_info.ip_selec =IPv6;
+            //Save the port.
+            memcpy(s->origin_info.port, dst_port, 2);
+            // We have all the info to connect
+            ret = CONNECTING;
+            break;
 
-        //Save the port.
-        memcpy(s->origin_info.port, dst_port, 2);
+        case DOMAIN_NAME:
+            // Save the domain name
+            s->origin_info.resolve_addr = malloc(addr_l);
+            memcpy(s->origin_info.resolve_addr, addr, addr_l); 
+            s->origin_info.resolve_addr_len= addr_l;
 
-        // We need to resolve the domain name.
-        ret = RESOLVE;
-        break;
+            //Save the port.
+            memcpy(s->origin_info.port, dst_port, 2);
 
-    default:
+            // We need to resolve the domain name.
+            ret = RESOLVE;
+            break;
+
+        default:
+            ret = ERROR;
+            break;
+        }
+    }
+    else{
         ret = ERROR;
-        break;
     }
 
     return ret;

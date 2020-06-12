@@ -1,12 +1,6 @@
 #include "parsers/connection_req_parser.h"
 #include "parsers/socks_5_addr_parser.h"
 
-typedef enum CMDType {
-    TCP_IP_STREAM = 0x01,
-    TCP_IP_PORT_BINDING = 0x02,
-    UDP = 0x03
-} CMDType;
-
 
 void connection_req_parser_init(connection_req_parser crp) {
     memset(crp, 0, sizeof(struct connection_req_parser));

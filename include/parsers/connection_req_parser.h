@@ -22,6 +22,13 @@ typedef enum connection_req_state {
     CONN_REQ_GENERIC_ERR
 } connection_req_state;
 
+typedef enum CMDType {
+    TCP_IP_STREAM = 0x01,
+    TCP_IP_PORT_BINDING = 0x02,
+    UDP = 0x03
+} CMDType;
+
+
 typedef struct connection_req {
     // public:
     uint8_t ver;
