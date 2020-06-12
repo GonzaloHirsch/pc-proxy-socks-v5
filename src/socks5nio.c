@@ -590,9 +590,10 @@ void connecting_init(const unsigned state, struct selector_key * key) {
             memcpy((void *) &sin->sin_addr, s5oi->ipv4_addrs[0], IP_V4_ADDR_SIZE);
             // Port
             memcpy((void*) &sin->sin_port, s5oi->port, 2);
-            
+            // inet_pton(AF_INET, "127.0.0.1", &sin->sin_addr);
+            // sin->sin_port = htons(8081);
             s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
-            origin_fd = connect(key->fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
+            origin_fd = connect(origin_fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
             s->origin_fd = origin_fd;            
             break;
         case IPv6:
