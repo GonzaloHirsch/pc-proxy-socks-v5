@@ -573,7 +573,33 @@ request_process(struct selector_key *key, struct request_st *d)
 void connecting_init(const unsigned state, struct selector_key * key) {
 
     printf("Connecting Init\n");
+    // Needed, connection only reading for now
+    selector_set_interest_key(key, OP_READ);
     struct connecting_st * d = &ATTACHMENT(key)->orig.conn;
+    struct socks5 * s = ATTACHMENT(key);
+    struct socks5_origin_info * s5oi = &s->origin_info;
+    int origin_fd;
+    switch (s5oi->ip_selec) {
+        case IPv4:
+            // TODO check errors
+            origin_fd = socket(AF_INET, SOCK_STREAM, 0);
+            struct sockaddr_in * sin = (struct sockaddr_in *) &s5oi->origin_addr; 
+            // Setting up in socket address
+            sin->sin_family = AF_INET;
+            // Address
+            memcpy((void *) &sin->sin_addr, s5oi->ipv4_addrs[0], IP_V4_ADDR_SIZE);
+            // Port
+            memcpy((void*) &sin->sin_port, s5oi->port, 2);
+            
+            s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
+            origin_fd = connect(key->fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
+            s->origin_fd = origin_fd;            
+            break;
+        case IPv6:
+            break;
+        case DOMAIN_NAME:
+            break;
+    }   
 
     d->rb = &(ATTACHMENT(key)->read_buffer);
 
