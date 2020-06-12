@@ -70,12 +70,12 @@ int main(int argc, char *argv[]) {
   //---------------------REQUEST SEND------------------
 
   uint8_t data2[10] = {
-      0x05, 0x01, 0x00, 0x03, 0x01, 0x01, 0x02, 0x03, 0x80, 0x80
+      0x05, 0x01, 0x00, 0x01, 0x01, 0x01, 0x02, 0x03, 0x80, 0x80
   };
 
   // Send the string to the server
   printf("Sending request\n");
-  numBytes = send(sock, data, 4, 0);
+  numBytes = send(sock, data, 10, 0);
   if (numBytes < 0){
     DieWithSystemMessage("send() failed"); 
   }

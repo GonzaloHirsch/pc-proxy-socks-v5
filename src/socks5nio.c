@@ -308,19 +308,19 @@ hello_write(struct selector_key *key)
 
     // Send the version and the method.
     n = send(key->fd, data, 2, 0);
-    if (n < 0)
-    {
+    if (n > 0){
+        // Setting the fd to read.
+        if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_READ)){
+            ret = ERROR;
+        }
+    }
+    else{
         ret = ERROR;
     }
 
     // Check if there is an acceptable method, if not --> Error
     if(data[1] == SOCKS_HELLO_NO_ACCEPTABLE_METHODS){
         ret = ERROR;
-
-        // Setting the fd to read.
-        if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_READ)){
-            ret = ERROR;
-        }
     }
             
 
@@ -377,9 +377,28 @@ userpass_write(struct selector_key *key)
 static void
 request_close(const unsigned state, struct selector_key *key)
 {
+    // Sock5 state
+    struct socks5 * s = ATTACHMENT(key);
+
+    // Reset read and write buffer for reuse.
+    buffer_reset(&s->write_buffer);
+    buffer_reset(&s->read_buffer);
+
     /** TODO: Free everything */
 
     // All temporal for testing...
+    /** IP Address info */
+    printf("    ip type: %d\n", s->origin_info.ip_type);
+
+    printf("    IP: ");
+    for(int i = 0; i < s->origin_info.ip_len ; i++) {
+        printf("%d ", s->origin_info.ip_addr[i]);
+    }
+    printf("\n");
+
+    printf("    port: %d%d\n", s->origin_info.port[0], s->origin_info.port[1]);
+
+    
     printf("Im forever stuck in request_close...\n");
     while (1);
 }
@@ -394,24 +413,7 @@ request_init(const unsigned state, struct selector_key *key)
 
     // Parser init
     connection_req_parser_init(d->parser);
-
-    /*
-    d->parser.request = &d->request;
-    d->status = status_general_HTTP_server_failure;
-    request_parser_init(&d->parser);
-    d->client_fd = &ATTACHMENT(key)->client_fd;
-    d->origin_fd = &ATTACHMENT(key)->origin_fd;
-
-    d->origin_addr = &ATTACHMENT(key)->origin_addr;
-    d->origin_addr_len = &ATTACHMENT(key)->origin_addr_len;
-    d->origin_domain = &ATTACHMENT(key)->origin_domain;
-
-    d->request.port = (uint16_t) 80;
-    d->request.content_length = 0;
-    d->raw_buff_accum = calloc(1, 1024 * 1024);
-    buffer_init(&d->accum, 1024 * 1024, d->raw_buff_accum);
-    d->request.host = calloc(1, MAX_HEADER_FIELD_VALUE_SIZE);
-    */
+    
 }
 
 static unsigned
@@ -566,7 +568,7 @@ static const struct state_definition client_statbl[] = {
         .on_departure = userpass_read_close,
         .on_write_ready = userpass_read,
     },
-     {  .state = USERPASS_WRITE,
+    {  .state = USERPASS_WRITE,
         .on_arrival = userpass_write_init,
         .on_departure = userpass_write_close,
         .on_write_ready = userpass_write,
