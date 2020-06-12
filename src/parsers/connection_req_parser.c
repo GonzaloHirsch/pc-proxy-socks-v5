@@ -52,7 +52,7 @@ enum connection_req_state connection_req_read_next_byte(connection_req_parser p,
                 p->finalMessage.dstPort[2-p->bytes_to_read] = b; //TODO do sth about magic number
                 p->bytes_to_read--;
             }
-            else
+            if(!p->bytes_to_read)
                 p->state = CONN_REQ_DONE;            
             break;
         case CONN_REQ_DONE:

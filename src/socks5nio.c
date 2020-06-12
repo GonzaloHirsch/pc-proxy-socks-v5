@@ -429,7 +429,7 @@ request_read(struct selector_key *key)
     unsigned ret = REQUEST_READ;
     bool error = false;
     uint8_t *ptr;
-    size_t count;
+    size_t count;   //Maximum data that can set in the buffer
     ssize_t n;
 
     // Setting the buffer to read
@@ -437,12 +437,12 @@ request_read(struct selector_key *key)
     // Receiving data
     n = recv(key->fd, ptr, count, 0);
     if (n > 0)
-    {
-        // Writing the data to the buffer
+    {   
+        // Notifying the data to the buffer
         buffer_write_adv(b, n);
         // Consuming the message
         const enum connection_req_state st = connection_req_consume_message(b, d->parser, &error);
-        // In case of error
+        //If done parsing and no error
         if (connection_req_done_parsing(d->parser, &error) && !error){
            ret = request_process(key, d);
         }
@@ -477,8 +477,6 @@ request_read(struct selector_key *key)
 
 /** 
  * Processing of the request 
- * If the request has an IPv4 or IPv6
- * 
  * 
 */
 static unsigned

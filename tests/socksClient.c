@@ -69,13 +69,14 @@ int main(int argc, char *argv[]) {
 
   //---------------------REQUEST SEND------------------
 
-  uint8_t data2[10] = {
-      0x05, 0x01, 0x00, 0x01, 0x01, 0x01, 0x02, 0x03, 0x80, 0x80
+  uint8_t data2[] = {
+    // v  cmd   rsv   typ   ----------ipv4-----     ---port-- 
+    0x05, 0x02, 0x00, 0x01, 0x01, 0x02, 0x03, 0x04, 0x77, 0x77
   };
 
   // Send the string to the server
   printf("Sending request\n");
-  numBytes = send(sock, data, 10, 0);
+  numBytes = send(sock, data2, 10, 0);
   if (numBytes < 0){
     DieWithSystemMessage("send() failed"); 
   }
