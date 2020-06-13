@@ -123,6 +123,17 @@ static const struct fd_handler socks5_handler = {
     .handle_block = socksv5_block,
 };
 
+static void socks5_origin_read(struct selector_key *key);
+static void socks5_origin_write(struct selector_key *key);
+static void socks5_origin_close(struct selector_key *key);
+static void socks5_origin_block(struct selector_key *key);
+static const struct fd_handler socks5_origin_handler = {
+    .handle_read = socks5_origin_read,
+    .handle_write = socks5_origin_write,
+    .handle_close = socks5_origin_close,
+    .handle_block = socks5_origin_block,
+};
+
 /** Intenta aceptar la nueva conexión entrante*/
 void socksv5_passive_accept(struct selector_key *key)
 {
@@ -677,8 +688,10 @@ void connecting_init(const unsigned state, struct selector_key *key)
         fprintf(stderr, "Could not connect\n");
         determine_connect_error(errno);
     }
-    else
+    else {
         printf("Connected to origin (fd = %d)\n", origin_fd);
+        selector_register(key->s, s->origin_fd, &socks5_origin_handler, OP_READ & OP_WRITE, ATTACHMENT(key));
+    }
     d->rb = &(ATTACHMENT(key)->read_buffer);
 }
 
@@ -1078,4 +1091,25 @@ socksv5_done(struct selector_key *key)
             close(fds[i]);
         }
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// SOCKS5 ORIGIN HANDLERS
+////////////////////////////////////////////////////////////////////////////////
+
+static void socks5_origin_read(struct selector_key *key) {
+    // TODO implement
+    printf("ORIGIN READ: UNIMPLEMENTED\n");
+}
+static void socks5_origin_write(struct selector_key *key) {
+    // TODO implement
+    printf("ORIGIN WRITE: UNIMPLEMENTED\n");
+}
+static void socks5_origin_close(struct selector_key *key) {
+    // TODO implement
+    printf("ORIGIN CLOSE: UNIMPLEMENTED\n");
+}
+static void socks5_origin_block(struct selector_key *key) {
+    // TODO implement
+    printf("ORIGIN BLOCK: UNIMPLEMENTED\n");
 }
