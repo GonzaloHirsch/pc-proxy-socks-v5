@@ -594,7 +594,7 @@ void connecting_init(const unsigned state, struct selector_key * key) {
                 if (connect_ret < 0)
                     d->first_working_ip_index++;
             } while(connect_ret < 0 && d->first_working_ip_index < s5oi->ipv4_c);
-            if (d->first_working_ip_index >= s5oi->ipv4_c) d->first_working_ip_index = -1;            
+            if (d->first_working_ip_index >= s5oi->ipv4_c) d->first_working_ip_index = 0;            
             s->origin_fd = origin_fd;            
             break;
         case IPv6:
@@ -603,9 +603,11 @@ void connecting_init(const unsigned state, struct selector_key * key) {
     }   
 
     if (connect_ret < 0) {
+        s->origin_fd = -1;
         fprintf(stderr, "Could not connect\n");
     }
-
+    else
+        printf("Connected to origin (fd = %d)\n", origin_fd);
     d->rb = &(ATTACHMENT(key)->read_buffer);
 }
 
@@ -617,6 +619,7 @@ static unsigned connecting_write(struct selector_key * key) {
     // write connection response to client
 
     //                  ver---status-----------------rsv--
+    printf("Writing back to client (fd = %d)\n", key->fd);
     struct connecting_st * d = &ATTACHMENT(key)->orig.conn;
     struct socks5 * s = ATTACHMENT(key);
     struct socks5_origin_info * s5oi = &s->origin_info;
@@ -624,9 +627,14 @@ static unsigned connecting_write(struct selector_key * key) {
     // response fields: VER  ST   RSV  TYPE  ADDR       PRT
     int response_size = 6;
     uint8_t * response = malloc(response_size);
-    response[0] = 0x05;
-    response[1] = CONN_RESP_REQ_GRANTED;
-    response[2] = 0x00;
+    response[0] = 0x05; // VERSION
+    //  STATUS
+    if (s->origin_fd < 0)
+        response[1] = CONN_RESP_GENERAL_FAILURE;
+    else
+        response[1] = CONN_RESP_REQ_GRANTED;
+    response[2] = 0x00; //RSV
+    //BNDADDR
     switch(s5oi->ip_selec) {
         case IPv4:
             response_size += IP_V4_ADDR_SIZE;
@@ -641,6 +649,7 @@ static unsigned connecting_write(struct selector_key * key) {
             memcpy(response+4, s5oi->ipv6_addrs[d->first_working_ip_index], IP_V6_ADDR_SIZE);
             break;
     }
+    // PORT
     response[response_size-2] = s5oi->port[0];
     response[response_size-1] = s5oi->port[1];
     send(key->fd, response, response_size, 0);

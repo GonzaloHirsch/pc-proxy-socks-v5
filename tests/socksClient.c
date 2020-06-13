@@ -107,9 +107,17 @@ int main(int argc, char *argv[]) {
   if (numBytes < 0){
     DieWithSystemMessage("send() failed"); 
   }
+  char buff [256];
+  recv(sock, buff, 2, 0); //version, status
 
+  if (buff[1] == 0x0)
+    printf("Connection request to origin successful!!!\n");
+  else {
+    printf("Connection request to origin failed\n");
+    close(sock);
+  }
+  
   while(1);
-
   close(sock);
   exit(0);
 }
