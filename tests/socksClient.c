@@ -8,8 +8,8 @@ int main(int argc, char *argv[]) {
 
   char *servIP = "127.0.0.1";     // First arg: server IP address (dotted quad)
 
-  char * reqT = argv[1];
-
+  // char * reqT = argv[1];
+  char * reqT = "ip4";
   // Third arg (optional): server port (numeric).  7 is well-known echo port
   in_port_t servPort =  1080;
 
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
 
   uint8_t req4[] = {
     // v  cmd   rsv   typ   ----------ipv4-----     ---port-- 
-    0x05, 0x01, 0x00, 0x01, 0x01, 0x02, 0x03, 0x04, 0x77, 0x77
+    0x05, 0x01, 0x00, 0x01, 0x7F, 0x00, 0x00, 0x01, 0x1F, 0x91
   };
 
   uint8_t req6[22] = {0x05, 0x01, 0x00, 0x04,
@@ -107,9 +107,17 @@ int main(int argc, char *argv[]) {
   if (numBytes < 0){
     DieWithSystemMessage("send() failed"); 
   }
+  char buff [256];
+  recv(sock, buff, 2, 0); //version, status
 
-
-
+  if (buff[1] == 0x0)
+    printf("Connection request to origin successful!!!\n");
+  else {
+    printf("Connection request to origin failed\n");
+    close(sock);
+  }
+  
+  while(1);
   close(sock);
   exit(0);
 }

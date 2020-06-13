@@ -190,4 +190,7 @@ selector_status
 selector_notify_block(fd_selector s,
                  const int   fd);
 
+/** obtiene el interés de un fd según una estructura selector_key*/
+fd_interest get_interest_key(struct selector_key * key);
+
 #endif

@@ -192,6 +192,18 @@ typedef enum AddressSize {
     PORT_SIZE = 2,
 } AddressSize;
 
+typedef enum ConnectionResponse {
+    CONN_RESP_REQ_GRANTED = 0x00,
+    CONN_RESP_GENERAL_FAILURE,
+    CONN_RESP_NOT_ALLOWED_BY_RULESET,
+    CONN_RESP_NET_UNREACHABLE,
+    CONN_RESP_HOST_UNREACHABLE,
+    CONN_RESP_REFUSED_BY_DEST_HOST,
+    CONN_RESP_TTL_EXPIRED,
+    CONN_RESP_CMD_NOT_SUPPORTED,
+    CONN_RESP_ADDR_TYPE_NOT_SUPPORTED
+}ConnectionResponse;
+
 /** Used by the HELLO_READ and HELLO_WRITE states */
 typedef struct hello_st
 {
@@ -256,6 +268,7 @@ typedef struct connecting_st
 {
     /** Buffer used for IO */
     buffer *rb;
+    unsigned int first_working_ip_index;
 
 } connecting_st;
 

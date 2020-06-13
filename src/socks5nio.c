@@ -416,8 +416,6 @@ request_close(const unsigned state, struct selector_key *key)
     printf("    port: %d%d\n", s->origin_info.port[0], s->origin_info.port[1]);
 
     printf("Im forever stuck in request_close...\n");
-    while (1)
-        ;
 }
 
 static void
@@ -578,8 +576,92 @@ request_process(struct selector_key *key, struct request_st *d)
 // CONNECTING
 ////////////////////////////////////////
 
-//request_connect(struct selector_key *key)
+static int try_connection(int origin_fd, int * connect_ret, connecting_st * d, socks5_origin_info * s5oi, AddrType addrType) {
+    origin_fd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in * sin = (struct sockaddr_in *) &s5oi->origin_addr;
+    d->first_working_ip_index = 0;
+    do {
+        // Setting up in socket address
+        sin->sin_family = AF_INET;
+        memcpy((void *) &sin->sin_addr, s5oi->ipv4_addrs[0], (addrType == IPv4) ? IP_V4_ADDR_SIZE : IP_V6_ADDR_SIZE); // Address
+        memcpy((void*) &sin->sin_port, s5oi->port, 2); // Port
+        s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
+        *connect_ret = connect(origin_fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
+        if (*connect_ret < 0)
+            d->first_working_ip_index++;
+    } while(*connect_ret < 0 && d->first_working_ip_index < ((addrType == IPv4) ? s5oi->ipv4_c : s5oi->ipv6_c));
+    if (d->first_working_ip_index >= s5oi->ipv4_c) d->first_working_ip_index = 0;            
+    return origin_fd;      
+}
 
+void connecting_init(const unsigned state, struct selector_key * key) {
+
+    printf("Connecting Init\n");
+    struct connecting_st * d = &ATTACHMENT(key)->orig.conn;
+    struct socks5 * s = ATTACHMENT(key);
+    struct socks5_origin_info * s5oi = &s->origin_info;
+    int origin_fd, connect_ret = -1;
+
+    s->origin_fd = try_connection(origin_fd, &connect_ret, d, s5oi, s5oi->ip_selec);
+
+    if (connect_ret < 0) {
+        s->origin_fd = -1;
+        fprintf(stderr, "Could not connect\n");
+    }
+    else
+        printf("Connected to origin (fd = %d)\n", origin_fd);
+    d->rb = &(ATTACHMENT(key)->read_buffer);
+}
+
+// static unsigned connecting_read(struct selector_key * key) {
+//     printf("Connecting read\n");
+// }
+
+static unsigned connecting_write(struct selector_key * key) {
+    // write connection response to client
+
+    //                  ver---status-----------------rsv--
+    printf("Writing back to client (fd = %d)\n", key->fd);
+    struct connecting_st * d = &ATTACHMENT(key)->orig.conn;
+    struct socks5 * s = ATTACHMENT(key);
+    struct socks5_origin_info * s5oi = &s->origin_info;
+    // response_size =  1b + 1b + 1b + 1b  + variable + 2b
+    // response fields: VER  ST   RSV  TYPE  ADDR       PRT
+    int response_size = 6;
+    uint8_t * response = malloc(response_size);
+    response[0] = 0x05; // VERSION
+    //  STATUS
+    if (s->origin_fd < 0)
+        response[1] = CONN_RESP_GENERAL_FAILURE;
+    else
+        response[1] = CONN_RESP_REQ_GRANTED;
+    response[2] = 0x00; //RSV
+    //BNDADDR
+    switch(s5oi->ip_selec) {
+        case IPv4:
+            response_size += IP_V4_ADDR_SIZE;
+            response = realloc(response, response_size);
+            response[3] = IPv4;
+            memcpy(response+4, s5oi->ipv4_addrs[d->first_working_ip_index], IP_V4_ADDR_SIZE);
+            break;
+        case IPv6:
+            response_size += IP_V6_ADDR_SIZE;
+            response = realloc(response, response_size);
+            response[3] = IPv6;
+            memcpy(response+4, s5oi->ipv6_addrs[d->first_working_ip_index], IP_V6_ADDR_SIZE);
+            break;
+    }
+    // PORT
+    response[response_size-2] = s5oi->port[0];
+    response[response_size-1] = s5oi->port[1];
+    send(key->fd, response, response_size, 0);
+    free(response);
+    return COPY;
+}
+
+void connecting_close(const unsigned state, struct selector_key * key) {
+    printf("Connecting - close\n");
+}
 ////////////////////////////////////////
 // COPY
 ////////////////////////////////////////
@@ -801,6 +883,10 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state = CONNECTING,
+        .on_arrival = connecting_init,
+        // .on_read_ready = connecting_read,
+        .on_write_ready = connecting_write,
+        .on_departure = connecting_close,
     },
     {
         .state = REPLY,
