@@ -570,6 +570,24 @@ request_process(struct selector_key *key, struct request_st *d)
 // CONNECTING
 ////////////////////////////////////////
 
+static int try_connection(int origin_fd, int * connect_ret, connecting_st * d, socks5_origin_info * s5oi, AddrType addrType) {
+    origin_fd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in * sin = (struct sockaddr_in *) &s5oi->origin_addr;
+    d->first_working_ip_index = 0;
+    do {
+        // Setting up in socket address
+        sin->sin_family = AF_INET;
+        memcpy((void *) &sin->sin_addr, s5oi->ipv4_addrs[0], (addrType == IPv4) ? IP_V4_ADDR_SIZE : IP_V6_ADDR_SIZE); // Address
+        memcpy((void*) &sin->sin_port, s5oi->port, 2); // Port
+        s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
+        *connect_ret = connect(origin_fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
+        if (*connect_ret < 0)
+            d->first_working_ip_index++;
+    } while(*connect_ret < 0 && d->first_working_ip_index < ((addrType == IPv4) ? s5oi->ipv4_c : s5oi->ipv6_c));
+    if (d->first_working_ip_index >= s5oi->ipv4_c) d->first_working_ip_index = 0;            
+    return origin_fd;      
+}
+
 void connecting_init(const unsigned state, struct selector_key * key) {
 
     printf("Connecting Init\n");
@@ -577,30 +595,8 @@ void connecting_init(const unsigned state, struct selector_key * key) {
     struct socks5 * s = ATTACHMENT(key);
     struct socks5_origin_info * s5oi = &s->origin_info;
     int origin_fd, connect_ret = -1;
-    switch (s5oi->ip_selec) {
-        // TODO optimize (ie modularize) after some tests
-        case IPv4:
-            // TODO check errors
-            origin_fd = socket(AF_INET, SOCK_STREAM, 0);
-            struct sockaddr_in * sin = (struct sockaddr_in *) &s5oi->origin_addr; 
-            d->first_working_ip_index = 0;
-            do {
-                // Setting up in socket address
-                sin->sin_family = AF_INET;
-                memcpy((void *) &sin->sin_addr, s5oi->ipv4_addrs[0], IP_V4_ADDR_SIZE); // Address
-                memcpy((void*) &sin->sin_port, s5oi->port, 2); // Port
-                s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
-                connect_ret = connect(origin_fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
-                if (connect_ret < 0)
-                    d->first_working_ip_index++;
-            } while(connect_ret < 0 && d->first_working_ip_index < s5oi->ipv4_c);
-            if (d->first_working_ip_index >= s5oi->ipv4_c) d->first_working_ip_index = 0;            
-            s->origin_fd = origin_fd;            
-            break;
-        case IPv6:
-            // TODO check ipv4 then this.
-            break;
-    }   
+
+    s->origin_fd = try_connection(origin_fd, &connect_ret, d, s5oi, s5oi->ip_selec);
 
     if (connect_ret < 0) {
         s->origin_fd = -1;
