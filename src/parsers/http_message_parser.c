@@ -159,6 +159,10 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
             if (b == CLRF) {
                 p->state = HTTP_I2;
             }
+            else if(p ->body_len < -1){
+                *p->cursor = b;
+                p->cursor++;
+            }
             else if (p->cursor - p->body < p->body_len) {
                 *p->cursor = b;
                 p->cursor++;
@@ -244,6 +248,8 @@ int get_numeric_header_value(http_message_parser p, const char * header_name) {
             return (int) strtol(p->headers[i]->value, &pointer, 10);
         } 
     }
+
+    return -1;
 }
 
 http_header ** get_headers(http_message_parser p){

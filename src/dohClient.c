@@ -5,6 +5,7 @@
 #define DOH_PORT 80
 #define BUFFERSIZE 1024
 #define MAX_FDQN 256
+#define DATA_MAX_SIZE 65536
 
 #define REQ_MAX_SIZE 65536
 
@@ -27,7 +28,7 @@ static char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
 static int mod_table[] = {0, 2, 1};
 
 
-char *base64_encode(const unsigned char *data,
+char *base64_encode(char *data,
                     size_t input_length,
                     size_t *output_length) {
 
@@ -39,9 +40,9 @@ char *base64_encode(const unsigned char *data,
 
     for (int i = 0, j = 0; i < input_length;) {
 
-        uint32_t octet_a = i < input_length ? (unsigned char)data[i++] : 0;
-        uint32_t octet_b = i < input_length ? (unsigned char)data[i++] : 0;
-        uint32_t octet_c = i < input_length ? (unsigned char)data[i++] : 0;
+        uint32_t octet_a = i < input_length ? (char)data[i++] : 0;
+        uint32_t octet_b = i < input_length ? (char)data[i++] : 0;
+        uint32_t octet_c = i < input_length ? (char)data[i++] : 0;
 
         uint32_t triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
 
@@ -132,29 +133,39 @@ struct hostent * get_host_by_name(char * domain){
 
 
 
-parse_to_crlf(final_buffer, &final_buffer_size);
+parse_to_crlf(final_buffer, &buf_size);
 
 struct buffer to_parse;
 
-buffer_init(&to_parse, final_buffer_size, final_buffer);
+
+char data[DATA_MAX_SIZE];
+int errored;
+buffer_init(&to_parse, DATA_MAX_SIZE, (uint8_t *)data);
+int i = 0;
+
+    for (char * b = final_buffer; i<buf_size; b++, i++) {
+        buffer_write(&to_parse, *b);
+    }
+
+    buffer_write(&to_parse, '\n');
+    buffer_write(&to_parse, '\n');
 
 
+struct http_message_parser http_parser;
+http_message_parser_init(&http_parser);
 
-int error;
-
-http_message_parser  http_parser = new_http_message_parser();
-
-http_message_state http_state = http_consume_message(&to_parse, http_parser, &error);
+http_message_state http_state = http_consume_message(&to_parse, &http_parser, &errored);
 
 char * body;
 
-if(http_state == HTTP_F){
-    body = get_body(http_parser);
+if(http_state != HTTP_F){
+    perror("Received an unrecognizable http response in doh client");
+    exit(EXIT_FAILURE);
 }
 
 
 
-
+parse_dns_resp(http_parser.body, domain);
 
 
     return ret;
@@ -173,7 +184,7 @@ size_t dns_encoded_length;
 char * dns_request = generate_dns_req(domain, &dns_length);    //gets the dns request wirh the host name 
                                                                 //returns the request and the size of the request
 
-char * encoded_dns_request = base64_encode((const unsigned char *)dns_request, dns_length,&dns_encoded_length);
+char * encoded_dns_request = base64_encode(dns_request, dns_length,&dns_encoded_length);
 
 
 char sendline[BUFFERSIZE];
@@ -280,7 +291,7 @@ void parse_to_crlf(char * response, int *size){
 int main(){
 
 
-    char * example = "www.google.com";
+    char * example = "www.facebook.com";
 
     int size;
     size_t size2;

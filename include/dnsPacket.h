@@ -38,15 +38,15 @@ struct R_DATA
 //Pointers to resource record contents
 struct RES_RECORD
 {
-    unsigned char *name;
+    uint8_t *name;
     struct R_DATA *resource;
-    unsigned char *rdata;
+    uint8_t *rdata;
 };
  
 //Structure of a Query
 typedef struct
 {
-    unsigned char *name;
+    uint8_t *name;
     struct QUESTION *ques;
 } QUERY;
  
@@ -56,17 +56,17 @@ struct DNS_HEADER
 {
     unsigned short id; // identification number
  
-    unsigned char rd :1; // recursion desired
-    unsigned char tc :1; // truncated message
-    unsigned char aa :1; // authoritive answer
-    unsigned char opcode :4; // purpose of message
-    unsigned char qr :1; // query/response flag
+    uint8_t rd :1; // recursion desired
+    uint8_t tc :1; // truncated message
+    uint8_t aa :1; // authoritive answer
+    uint8_t opcode :4; // purpose of message
+    uint8_t qr :1; // query/response flag
  
-    unsigned char rcode :4; // response code
-    unsigned char cd :1; // checking disabled
-    unsigned char ad :1; // authenticated data
-    unsigned char z :1; // its z! reserved
-    unsigned char ra :1; // recursion available
+    uint8_t rcode :4; // response code
+    uint8_t cd :1; // checking disabled
+    uint8_t ad :1; // authenticated data
+    uint8_t z :1; // its z! reserved
+    uint8_t ra :1; // recursion available
  
     unsigned short q_count; // number of question entries
     unsigned short ans_count; // number of answer entries
@@ -77,3 +77,5 @@ struct DNS_HEADER
 
 
 char * generate_dns_req(char * host, int * final_size);
+
+char * parse_dns_resp(char * to_parse, char * domain);
