@@ -9,6 +9,11 @@
 #include "http_utils/http_utils.h"
 #include "io_utils/buffer.h"
 
+#define MAX_HEADERS 30
+#define MAX_HEADER_NAME_LEN 40
+#define MAX_HEADER_VALUE_LEN 100
+#define BLOCK_SIZE 512
+
 // Warning! This assumes HTTP Versions of regex [0-9]\.[0-9]
 // You've been warned --
 
@@ -30,9 +35,30 @@ typedef enum http_message_state {
     HTTP_ERR_INV_BODY
 } http_message_state;
 
+struct http_message_parser {
+    // public:
+    // list of pairs or hash?
+    http_message_state state;
+    char version[5];
+    char status[4];
+    char * body;
+    int headers_num;
+    http_header * headers[MAX_HEADERS];
+    // private:
+    char header_name[MAX_HEADER_NAME_LEN+1];
+    char header_value[MAX_HEADER_VALUE_LEN+1];
+    char * cursor;
+    int bytes_to_read;
+    int body_len;
+    char buff[BLOCK_SIZE];
+};
+
+
 typedef struct http_message_parser * http_message_parser;
 
-http_message_parser new_http_message_parser();
+// http_message_parser new_http_message_parser(); // deprecated
+
+void http_message_parser_init(http_message_parser hmp); 
 
 enum http_message_state http_message_read_next_byte(http_message_parser p, const uint8_t b);
 enum http_message_state http_consume_message(buffer * b, http_message_parser p, int *errored);

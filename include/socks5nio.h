@@ -1,5 +1,5 @@
-#ifndef __NETUTILS_H__
-#define __NETUTILS_H__
+#ifndef __SOCKS5NIO_H__
+#define __SOCKS5NIO_H__
 
 //------------------------SACADO DE EJEMPLO PARCIAL---------------------------
 // https://campus.itba.edu.ar/webapps/blackboard/execute/content/file?cmd=view&content_id=_238320_1&course_id=_12752_1&framesetWrapped=true
@@ -18,11 +18,14 @@
 #include "parsers/hello_parser.h"
 #include "parsers/socks_5_addr_parser.h"
 #include "parsers/connection_req_parser.h"
+#include "parsers/up_req_parser.h"
 #include "selector.h"
 #include "stateMachine.h"
 
-#define N(x) (sizeof(x)/sizeof((x)[0]))
-#define MAX_STATES 9
+#define N(x) (sizeof(x) / sizeof((x)[0]))
+/** TODO: define appropiate size */
+#define BUFFERSIZE 4096
+#define MAX_IPS 10
 
 /** Function to try to accept requests */
 void socksv5_passive_accept(struct selector_key *key);
@@ -54,10 +57,36 @@ enum socks_v5state
      * 
      * Transitions:
      *  - HELLO_WRITE -> While there are bytes to send
-     *  - REQUEST_READ -> When all the bytes have been transfered
+     *  - USERPASS_READ -> When all the bytes have been transfered
      *  - ERROR -> In case of an error
      * */
     HELLO_WRITE,
+
+    /**
+     * State when receiving the user and password
+     * 
+     * Interests:
+     *  -OP_READ -> Read the info sent by the user
+     * 
+     * Transitions:
+     *  - USSERPASS_READ -> While there are bytes being read
+     *  - USSERPASS_WRITE -> When all the bytes have been read and processed
+     *  - ERROR -> In case of an error
+     * */
+    USERPASS_READ,
+
+    /**
+     * State when receiving the user and password
+     * 
+     * Interests:
+     *  -OP_WRITE -> Write if u+p is valid or not
+     * 
+     * Transitions:
+     *  - USSERPASS_READ -> While there are bytes being sent
+     *  - REQUEST_READ -> If u+p is valid
+     *  - ERROR -> In case of u+p invalid or other error
+     * */
+    USERPASS_WRITE,
 
     /**
      * State when receiving the client request
@@ -141,7 +170,7 @@ typedef enum AddrType
 {
     IPv4 = 0x01,
     DOMAIN_NAME = 0x03,
-    IPv6 = 0x04
+    IPv6 = 0x04,
 } AddrType;
 
 typedef enum ClientFdOperation
@@ -150,16 +179,35 @@ typedef enum ClientFdOperation
     CLI_OP_WRITE = 0x01
 } ClientFdOperation;
 
+typedef enum AddressSize {
+    IP_V4_ADDR_SIZE = 4,
+    IP_V6_ADDR_SIZE = 16,
+    PORT_SIZE = 2,
+} AddressSize;
+
 /** Used by the HELLO_READ and HELLO_WRITE states */
 typedef struct hello_st
 {
     /** Buffers used for IO */
     buffer *rb, *wb;
     /** Pointer to hello parser */
-    hello_parser parser;
+    struct hello_parser parser;
     /** Selected auth method */
     uint8_t method;
 } hello_st;
+
+/** Used by the USERPASS_READ and USERPASS_WRITE states */
+typedef struct userpass_st
+{
+    /** Buffers used for IO */
+    buffer *rb, *wb;
+    /** Pointer to hello parser */
+    struct up_req_parser parser;
+    /** Selected user */
+    uint8_t * user;
+    /** Selected password */
+    uint8_t * password;
+} userpass_st;
 
 /** Used by the RESOLVE state */
 typedef struct resolve_st
@@ -186,8 +234,7 @@ typedef struct copy_st
 {
     /** Buffer used for IO */
     buffer *rb;
-    
-    
+
 } copy_st;
 
 /** Used by the CONNECTING state */
@@ -195,8 +242,7 @@ typedef struct connecting_st
 {
     /** Buffer used for IO */
     buffer *rb;
-    
-    
+
 } connecting_st;
 
 /** Used by REPLY the state */
@@ -204,37 +250,82 @@ typedef struct reply_st
 {
     /** Buffer used for IO */
     buffer *rb;
-    
-    
+
 } reply_st;
+
+
+/** Struct for origin server information */
+typedef struct socks5_origin_info
+{
+    /** Origin server address info */
+    struct sockaddr_storage origin_addr;
+    socklen_t origin_addr_len;
+
+    /** Prefered ip type */
+    uint8_t ip_selec;
+    /** IPv4 Addresses info */
+    uint8_t ipv4_addrs[MAX_IPS][IP_V4_ADDR_SIZE];
+    uint8_t ipv4_c;
+    /** Ipv6 Addresses info */
+    uint8_t ipv6_addrs[MAX_IPS][IP_V6_ADDR_SIZE];
+    uint8_t ipv6_c;
+
+    /** Port info */
+    uint8_t port[PORT_SIZE];
+    
+    /** Origin info in case we need to relve */
+    uint8_t * resolve_addr;
+    uint8_t resolve_addr_len;
+
+
+} socks5_origin_info;
 
 
 // Struct used to store all the relevant info for a socket.
 typedef struct socks5
 {
-    //maquinas de estados
+    /** State machine for the connection */
     struct state_machine stm;
-    
-    //estados para el client_fd
+
+    /** File descriptor number for the client */
+    int client_fd;
+    /** File descriptor number for the origin */
+    int origin_fd;
+
+    /** States for the client fd */
     union {
         hello_st hello;
+        userpass_st userpass;
         request_st request;
         copy_st copy;
     } client;
-    // estados para el origin_fd 
+    /** States for the origin fd */
     union {
         connecting_st conn;
         reply_st reply;
     } orig;
 
+    /** Address info for the origin server */
+    struct addrinfo *origin_resolution;
+
+    /** Amount of references to this instance of the socks5 struct, if the amount is 1, it can be deleted */
+    unsigned references;
+
     struct sockaddr_storage client_addr;
     socklen_t client_addr_len;
 
-    buffer * writeBuffer;
-    buffer * readBuffer;
+    /** Buffers for reading and writing */
+    buffer read_buffer, write_buffer;
 
+    /** Next item in the pool */
+    struct socks5 *next;
+
+    /** Authentication method */
+    uint8_t auth;    
+
+    /** Information about the origin server */
+    struct socks5_origin_info origin_info;
 } socks5;
-
 
 
 #endif

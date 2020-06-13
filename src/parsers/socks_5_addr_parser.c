@@ -1,15 +1,5 @@
 #include "parsers/socks_5_addr_parser.h"
 
-struct socks_5_addr_parser {
-    // public:
-    uint8_t type; // TODO uint8 + packed? Worth it?
-    uint8_t * addr;
-    // private:
-    uint8_t addrLen;
-    socks_5_addr_state state;
-    int bytes_to_read;
-};
-
 typedef enum S5AddrType {
     IP_V4_T = 0x01,
     DNAME_T = 0x03,
@@ -21,13 +11,9 @@ typedef enum AddressSize {
     IP_V6_ADDR_SIZE = 16
 } AddressSize;
 
-socks_5_addr_parser new_socks_5_addr_parser() {
-    socks_5_addr_parser s5ap = malloc(sizeof(struct socks_5_addr_parser));
-    s5ap->type = 0;
-    s5ap->bytes_to_read = 0;
-    s5ap->addrLen = 0;
+void socks_5_addr_parser_init(socks_5_addr_parser s5ap) {
+    memset(s5ap, 0, sizeof(struct socks_5_addr_parser));
     s5ap->state = SOCKS5ADDR_TYPE;
-    return s5ap;
 }
 
 enum socks_5_addr_state socks_5_addr_read_next_byte(socks_5_addr_parser p, const uint8_t b) {
@@ -85,7 +71,7 @@ enum socks_5_addr_state socks_5_addr_read_next_byte(socks_5_addr_parser p, const
     }
     return p->state;
 }
-enum socks_5_addr_state socks_5_addr_consume_message(buffer * b, socks_5_addr_parser p, int *errored) {
+enum socks_5_addr_state socks_5_addr_consume_message(buffer * b, socks_5_addr_parser p, bool *errored) {
     socks_5_addr_state st = p->state;
     while(buffer_can_read(b) && !socks_5_addr_done_parsing(p, errored)) {
         const uint8_t c = buffer_read(b);
@@ -96,7 +82,7 @@ enum socks_5_addr_state socks_5_addr_consume_message(buffer * b, socks_5_addr_pa
     }
     return st;
 }
-int socks_5_addr_done_parsing(socks_5_addr_parser p, int * errored) {
+int socks_5_addr_done_parsing(socks_5_addr_parser p, bool * errored) {
     return p->state >= SOCKS5ADDR_DONE;
 }
 
@@ -111,7 +97,7 @@ const int get_socks_5_type(socks_5_addr_parser p) {
 
 void free_socks_5_addr_parser(socks_5_addr_parser p) {
     free(p->addr);
-    free(p);
+    // free(p);
 }
 
 

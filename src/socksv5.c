@@ -1,14 +1,11 @@
 
-#include "../include/socksv5.h"
+#include "socksv5.h"
 
 // -------------- INTERNAL FUNCTIONS-----------------------------------
 
 void renderToState(struct selector_key *key, char *received, int valread);
 
 static void signal_handler(const int signal);
-
-// Address for socket binding
-struct sockaddr_in *address;
 
 // Static boolean to be used as a way to end the server with a signal in a more clean way
 static bool finished = false;
@@ -26,19 +23,23 @@ static void signal_handler(const int signal)
 
 int main()
 {
+    printf("Starting server.\n");
+
     int opt = TRUE;
     int master_socket;
 
     // Selector for concurrent connexions
     fd_selector selector = NULL;
 
-    // Setting the socket binding for the server to work ok
-    address = malloc(sizeof(address));
-    address->sin_family = AF_INET;
-    address->sin_addr.s_addr = INADDR_ANY;
-    address->sin_port = htons(PORT);
+    // Address for socket binding
+    struct sockaddr_in address;
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
 
     // ----------------- INITIALIZE THE MAIN SOCKET -----------------
+
+    printf("Initializing main socket\n");
 
     // Creating the server socket to listen
     master_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -52,21 +53,21 @@ int main()
     // Setting the master socket to allow multiple connections, not required, just good habit
     if (setsockopt(master_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0)
     {
-        perror("setsockopt");
+        perror("ERROR: Failure setting setting master socket\n");
         exit(EXIT_FAILURE);
     }
 
     // Binding the socket to localhost:1080
     if (bind(master_socket, (struct sockaddr *)&address, sizeof(address)) < 0)
     {
-        //log(FATAL, "bind failed");
+        perror("ERROR: Failure binding master socket\n");
         exit(EXIT_FAILURE);
     }
 
     // Checking if the socket is able to listen
     if (listen(master_socket, MAX_PENDING_CONNECTIONS) < 0)
     {
-        //log(FATAL, "listen");
+        perror("ERROR: Failure listening master socket\n");
         exit(EXIT_FAILURE);
     }
 
@@ -81,6 +82,8 @@ int main()
 
     // ----------------- CREATE THE SELECTOR -----------------
 
+    printf("Creating selector\n");
+
     // Creating the configuration for the select
     const struct selector_init selector_configuration = {
         .signal = SIGALRM,
@@ -90,9 +93,9 @@ int main()
         }};
 
     // Initializing the selector using the created configuration
-    if (selector_init(&selector_configuration) == 0)
+    if (selector_init(&selector_configuration) != SELECTOR_SUCCESS)
     {
-        perror("Initializing the selector");
+        perror("Error: Initializing the selector");
         exit(EXIT_FAILURE);
     }
 
@@ -130,6 +133,8 @@ int main()
     // Cycle until a signal is received as finished
     while (!finished)
     {
+        printf("Awaiting connection\n");
+        
         // Wait for activiy of one of the sockets:
         // -Master Socket --> New connection.
         // -Child Sockets --> Read or write operation
@@ -144,118 +149,3 @@ int main()
 
     return 0;
 }
-
-
-
-
-
-
-/*
-void renderToState(struct selector_key * key, char * received, int valread){
-    
-    int errored = 0;
-    int sd = key->fd;
-    Socks5 * sockState = (Socks5 *)key->data;
-
-    //TODO: change whats in this switch based on the state structure.
-    switch (sockState->stm->current_state->state){
-
-        case HELLO_READ:
-        
-            hello_state hs = hello_consume_message(received, sockState->client.hello.parser, &errored);
-
-            if (errored){
-                perror("Error during hello parsing");
-                exit(EXIT_FAILURE);
-            }
-            if (hs == DONE){
-                sockState->stm = HELLO_WRITE;
-                free_hello_parser(sockState->client.hello.parser);
-            }
-
-            break;
-        
-
-        case HELLO_WRITE:
-
-            break;
-
-        case REQUEST_READ:
-
-            break;
-
-        case RESOLVE:
-
-            break;
-
-        case CONNECTING:
-
-            break;
-
-        case REPLY:
-
-            break;
-
-        case COPY:
-
-            break;
-
-        case DONE:
-
-            break;
-
-        case ERROR:
-
-            break;
-
-        default:
-            break;
-    }
-
-
-}
-
-
-
-void write_to_client(struct selector_key * key){
-    int sd = key -> fd;
-    int errored = 0;
-    Socks5 * sock_state = (Socks5 *) key -> data;
-    int state = get_current_state(sock_state -> stm);
-
-    switch (state)
-    {
-    case HELLO_WRITE:
-        char response[] = {0x05, 0x00}; //temporary change to 0x02 when auth is done
-
-        write(sd, response, N(response));
-
-        set_current_state(sock_state, REQUEST_READ);
-
-        break;
-
-    case RESOLVE:
-
-        break;
-    
-    case CONNECTING:
-
-        break;
-
-    case REPLY:
-        char rep;
-        rep = 0x00; //just for now it succeeds every request
-
-        //need to check how to retrieve port and address
-
-        break;
-    
-
-    
-    default:
-        break;
-    }
-
-}
-
-*/

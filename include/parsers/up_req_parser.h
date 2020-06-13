@@ -1,6 +1,8 @@
 #ifndef __UPREQ_PARSER_H__
 #define __UPREQ_PARSER_H__
 
+#include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdint.h>
@@ -20,9 +22,23 @@ typedef enum up_req_state {
     UP_ERROR_INV_AUTH
 } up_req_state;
 
+struct up_req_parser {
+    // public:      //
+    void * data;
+    char * uid;
+    char * pw;
+    // private:     //
+    up_req_state state;
+    uint8_t uidLen;
+    uint8_t pwLen;
+    uint8_t bytes_to_read;
+};
+
 typedef struct up_req_parser * up_req_parser;
 
-up_req_parser new_up_req_parser();
+// up_req_parser new_up_req_parser(); // deprecated
+
+void up_req_parser_init(up_req_parser uprp);
 
 enum up_req_state up_read_next_byte(up_req_parser p, const uint8_t b);
 enum up_req_state up_consume_message(buffer * b, up_req_parser p, int *errored);

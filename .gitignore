@@ -6,3 +6,13 @@ a.out.dSYM/Contents/
 server.dSYM/Contents/
 
 .vscode/settings.json
+
+server
+
+client
+
+client.dSYM/Contents/Info.plist
+
+log_test
+
+logs/
