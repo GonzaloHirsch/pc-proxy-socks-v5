@@ -648,9 +648,9 @@ static void determine_connect_error(int error)
     }
 }
 
-static int try_connection(int origin_fd, int *connect_ret, connecting_st *d, socks5_origin_info *s5oi, AddrType addrType)
+static int try_connection(int *connect_ret, connecting_st *d, socks5_origin_info *s5oi, AddrType addrType)
 {
-    origin_fd = socket(AF_INET, SOCK_STREAM, 0);
+    int origin_fd = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in *sin = (struct sockaddr_in *)&s5oi->origin_addr;
     d->first_working_ip_index = 0;
     do
@@ -678,9 +678,9 @@ void connecting_init(const unsigned state, struct selector_key *key)
     struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
     struct socks5 *s = ATTACHMENT(key);
     struct socks5_origin_info *s5oi = &s->origin_info;
-    int origin_fd, connect_ret = -1;
+    int connect_ret = -1;
 
-    s->origin_fd = try_connection(origin_fd, &connect_ret, d, s5oi, s5oi->ip_selec);
+    s->origin_fd = try_connection(&connect_ret, d, s5oi, s5oi->ip_selec);
 
     if (connect_ret < 0)
     {
@@ -689,15 +689,13 @@ void connecting_init(const unsigned state, struct selector_key *key)
         determine_connect_error(errno);
     }
     else {
-        printf("Connected to origin (fd = %d)\n", origin_fd);
-        selector_register(key->s, s->origin_fd, &socks5_origin_handler, OP_READ & OP_WRITE, ATTACHMENT(key));
+        printf("Connected to origin (fd = %d)\n", s->origin_fd);
+        selector_status st = selector_register(key->s, s->origin_fd, &socks5_origin_handler, OP_READ, ATTACHMENT(key));
+        if (st == SELECTOR_SUCCESS)
+            printf("Successfully registered origin fd in selector\n");
     }
     d->rb = &(ATTACHMENT(key)->read_buffer);
 }
-
-// static unsigned connecting_read(struct selector_key * key) {
-//     printf("Connecting read\n");
-// }
 
 static unsigned connecting_write(struct selector_key *key)
 {
@@ -740,6 +738,7 @@ static unsigned connecting_write(struct selector_key *key)
     response[response_size - 1] = s5oi->port[1];
     send(key->fd, response, response_size, 0);
     free(response);
+    send(s->origin_fd, "TestString\n", strlen("TestString\n" + 1), 0);
     return COPY;
 }
 
