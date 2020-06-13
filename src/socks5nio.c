@@ -576,37 +576,106 @@ request_process(struct selector_key *key, struct request_st *d)
 // CONNECTING
 ////////////////////////////////////////
 
-static int try_connection(int origin_fd, int * connect_ret, connecting_st * d, socks5_origin_info * s5oi, AddrType addrType) {
-    origin_fd = socket(AF_INET, SOCK_STREAM, 0);
-    struct sockaddr_in * sin = (struct sockaddr_in *) &s5oi->origin_addr;
-    d->first_working_ip_index = 0;
-    do {
-        // Setting up in socket address
-        sin->sin_family = AF_INET;
-        memcpy((void *) &sin->sin_addr, s5oi->ipv4_addrs[0], (addrType == IPv4) ? IP_V4_ADDR_SIZE : IP_V6_ADDR_SIZE); // Address
-        memcpy((void*) &sin->sin_port, s5oi->port, 2); // Port
-        s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
-        *connect_ret = connect(origin_fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
-        if (*connect_ret < 0)
-            d->first_working_ip_index++;
-    } while(*connect_ret < 0 && d->first_working_ip_index < ((addrType == IPv4) ? s5oi->ipv4_c : s5oi->ipv6_c));
-    if (d->first_working_ip_index >= s5oi->ipv4_c) d->first_working_ip_index = 0;            
-    return origin_fd;      
+static void determine_connect_error(int error)
+{
+    switch (error)
+    {
+    case EACCES:
+        printf("The error is EACCES - %d\n", error);
+        break;
+    case EPERM:
+        printf("The error is EPERM - %d\n", error);
+        break;
+    case EADDRINUSE:
+        printf("The error is EADDRINUSE - %d\n", error);
+        break;
+    case EADDRNOTAVAIL:
+        printf("The error is EADDRNOTAVAIL - %d\n", error);
+        break;
+    case EAFNOSUPPORT:
+        printf("The error is EAFNOSUPPORT - %d\n", error);
+        break;
+    case EAGAIN:
+        printf("The error is EAGAIN - %d\n", error);
+        break;
+    case EALREADY:
+        printf("The error is EALREADY - %d\n", error);
+        break;
+    case EBADF:
+        printf("The error is EBADF - %d\n", error);
+        break;
+    case ECONNREFUSED:
+        printf("The error is ECONNREFUSED - %d\n", error);
+        break;
+    case EFAULT:
+        printf("The error is EFAULT - %d\n", error);
+        break;
+    case EINPROGRESS:
+        printf("The error is EINPROGRESS - %d\n", error);
+        break;
+    case EINTR:
+        printf("The error is EINTR - %d\n", error);
+        break;
+    case EISCONN:
+        printf("The error is EISCONN - %d\n", error);
+        break;
+    case ENETUNREACH:
+        printf("The error is ENETUNREACH - %d\n", error);
+        break;
+    case ENOTSOCK:
+        printf("The error is ENOTSOCK - %d\n", error);
+        break;
+    case EPROTOTYPE:
+        printf("The error is EPROTOTYPE - %d\n", error);
+        break;
+    case ETIMEDOUT:
+        printf("The error is ETIMEDOUT - %d\n", error);
+        break;
+    case EINVAL:
+        printf("The error is EINVAL - %d\n", error);
+        break;
+    }
 }
 
-void connecting_init(const unsigned state, struct selector_key * key) {
+static int try_connection(int origin_fd, int *connect_ret, connecting_st *d, socks5_origin_info *s5oi, AddrType addrType)
+{
+    origin_fd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in *sin = (struct sockaddr_in *)&s5oi->origin_addr;
+    d->first_working_ip_index = 0;
+    do
+    {
+        // Setting up in socket address
+        sin->sin_family = AF_INET;
+        memcpy((void *)&sin->sin_addr, s5oi->ipv4_addrs[0], (addrType == IPv4) ? IP_V4_ADDR_SIZE : IP_V6_ADDR_SIZE); // Address
+        memcpy((void *)&sin->sin_port, s5oi->port, 2);                                                               // Port
+        s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
+        printf("\n\nAddress length %d and family is %d when AF_INET is %d\n\n", s5oi->origin_addr_len, ((struct sockaddr *)&s5oi->origin_addr)->sa_family, AF_INET);
+        *connect_ret = connect(origin_fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
+        printf("Result of connect is %d with errno %d\n", *connect_ret, errno);
+        if (*connect_ret < 0)
+            d->first_working_ip_index++;
+    } while (*connect_ret < 0 && d->first_working_ip_index < ((addrType == IPv4) ? s5oi->ipv4_c : s5oi->ipv6_c));
+    if (d->first_working_ip_index >= s5oi->ipv4_c)
+        d->first_working_ip_index = 0;
+    return origin_fd;
+}
+
+void connecting_init(const unsigned state, struct selector_key *key)
+{
 
     printf("Connecting Init\n");
-    struct connecting_st * d = &ATTACHMENT(key)->orig.conn;
-    struct socks5 * s = ATTACHMENT(key);
-    struct socks5_origin_info * s5oi = &s->origin_info;
+    struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
+    struct socks5 *s = ATTACHMENT(key);
+    struct socks5_origin_info *s5oi = &s->origin_info;
     int origin_fd, connect_ret = -1;
 
     s->origin_fd = try_connection(origin_fd, &connect_ret, d, s5oi, s5oi->ip_selec);
 
-    if (connect_ret < 0) {
+    if (connect_ret < 0)
+    {
         s->origin_fd = -1;
         fprintf(stderr, "Could not connect\n");
+        determine_connect_error(errno);
     }
     else
         printf("Connected to origin (fd = %d)\n", origin_fd);
@@ -617,18 +686,19 @@ void connecting_init(const unsigned state, struct selector_key * key) {
 //     printf("Connecting read\n");
 // }
 
-static unsigned connecting_write(struct selector_key * key) {
+static unsigned connecting_write(struct selector_key *key)
+{
     // write connection response to client
 
     //                  ver---status-----------------rsv--
     printf("Writing back to client (fd = %d)\n", key->fd);
-    struct connecting_st * d = &ATTACHMENT(key)->orig.conn;
-    struct socks5 * s = ATTACHMENT(key);
-    struct socks5_origin_info * s5oi = &s->origin_info;
+    struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
+    struct socks5 *s = ATTACHMENT(key);
+    struct socks5_origin_info *s5oi = &s->origin_info;
     // response_size =  1b + 1b + 1b + 1b  + variable + 2b
     // response fields: VER  ST   RSV  TYPE  ADDR       PRT
     int response_size = 6;
-    uint8_t * response = malloc(response_size);
+    uint8_t *response = malloc(response_size);
     response[0] = 0x05; // VERSION
     //  STATUS
     if (s->origin_fd < 0)
@@ -637,31 +707,34 @@ static unsigned connecting_write(struct selector_key * key) {
         response[1] = CONN_RESP_REQ_GRANTED;
     response[2] = 0x00; //RSV
     //BNDADDR
-    switch(s5oi->ip_selec) {
-        case IPv4:
-            response_size += IP_V4_ADDR_SIZE;
-            response = realloc(response, response_size);
-            response[3] = IPv4;
-            memcpy(response+4, s5oi->ipv4_addrs[d->first_working_ip_index], IP_V4_ADDR_SIZE);
-            break;
-        case IPv6:
-            response_size += IP_V6_ADDR_SIZE;
-            response = realloc(response, response_size);
-            response[3] = IPv6;
-            memcpy(response+4, s5oi->ipv6_addrs[d->first_working_ip_index], IP_V6_ADDR_SIZE);
-            break;
+    switch (s5oi->ip_selec)
+    {
+    case IPv4:
+        response_size += IP_V4_ADDR_SIZE;
+        response = realloc(response, response_size);
+        response[3] = IPv4;
+        memcpy(response + 4, s5oi->ipv4_addrs[d->first_working_ip_index], IP_V4_ADDR_SIZE);
+        break;
+    case IPv6:
+        response_size += IP_V6_ADDR_SIZE;
+        response = realloc(response, response_size);
+        response[3] = IPv6;
+        memcpy(response + 4, s5oi->ipv6_addrs[d->first_working_ip_index], IP_V6_ADDR_SIZE);
+        break;
     }
     // PORT
-    response[response_size-2] = s5oi->port[0];
-    response[response_size-1] = s5oi->port[1];
+    response[response_size - 2] = s5oi->port[0];
+    response[response_size - 1] = s5oi->port[1];
     send(key->fd, response, response_size, 0);
     free(response);
     return COPY;
 }
 
-void connecting_close(const unsigned state, struct selector_key * key) {
+void connecting_close(const unsigned state, struct selector_key *key)
+{
     printf("Connecting - close\n");
 }
+
 ////////////////////////////////////////
 // COPY
 ////////////////////////////////////////
@@ -669,6 +742,8 @@ void connecting_close(const unsigned state, struct selector_key * key) {
 static void
 copy_init(const unsigned state, struct selector_key *key)
 {
+    printf("Initing the COPY\n");
+
     // Init of the copy for the client
     struct copy_st *d = &ATTACHMENT(key)->client.copy;
 
@@ -687,6 +762,8 @@ copy_init(const unsigned state, struct selector_key *key)
     d->interest = OP_READ | OP_WRITE;
     d->other_copy = &ATTACHMENT(key)->client.copy;
 
+    printf("Finished init the COPY\n");
+
     // Init request parsers here
     // TODO
 }
@@ -697,8 +774,14 @@ copy_init(const unsigned state, struct selector_key *key)
 static fd_interest
 copy_determine_interests(fd_selector s, struct copy_st *d)
 {
+    printf("Landed in determine interest\n");
     // Basic interest of no operation
     fd_interest interest = OP_NOOP;
+
+    printf("My fd_selector is %d\n", s);
+    printf("In interest, i'm %d\n", d);
+    printf("In interest, my read buffer is %d\n", d->rb);
+    printf("In interest, my write buffer is %d\n", d->wb);
 
     // If the copy_st is interested in reading and we can write in its buffer
     if ((d->interest & OP_READ) && buffer_can_write(d->rb))
@@ -717,6 +800,7 @@ copy_determine_interests(fd_selector s, struct copy_st *d)
     // Set the interests for the selector
     if (SELECTOR_SUCCESS != selector_set_interest(s, *d->fd, interest))
     {
+        printf("Could not set interest of %d for %d\n", interest, *d->fd);
         abort();
     }
     return interest;
@@ -734,6 +818,7 @@ get_copy_ptr(struct selector_key *key)
     // Checking if the selector fired is the client by comparing the fd
     if (d->fd != key->fd)
     {
+        printf("The bitch is the origin!\n");
         d = d->other_copy;
     }
 
@@ -743,8 +828,12 @@ get_copy_ptr(struct selector_key *key)
 static unsigned
 copy_read(struct selector_key *key)
 {
+    printf("Ready to READ COPY\n");
+
     // Getting the state struct
     struct copy_st *d = get_copy_ptr(key);
+
+    printf("Got the ptr READ COPY\n");
 
     // Getting the read buffer
     buffer *b = d->rb;
@@ -796,8 +885,12 @@ copy_read(struct selector_key *key)
 static unsigned
 copy_write(struct selector_key *key)
 {
+    printf("Ready to WRITE COPY\n");
+
     // Getting the state struct
     struct copy_st *d = get_copy_ptr(key);
+
+    printf("Got the ptr WRITE COPY\n");
 
     // Getting the read buffer
     buffer *b = d->wb;
@@ -806,11 +899,21 @@ copy_write(struct selector_key *key)
     size_t count; //Maximum data that can set in the buffer
     ssize_t n;
 
+    printf("Prepare to WRITE COPY\n");
+
     // Setting the buffer to read
     ptr = buffer_read_ptr(b, &count);
+
+    printf("Finished prepare to WRITE COPY\n");
+
+    printf("The fd to use in WRITE is %d in COPY\n", key->fd);
+
     // Receiving data
-    n = recv(key->fd, ptr, count, MSG_NOSIGNAL);
-    if (n > 0)
+    n = send(key->fd, ptr, count, MSG_NOSIGNAL);
+
+    printf("After SEND to WRITE COPY, the value is %d and errno %d\n", n, errno);
+
+    if (n != -1)
     {
         // Notifying the data to the buffer
         buffer_read_adv(b, n);
@@ -834,7 +937,10 @@ copy_write(struct selector_key *key)
     }
 
     // Determining the new interests for the selectors
+    printf("Determining interest for me %d COPY\n", d);
+    printf("My key is %d COPY\n", key->s);
     copy_determine_interests(key->s, d);
+    printf("Determining interest for other %d COPY\n", d->other_copy);
     copy_determine_interests(key->s, d->other_copy);
 
     // Checking if the copy_st is not interested anymore in interacting -> Close it

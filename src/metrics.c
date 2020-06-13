@@ -55,18 +55,6 @@ void add_login(uint8_t n)
     m->log_in_count += n;
 }
 
-typedef struct metric
-{
-    uint8_t transfered_bytes;
-    uint8_t historic_connections;
-    uint8_t current_connections;
-    uint8_t resolved_addresses;
-    uint8_t given_ips;
-    uint8_t ipv6_count;
-    uint8_t ipv4_count;
-    uint8_t log_in_count;
-} metric;
-
 char *get_metrics_for_output()
 {
     if (m == NULL)
