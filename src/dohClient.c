@@ -1,14 +1,17 @@
-#include "dohClient.h"
 #include "dnsPacket.h"
+#include "dohClient.h"
+#include "parsers/http_message_parser.h"
 
 #define DOH_PORT 80
-#define BUFFERSIZE 700
+#define BUFFERSIZE 1024
 #define MAX_FDQN 256
 
 #define REQ_MAX_SIZE 65536
 
 
 /*  code from stack overflow */
+
+void parse_to_crlf(char * response, int *size);
 
 static char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
                                 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
@@ -109,7 +112,6 @@ struct hostent * get_host_by_name(char * domain){
   do{
 
       ssize_t bytes = recv(sockfd, buffer, BUFFERSIZE, 0);
-      printf("%d\n", bytes);
       if(bytes < 0){
           perror("DOH recv failed");
           exit(EXIT_FAILURE);
@@ -117,6 +119,10 @@ struct hostent * get_host_by_name(char * domain){
       else
       {
           final_buffer = realloc(final_buffer, final_buffer_size + bytes);
+          if(final_buffer == NULL){
+              perror("Error in doh final buffer realloc");
+              exit(EXIT_FAILURE);
+          }
           buf_size += bytes;
           memcpy(final_buffer, buffer, bytes);
       }
@@ -125,7 +131,28 @@ struct hostent * get_host_by_name(char * domain){
   
 
 
-    
+
+parse_to_crlf(final_buffer, &final_buffer_size);
+
+struct buffer to_parse;
+
+buffer_init(&to_parse, final_buffer_size, final_buffer);
+
+
+
+int error;
+
+http_message_parser  http_parser = new_http_message_parser();
+
+http_message_state http_state = http_consume_message(&to_parse, http_parser, &error);
+
+char * body;
+
+if(http_state == HTTP_F){
+    body = get_body(http_parser);
+}
+
+
 
 
 
@@ -214,7 +241,6 @@ memcpy(request, sendline, request_length);
 
 
 
-
 return request;
 
 
@@ -225,22 +251,28 @@ return request;
 
 
 
-char * parse_domain(char * domain){
-    int current = 0;
-    int parse_current = 0;
+void parse_to_crlf(char * response, int *size){
 
-    static char parsed[MAX_FDQN];
-    while(domain[current] != 0) {
-        char letter = domain[current];
-        if(letter != '.'){
-            parsed[parse_current++] = letter;
+    int i = 0;
+    int j = 0;
+    int old_size = *size;
+    int new_size = *size;
+
+    while(i < old_size){
+
+        if(response[i] == '\r'){
+            i++;
+            new_size --;
         }
-        current++;
+        else{
+            response[j] = response[i];
+            i++;
+            j++;
+        }
     }
 
-    parsed[parse_current] = 0;
+    *size = new_size;
 
-    return parsed;
 
 }
 
