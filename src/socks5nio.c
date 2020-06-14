@@ -751,23 +751,27 @@ void connecting_close(const unsigned state, struct selector_key *key)
 static void
 copy_init(const unsigned state, struct selector_key *key)
 {
-    // Init of the copy for the client
-    struct copy_st *d = &ATTACHMENT(key)->client.copy;
+    struct socks5 *sockState = ATTACHMENT(key);
 
-    d->fd = ATTACHMENT(key)->client_fd;
-    d->rb = &ATTACHMENT(key)->read_buffer;
-    d->wb = &ATTACHMENT(key)->write_buffer;
+    // Init of the copy for the client
+    struct copy_st *d = &sockState->client.copy;
+
+    /** TODO: Both copy_st are sharing the same buffer, not sure if ok */
+
+    d->fd = sockState->client_fd;
+    d->rb = &sockState->read_buffer;
+    d->wb = &sockState->write_buffer;
     d->interest = OP_READ | OP_WRITE;
-    d->other_copy = &ATTACHMENT(key)->orig.copy;
+    d->other_copy = &sockState->orig.copy;
 
     // Init of the copy for the origin
-    d = &ATTACHMENT(key)->orig.copy;
+    d = &sockState->orig.copy;
 
-    d->fd = ATTACHMENT(key)->origin_fd;
-    d->rb = &ATTACHMENT(key)->write_buffer;
-    d->wb = &ATTACHMENT(key)->read_buffer;
+    d->fd = sockState->origin_fd;
+    d->rb = &sockState->write_buffer;
+    d->wb = &sockState->read_buffer;
     d->interest = OP_READ | OP_WRITE;
-    d->other_copy = &ATTACHMENT(key)->client.copy;
+    d->other_copy = &sockState->client.copy;
     // Init request parsers here
     // TODO
 }
@@ -970,9 +974,6 @@ static const struct state_definition client_statbl[] = {
         // .on_read_ready = connecting_read,
         .on_write_ready = connecting_write,
         .on_departure = connecting_close,
-    },
-    {
-        .state = REPLY,
     },
     {   .state = COPY,
         .on_arrival = copy_init,
