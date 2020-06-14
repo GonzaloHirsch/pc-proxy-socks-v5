@@ -16,6 +16,7 @@
 #define T_SOA 6 /* start of authority zone */
 #define T_PTR 12 /* domain name pointer */
 #define T_MX 15 //Mail server
+#define T_AAAA 28
 
 #define IN 1
 

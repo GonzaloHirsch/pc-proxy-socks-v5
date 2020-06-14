@@ -290,7 +290,7 @@ void parse_to_crlf(char * response, int *size){
 int main(){
 
 
-    char * example = "www.example.com";
+    char * example = "www.twitter.com";
 
     int size;
     size_t size2;
