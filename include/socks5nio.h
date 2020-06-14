@@ -27,6 +27,13 @@
 #define BUFFERSIZE 4096
 #define MAX_IPS 10
 
+// OSx users don't have the MSG_NOSIGNAL defined
+// We define it as 0 so that systems that don't offer this signal don't use it
+// Source: https://github.com/lpeterse/haskell-socket/issues/8
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0x0
+#endif
+
 /** Function to try to accept requests */
 void socksv5_passive_accept(struct selector_key *key);
 
@@ -243,10 +250,17 @@ typedef struct request_st
 
 /** Used by the COPY state */
 typedef struct copy_st
-{
-    /** Buffer used for IO */
-    buffer *rb;
-
+{   
+    /** File descriptor */
+    int fd;
+    /** Reading buffer */
+    buffer * rb;
+    /** Writing buffer */
+    buffer * wb;
+    /** Interest of the copy */
+    fd_interest interest;
+    /** Pointer to the structure of the opposing copy state*/
+    struct copy_st * other_copy;
 } copy_st;
 
 /** Used by the CONNECTING state */
@@ -316,6 +330,7 @@ typedef struct socks5
     union {
         connecting_st conn;
         reply_st reply;
+        copy_st copy;
     } orig;
 
     /** Address info for the origin server */

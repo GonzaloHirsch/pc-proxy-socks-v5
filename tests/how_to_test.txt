@@ -1,0 +1,10 @@
+Guide on how to test the server
+
+Test connection with netcat:
+
+3 terminals are needed for this, terminal A, terminal B and terminal C
+
+1 - Compile and run server on terminal C
+2 - Run "ncat -l -k -v 9090" in terminal B
+3 - Run "ncat --proxy-type socks5 -v --proxy 127.0.0.1:1080 ::1 9090" in terminal A
+4 - You should have a way to talk between terminals
