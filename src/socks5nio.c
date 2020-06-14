@@ -660,9 +660,7 @@ static int try_connection(int *connect_ret, connecting_st *d, socks5_origin_info
         memcpy((void *)&sin->sin_addr, s5oi->ipv4_addrs[0], (addrType == IPv4) ? IP_V4_ADDR_SIZE : IP_V6_ADDR_SIZE); // Address
         memcpy((void *)&sin->sin_port, s5oi->port, 2);                                                               // Port
         s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
-        printf("\n\nAddress length %d and family is %d when AF_INET is %d\n\n", s5oi->origin_addr_len, ((struct sockaddr *)&s5oi->origin_addr)->sa_family, AF_INET);
         *connect_ret = connect(origin_fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
-        printf("Result of connect is %d with errno %d\n", *connect_ret, errno);
         if (*connect_ret < 0)
             d->first_working_ip_index++;
     } while (*connect_ret < 0 && d->first_working_ip_index < ((addrType == IPv4) ? s5oi->ipv4_c : s5oi->ipv6_c));
@@ -690,7 +688,7 @@ void connecting_init(const unsigned state, struct selector_key *key)
     }
     else {
         printf("Connected to origin (fd = %d)\n", s->origin_fd);
-        selector_status st = selector_register(key->s, s->origin_fd, &socks5_origin_handler, OP_READ, ATTACHMENT(key));
+        selector_status st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_NOOP, ATTACHMENT(key));
         if (st == SELECTOR_SUCCESS)
             printf("Successfully registered origin fd in selector\n");
     }
@@ -738,7 +736,6 @@ static unsigned connecting_write(struct selector_key *key)
     response[response_size - 1] = s5oi->port[1];
     send(key->fd, response, response_size, 0);
     free(response);
-    send(s->origin_fd, "TestString\n", strlen("TestString\n" + 1), 0);
     return COPY;
 }
 
@@ -754,12 +751,10 @@ void connecting_close(const unsigned state, struct selector_key *key)
 static void
 copy_init(const unsigned state, struct selector_key *key)
 {
-    printf("Initing the COPY\n");
-
     // Init of the copy for the client
     struct copy_st *d = &ATTACHMENT(key)->client.copy;
 
-    d->fd = &ATTACHMENT(key)->client_fd;
+    d->fd = ATTACHMENT(key)->client_fd;
     d->rb = &ATTACHMENT(key)->read_buffer;
     d->wb = &ATTACHMENT(key)->write_buffer;
     d->interest = OP_READ | OP_WRITE;
@@ -768,14 +763,11 @@ copy_init(const unsigned state, struct selector_key *key)
     // Init of the copy for the origin
     d = &ATTACHMENT(key)->orig.copy;
 
-    d->fd = &ATTACHMENT(key)->origin_fd;
+    d->fd = ATTACHMENT(key)->origin_fd;
     d->rb = &ATTACHMENT(key)->write_buffer;
     d->wb = &ATTACHMENT(key)->read_buffer;
     d->interest = OP_READ | OP_WRITE;
     d->other_copy = &ATTACHMENT(key)->client.copy;
-
-    printf("Finished init the COPY\n");
-
     // Init request parsers here
     // TODO
 }
@@ -786,7 +778,6 @@ copy_init(const unsigned state, struct selector_key *key)
 static fd_interest
 copy_determine_interests(fd_selector s, struct copy_st *d)
 {
-    printf("Landed in determine interest\n");
     // Basic interest of no operation
     fd_interest interest = OP_NOOP;
 
@@ -805,9 +796,8 @@ copy_determine_interests(fd_selector s, struct copy_st *d)
     }
 
     // Set the interests for the selector
-    if (SELECTOR_SUCCESS != selector_set_interest(s, *d->fd, interest))
+    if (SELECTOR_SUCCESS != selector_set_interest(s, d->fd, interest))
     {
-        printf("Could not set interest of %d for %d\n", interest, *d->fd);
         abort();
     }
     return interest;
@@ -825,7 +815,6 @@ get_copy_ptr(struct selector_key *key)
     // Checking if the selector fired is the client by comparing the fd
     if (d->fd != key->fd)
     {
-        printf("The bitch is the origin!\n");
         d = d->other_copy;
     }
 
@@ -835,12 +824,8 @@ get_copy_ptr(struct selector_key *key)
 static unsigned
 copy_read(struct selector_key *key)
 {
-    printf("Ready to READ COPY\n");
-
     // Getting the state struct
     struct copy_st *d = get_copy_ptr(key);
-
-    printf("Got the ptr READ COPY\n");
 
     // Getting the read buffer
     buffer *b = d->rb;
@@ -863,14 +848,14 @@ copy_read(struct selector_key *key)
     else
     {
         // Closing the socket for reading
-        shutdown(*d->fd, SHUT_RD);
+        shutdown(d->fd, SHUT_RD);
         // Removing the interest to read from this copy
         d->interest &= ~OP_READ;
         // If the other fd is still open
-        if (*d->other_copy->fd != -1)
+        if (d->other_copy->fd != -1)
         {
             // Closing the socket for writing
-            shutdown(*d->other_copy->fd, SHUT_WR);
+            shutdown(d->other_copy->fd, SHUT_WR);
             // Remove the interest to write
             d->other_copy->interest &= ~OP_WRITE;
         }
@@ -892,12 +877,8 @@ copy_read(struct selector_key *key)
 static unsigned
 copy_write(struct selector_key *key)
 {
-    printf("Ready to WRITE COPY\n");
-
     // Getting the state struct
     struct copy_st *d = get_copy_ptr(key);
-
-    printf("Got the ptr WRITE COPY\n");
 
     // Getting the read buffer
     buffer *b = d->wb;
@@ -906,19 +887,11 @@ copy_write(struct selector_key *key)
     size_t count; //Maximum data that can set in the buffer
     ssize_t n;
 
-    printf("Prepare to WRITE COPY\n");
-
     // Setting the buffer to read
     ptr = buffer_read_ptr(b, &count);
 
-    printf("Finished prepare to WRITE COPY\n");
-
-    printf("The fd to use in WRITE is %d in COPY\n", key->fd);
-
     // Receiving data
     n = send(key->fd, ptr, count, MSG_NOSIGNAL);
-
-    printf("After SEND to WRITE COPY, the value is %d and errno %d\n", n, errno);
 
     if (n != -1)
     {
@@ -930,24 +903,21 @@ copy_write(struct selector_key *key)
     else
     {
         // Closing the socket for writing
-        shutdown(*d->fd, SHUT_WR);
+        shutdown(d->fd, SHUT_WR);
         // Removing the interest to write from this copy
         d->interest &= ~OP_WRITE;
         // If the other fd is still open
-        if (*d->other_copy->fd != -1)
+        if (d->other_copy->fd != -1)
         {
             // Closing the socket for reading
-            shutdown(*d->other_copy->fd, SHUT_RD);
+            shutdown(d->other_copy->fd, SHUT_RD);
             // Remove the interest for reading
             d->other_copy->interest &= ~OP_READ;
         }
     }
 
     // Determining the new interests for the selectors
-    printf("Determining interest for me %d COPY\n", d);
-    printf("My key is %d COPY\n", key->s);
     copy_determine_interests(key->s, d);
-    printf("Determining interest for other %d COPY\n", d->other_copy);
     copy_determine_interests(key->s, d->other_copy);
 
     // Checking if the copy_st is not interested anymore in interacting -> Close it

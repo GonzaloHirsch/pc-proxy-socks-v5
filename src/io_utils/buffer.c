@@ -20,7 +20,6 @@ buffer_init(buffer *b, const size_t n, uint8_t *data) {
     b->data = data;
     buffer_reset(b);
     b->limit = b->data + n;
-    printf("\n\nMy data is %p, my limit is %p, mi size is %d\n\n", b->data, b->limit, n);
 }
 
 
@@ -31,7 +30,6 @@ buffer_can_write(buffer *b) {
 
 inline uint8_t *
 buffer_write_ptr(buffer *b, size_t *nbyte) {
-    printf("\n\nMy write is %p, my limit is %p\n\n", b->write, b->limit);
     assert(b->write <= b->limit);
     *nbyte = b->limit - b->write;
     return b->write;

@@ -252,7 +252,7 @@ typedef struct request_st
 typedef struct copy_st
 {   
     /** File descriptor */
-    uint8_t * fd;
+    int fd;
     /** Reading buffer */
     buffer * rb;
     /** Writing buffer */
