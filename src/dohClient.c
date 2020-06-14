@@ -51,8 +51,12 @@ char *base64_encode(const unsigned char *data,
         encoded_data[j++] = encoding_table[(triple >> 0 * 6) & 0x3F];
     }
 
+/*
     for (int i = 0; i < mod_table[input_length % 3]; i++)
         encoded_data[*output_length - 1 - i] = '=';
+
+        */
+        
 
     return encoded_data;
 }
@@ -61,12 +65,12 @@ char *base64_encode(const unsigned char *data,
 /* code from stack overflow */
 
 
-struct hostent * get_host_by_name(char * domain){
+uint8_t * get_host_by_name(char * domain){
 
 
     char buffer[BUFFERSIZE + 1];
     struct sockaddr_in serv_addr;
-    struct hostent * ret;
+    uint8_t * ret;
     char * message;
     int sockfd;
 
@@ -164,7 +168,7 @@ if(http_state != HTTP_F){
 
 
 
-parse_dns_resp(http_parser.body, domain);
+ret = parse_dns_resp(http_parser.body, domain);
 
 
     return ret;
@@ -290,7 +294,7 @@ void parse_to_crlf(char * response, int *size){
 int main(){
 
 
-    char * example = "www.twitter.com";
+    char * example = "www.facebook.com";
 
     int size;
     size_t size2;
@@ -298,8 +302,10 @@ int main(){
 
 
 
-    get_host_by_name(example);
+    uint8_t * ret = get_host_by_name(example);
+
+    printf("%s\n", ret);
 
 
-    return 1;
+    return 0;
 }

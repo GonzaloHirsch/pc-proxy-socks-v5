@@ -10,3 +10,4 @@
 #include <arpa/inet.h>
 
 char * request_generate(char * domain, int * length);
+uint8_t * get_host_by_name(char * domain);

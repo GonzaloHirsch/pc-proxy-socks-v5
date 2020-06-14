@@ -31,7 +31,7 @@ uint8_t * generate_dns_req(char * host, int * final_size){
     dns->ad = 0;
     dns->cd = 0;
     dns->rcode = 0;
-    dns->q_count = htons(2); 
+    dns->q_count = htons(1); 
     dns->ans_count = 0;
     dns->auth_count = 0;
     dns->add_count = 0;
@@ -50,11 +50,13 @@ uint8_t * generate_dns_req(char * host, int * final_size){
 
     qinfo =(struct QUESTION*)&buf[sizeof(struct DNS_HEADER) + (strlen((const char*)qname) + 1)]; //fill it
  
-    qinfo->qtype = htons(255); //type of the query , A , MX , CNAME , NS etc
+    qinfo->qtype = htons(T_A); //type of the query , A , MX , CNAME , NS etc
     qinfo->qclass = htons(IN); //internet
 
 
+
     length += sizeof(struct QUESTION);
+    /*
 
     qname2 = (uint8_t *) (buf + sizeof(struct DNS_HEADER) + (strlen((const char*)qname) + 1) + sizeof(struct QUESTION));
 
@@ -70,6 +72,7 @@ uint8_t * generate_dns_req(char * host, int * final_size){
 
 
     length += sizeof(struct QUESTION);
+    */
 
     uint8_t * ret = malloc(length);
 
@@ -89,7 +92,7 @@ uint8_t * generate_dns_req(char * host, int * final_size){
  void host_dns_format(uint8_t * dns, char * host){ //we need this later to parse
 
     int lock = 0 , i;
-
+    
     char * host_name = malloc(strlen((const char *)host) + 2);
     strcpy((char *)host_name, host);
     strcat((char*)host_name,".");
@@ -113,14 +116,14 @@ uint8_t * generate_dns_req(char * host, int * final_size){
 uint8_t * parse_dns_resp(uint8_t * to_parse, char * domain){
     int stop, i, j;
     struct DNS_HEADER *dns = NULL;
-    char * reader, *reader2;
+    char * reader, *reader2, * ret;
 
     struct sockaddr_in a;
 
    
 
     dns = (struct DNS_HEADER*) to_parse;
-    reader = &to_parse[sizeof(struct DNS_HEADER) + ((strlen((const char*) domain)+ 2) + sizeof(struct QUESTION))*2 ]; //domain + 2 becuse host_dns_format adds a '.' and also a '\0' also * 2 because there are 2 queries
+    reader = &to_parse[sizeof(struct DNS_HEADER) + ((strlen((const char*) domain)+ 2) + sizeof(struct QUESTION)) ]; //domain + 2 becuse host_dns_format adds a '.' and also a '\0' also * 2 because there are 2 queries
     struct RES_RECORD answers[20];
 
     for(i=0;i<ntohs(dns->ans_count);i++)
@@ -151,17 +154,15 @@ uint8_t * parse_dns_resp(uint8_t * to_parse, char * domain){
         }
     }
     //print answers
-    printf("\nAnswer Records : %d \n" , ntohs(dns->ans_count) );
     for(i=0 ; i < ntohs(dns->ans_count) ; i++)
     {
-        printf("Name : %s ",answers[i].name);
  
         if( ntohs(answers[i].resource->type) == T_A) //IPv4 address
         {
             long *p;
             p=(long*)answers[i].rdata;
             a.sin_addr.s_addr=(*p); //working without ntohl
-            printf("has IPv4 address : %s",inet_ntoa(a.sin_addr));
+            ret = inet_ntoa(a.sin_addr);
         }   
          if( ntohs(answers[i].resource->type) == T_AAAA) //IPv4 address
         {
@@ -169,18 +170,11 @@ uint8_t * parse_dns_resp(uint8_t * to_parse, char * domain){
             long *p;
             p=(long*)answers[i].rdata;
             a.sin_addr.s_addr=(*p); //working without ntohl
-            printf("has IPv6 address : %s",inet_ntop(AF_INET6, &(a.sin_addr),dest, INET6_ADDRSTRLEN));
+            ret = inet_ntop(AF_INET6, &(a.sin_addr),dest, INET6_ADDRSTRLEN);
         }   
-         
-        if(ntohs(answers[i].resource->type)==5) 
-        {
-            //Canonical name for an alias
-            printf("has alias name : %s",answers[i].rdata);
-        }
- 
-        printf("\n");
+        
     }
-    return reader;
+    return ret;
 }
 
 
