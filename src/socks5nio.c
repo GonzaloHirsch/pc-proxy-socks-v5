@@ -192,7 +192,7 @@ hello_read_init(const unsigned state, struct selector_key *key)
 
     d->rb = &(ATTACHMENT(key)->read_buffer);
     d->wb = &(ATTACHMENT(key)->write_buffer);
-    hello_parser_init(&d->parser);
+    hello_parser_init((hello_parser) &d->parser);
 }
 
 static void
@@ -200,7 +200,7 @@ hello_read_close(const unsigned state, struct selector_key *key)
 {
     bool errored;
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
-    hello_done_parsing(&d->parser, &errored);
+    hello_done_parsing((hello_parser) &d->parser, &errored);
 }
 
 static unsigned
@@ -222,7 +222,7 @@ hello_read(struct selector_key *key)
     if (n > 0)
     {
         buffer_write_adv(d->rb, n);
-        const enum hello_state st = hello_consume(d->rb, &d->parser, &error);
+        const enum hello_state st = hello_consume(d->rb, (hello_parser) &d->parser, &error);
         if (hello_is_done(st, &error) && !error)
         {
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
@@ -438,7 +438,7 @@ request_init(const unsigned state, struct selector_key *key)
     d->rb = &(ATTACHMENT(key)->read_buffer);
 
     // Parser init
-    connection_req_parser_init(&d->parser);
+    connection_req_parser_init((connection_req_parser) &d->parser);
 }
 
 static unsigned
@@ -466,9 +466,9 @@ request_read(struct selector_key *key)
         // Notifying the data to the buffer
         buffer_write_adv(b, n);
         // Consuming the message
-        const enum connection_req_state st = connection_req_consume_message(b, &d->parser, &error);
+        const enum connection_req_state st = connection_req_consume_message(b, d->parser, &error);
         //If done parsing and no error
-        if (connection_req_done_parsing(&d->parser, &error) && !error)
+        if (connection_req_done_parsing(d->parser, &error) && !error)
         {
             ret = request_process(key, d);
         }
@@ -515,7 +515,7 @@ request_process(struct selector_key *key, struct request_st *d)
 {
     unsigned ret = ERROR;
     struct socks5 *s = ATTACHMENT(key);
-    connection_req_parser r_parser = &d->parser;
+    connection_req_parser r_parser = d->parser;
     // Request information obtained by the parser
     uint8_t cmd = r_parser->finalMessage.cmd;
     uint8_t addr_t = r_parser->socks_5_addr_parser->type;
