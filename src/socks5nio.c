@@ -418,6 +418,7 @@ userpass_process(const struct userpass_st *up_s){
     
     uint8_t line[256];
 
+    // Simple: Scan every line to see if the user and password matches.
     while (fgets(line, sizeof(line), file) && !auth_valid) {
         
         //Spliting the string to separate user from passwd, get the uid first

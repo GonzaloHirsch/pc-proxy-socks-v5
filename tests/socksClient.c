@@ -74,12 +74,12 @@ int main(int argc, char *argv[]) {
   //------------------USSERPASS_READ--------------------------
 
   uint8_t up[] = {
-      0x01, 0x01, 0x32, 0x01, 0x32
+      0x01, 0x05, 0x32,0x32,0x32,0x32,0x32, 0x01, 0x32
   };
 
   // Send the string to the server
   printf("Sending userpass\n");
-  numBytes = send(sock, up, 5, 0);
+  numBytes = send(sock, up, 9, 0);
   if (numBytes < 0){
     DieWithSystemMessage("send() failed"); 
   }

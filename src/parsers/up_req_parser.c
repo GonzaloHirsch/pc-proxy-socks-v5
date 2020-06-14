@@ -103,4 +103,19 @@ void free_up_req_parser(up_req_parser p) {
     free(p);
 }
 
+
+extern int
+up_marshall(buffer *b, const uint8_t status) {
+    size_t n;
+    uint8_t *buff = buffer_write_ptr(b, &n);
+    if(n < 2) {
+        return -1;
+    }
+    buff[0] = 0x05;
+    buff[1] = status;
+    buffer_write_adv(b, 2);
+    return 2;
+}
+
+
 up_req_state get_up_req_state(up_req_parser parser){ return parser -> state; }

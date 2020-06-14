@@ -43,8 +43,10 @@ void up_req_parser_init(up_req_parser uprp);
 enum up_req_state up_read_next_byte(up_req_parser p, const uint8_t b);
 enum up_req_state up_consume_message(buffer * b, up_req_parser p, bool *errored);
 int up_done_parsing(up_req_state st, bool * errored);
+extern int
+up_marshall(buffer *b, const uint8_t status);
+ 
 // Free all up_req_parser-Related memory
-
 void free_up_req_parser(up_req_parser p);
 
 up_req_state get_up_req_state(up_req_parser parser);
