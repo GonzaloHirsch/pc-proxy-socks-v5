@@ -198,7 +198,9 @@ hello_read_init(const unsigned state, struct selector_key *key)
 static void
 hello_read_close(const unsigned state, struct selector_key *key)
 {
-   
+   struct socks5 *sock_state = ATTACHMENT(key);
+
+   free_hello_parser(&sock_state->client.hello.parser);
 }
 
 static unsigned
@@ -275,9 +277,7 @@ hello_process(const struct hello_st *d)
 // HELLO_WRITE
 ////////////////////////////////////////
 
-/** Writes the version and the selected method 
- * This is done in the init because we already have the info.
-*/
+
 static void
 hello_write_init(const unsigned state, struct selector_key *key)
 {
@@ -354,7 +354,9 @@ userpass_read_init(const unsigned state, struct selector_key *key)
 static void
 userpass_read_close(const unsigned state, struct selector_key *key)
 {
-   
+    struct socks5 *sock_state = ATTACHMENT(key);
+
+    free_up_req_parser(&sock_state->client.userpass.parser);
 }
 
 static unsigned

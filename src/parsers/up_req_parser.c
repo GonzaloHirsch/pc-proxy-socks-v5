@@ -3,6 +3,8 @@
 void up_req_parser_init(up_req_parser uprp) {
     memset(uprp, 0, sizeof(struct up_req_parser));
     uprp->state = UP_REQ_VERSION;
+    uprp->uid = NULL;
+    uprp->pw = NULL;
 }
 
 enum up_req_state up_read_next_byte(up_req_parser p, const uint8_t b) {   
@@ -97,10 +99,10 @@ int up_done_parsing(up_req_state st, bool * errored) {
 }
 
 void free_up_req_parser(up_req_parser p) {
-    free(p->data);
-    free(p->uid);
-    free(p->pw);
-    free(p);
+    if(p->uid != NULL)
+        free(p->uid);
+    if(p->pw != NULL)
+        free(p->pw);
 }
 
 

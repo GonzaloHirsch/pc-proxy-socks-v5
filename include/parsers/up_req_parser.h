@@ -24,13 +24,12 @@ typedef enum up_req_state {
 
 struct  up_req_parser {
     // public:      //
-    void * data;
     uint8_t * uid;
     uint8_t * pw;
-    // private:     //
-    up_req_state state;
     uint8_t uidLen;
     uint8_t pwLen;
+    // private:     //
+    up_req_state state;
     uint8_t bytes_to_read;
 };
 
@@ -45,7 +44,7 @@ enum up_req_state up_consume_message(buffer * b, up_req_parser p, bool *errored)
 int up_done_parsing(up_req_state st, bool * errored);
 extern int
 up_marshall(buffer *b, const uint8_t status);
- 
+
 // Free all up_req_parser-Related memory
 void free_up_req_parser(up_req_parser p);
 
