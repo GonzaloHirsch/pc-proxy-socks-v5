@@ -677,18 +677,29 @@ void connecting_init(const unsigned state, struct selector_key *key)
     struct socks5 *s = ATTACHMENT(key);
     struct socks5_origin_info *s5oi = &s->origin_info;
     int connect_ret = -1;
+    selector_status st = SELECTOR_SUCCESS;
 
     s->origin_fd = try_connection(&connect_ret, d, s5oi, s5oi->ip_selec);
 
     if (connect_ret < 0)
     {
-        s->origin_fd = -1;
-        fprintf(stderr, "Could not connect\n");
-        determine_connect_error(errno);
+        // If the error is connection in progress, we have to register the fd to be able to respond to origin
+        if (errno == EINPROGRESS){
+            printf("I'm waiting connection\n");
+            st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
+            if (st != SELECTOR_SUCCESS){
+                printf("Error registering FD to wait for connection\n");
+                s->origin_fd = -1;
+            }
+        } else {
+            s->origin_fd = -1;
+            fprintf(stderr, "Could not connect\n");
+            determine_connect_error(errno);
+        }
     }
     else {
         printf("Connected to origin (fd = %d)\n", s->origin_fd);
-        selector_status st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_NOOP, ATTACHMENT(key));
+        st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_NOOP, ATTACHMENT(key));
         if (st == SELECTOR_SUCCESS)
             printf("Successfully registered origin fd in selector\n");
     }
@@ -802,6 +813,7 @@ copy_determine_interests(fd_selector s, struct copy_st *d)
     // Set the interests for the selector
     if (SELECTOR_SUCCESS != selector_set_interest(s, d->fd, interest))
     {
+        printf("Could not set interest of %d for %d\n", interest, d->fd);
         abort();
     }
     return interest;
@@ -1051,6 +1063,7 @@ socksv5_done(struct selector_key *key)
         {
             if (SELECTOR_SUCCESS != selector_unregister_fd(key->s, fds[i]))
             {
+                printf("Socks is done for %d\n", fds[i]);
                 abort();
             }
             close(fds[i]);

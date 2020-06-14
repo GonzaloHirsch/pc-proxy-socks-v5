@@ -12,6 +12,7 @@ stm_init(struct state_machine *stm) {
     // verificamos que los estados son correlativos, y que están bien asignados.
     for(unsigned i = 0 ; i <= stm->max_state; i++) {
         if(i != stm->states[i].state) {
+            printf("Init 1st abort");
             abort();
         }
     }
@@ -19,6 +20,7 @@ stm_init(struct state_machine *stm) {
     if(stm->initial < stm->max_state) {
         stm->current = NULL;
     } else {
+        printf("Init 2nd abort");
         abort();
     }
 }
@@ -56,6 +58,7 @@ unsigned
 stm_handler_read(struct state_machine *stm, struct selector_key *key) {
     handle_first(stm, key);
     if(stm->current->on_read_ready == 0) {
+        printf("Read hander");
         abort();
     }
     const unsigned int ret = stm->current->on_read_ready(key);
@@ -66,10 +69,14 @@ stm_handler_read(struct state_machine *stm, struct selector_key *key) {
 
 unsigned
 stm_handler_write(struct state_machine *stm, struct selector_key *key) {
+    printf("In write handler");
     handle_first(stm, key);
+    printf("Before ifd");
     if(stm->current->on_write_ready == 0) {
+        printf("Write handler");
         abort();
     }
+    printf("After ifd");
     const unsigned int ret = stm->current->on_write_ready(key);
     jump(stm, ret, key);
 
@@ -80,6 +87,7 @@ unsigned
 stm_handler_block(struct state_machine *stm, struct selector_key *key) {
     handle_first(stm, key);
     if(stm->current->on_block_ready == 0) {
+        printf("Block handler");
         abort();
     }
     const unsigned int ret = stm->current->on_block_ready(key);
