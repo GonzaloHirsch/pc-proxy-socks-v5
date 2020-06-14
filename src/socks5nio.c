@@ -468,9 +468,8 @@ request_read(struct selector_key *key)
         // Consuming the message
         const enum connection_req_state st = connection_req_consume_message(b, &d->parser, &error);
         //If done parsing and no error
-        if (connection_req_done_parsing(&d->parser, &error) && !error)
-        {
-            ret = request_process(key, d);
+        if (connection_req_done_parsing(&d->parser, &error) && !error){
+           ret = request_process(key, d);
         }
 
         if (error)
