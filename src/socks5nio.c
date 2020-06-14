@@ -939,10 +939,10 @@ static const struct state_definition client_statbl[] = {
         .on_departure = hello_read_close,
         .on_read_ready = hello_read,
     },
-    {.state = HELLO_WRITE,
-     .on_arrival = hello_write_init,
-     .on_departure = hello_write_close,
-     .on_write_ready = hello_write},
+    {   .state = HELLO_WRITE,
+        .on_arrival = hello_write_init,
+        .on_departure = hello_write_close,
+        .on_write_ready = hello_write},
     {
         .state = USERPASS_READ,
         .on_arrival = userpass_read_init,
@@ -974,10 +974,10 @@ static const struct state_definition client_statbl[] = {
     {
         .state = REPLY,
     },
-    {.state = COPY,
-     .on_arrival = copy_init,
-     .on_read_ready = copy_read,
-     .on_write_ready = copy_write},
+    {   .state = COPY,
+        .on_arrival = copy_init,
+        .on_read_ready = copy_read,
+        .on_write_ready = copy_write},
     {
         .state = DONE,
         // For now, no need to define any handlers, all in sockv5_done

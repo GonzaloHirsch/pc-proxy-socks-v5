@@ -63,7 +63,7 @@ char *get_metrics_for_output()
     }
 
     // Estimate on the size of the response
-    char result[320];
+    char * result = malloc(320);
 
     // Format to be used
     char *fmt = "transfered_bytes:%d, historic_connections:%d, current_connections:%d, resolved_addresses:%d, given_ips:%d, ipv6_count:%d, ipv4_count:%d, log_in_count:%d";
