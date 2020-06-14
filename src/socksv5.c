@@ -26,7 +26,7 @@ int main()
     printf("Starting server.\n");
 
     int opt = TRUE;
-    int master_socket;
+    int master_socket, management_socket;
 
     // Selector for concurrent connexions
     fd_selector selector = NULL;
@@ -36,6 +36,12 @@ int main()
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
+
+    // Address for sctp socket binding
+    struct sockaddr_in management_address;
+    management_address.sin_family = AF_INET;
+    management_address.sin_addr.s_addr = INADDR_ANY;
+    management_address.sin_port = htons(SCTP_PORT);
 
     // ----------------- INITIALIZE THE MAIN SOCKET -----------------
 
@@ -73,7 +79,37 @@ int main()
 
     // ----------------- INITIALIZING THE SCTP SOCKET -----------------
 
-    // TODO: CREATE SCTP SOCKET HERE!
+    printf("Initializing management socket\n");
+
+    // Creating the server socket to listen
+    management_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (management_socket <= 0)
+    {
+        printf("Management socket creation failed");
+        //log(FATAL, "socket failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Setting the master socket to allow multiple connections, not required, just good habit
+    if (setsockopt(management_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0)
+    {
+        perror("ERROR: Failure setting setting management socket\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Binding the socket to localhost
+    if (bind(management_socket, (struct sockaddr *)&management_address, sizeof(management_address)) < 0)
+    {
+        perror("ERROR: Failure binding management socket\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Checking if the socket is able to listen
+    if (listen(management_socket, MAX_PENDING_CONNECTIONS) < 0)
+    {
+        perror("ERROR: Failure listening management socket\n");
+        exit(EXIT_FAILURE);
+    }
 
     // ----------------- CREATING SIGNAL HANDLERS -----------------
 
@@ -115,7 +151,13 @@ int main()
     //TODO: define on close
     masterSocketHandler->handle_close = NULL;
 
-    // TODO: Create socket handler for the SCTP socket
+    // Create socket handler for the master socket
+    fd_handler *managementSocketHandler = malloc(sizeof(fd_handler));
+    managementSocketHandler->handle_read = sctp_passive_accept;
+    managementSocketHandler->handle_write = NULL;
+    managementSocketHandler->handle_block = NULL;
+    //TODO: define on close
+    managementSocketHandler->handle_close = NULL;
 
     // Register the master socket to the managed fds
     selector_status ss_master = SELECTOR_SUCCESS;

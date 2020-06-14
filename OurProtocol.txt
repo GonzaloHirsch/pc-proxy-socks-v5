@@ -186,7 +186,7 @@ Para poder editar la configuración de alguna métrica se utiliza la siguiente r
 
 Campos:
             TYPE -> Tipo de uso, X’02’ (CONFIGURACION)
-            CMD -> Comando a realizar, X’01’ (EDITAR)
+            CMD -> Comando a realizar, X’02’ (EDITAR)
             CONF -> Numero de configuración a editar
                 - LISTAR LAS CONFIGS QUE PERMITIMOS -> TODO
             CLEN -> Longitud de la nueva configuracion
@@ -202,7 +202,7 @@ Y la respuesta del servidor sigue el siguiente formato:
 
 Campos:
             TYPE -> Tipo de uso, X’02’ (CONFIGURACION)
-            CMD -> Comando a realizar, X’01’ (EDITAR)
+            CMD -> Comando a realizar, X’02’ (EDITAR)
             CONF -> Numero de configuración a editar
                 - LISTAR LAS CONFIGS QUE PERMITIMOS -> TODO
             STATUS -> Estado de la creacion:
