@@ -113,7 +113,7 @@ up_marshall(buffer *b, const uint8_t status) {
     if(n < 2) {
         return -1;
     }
-    buff[0] = 0x05;
+    buff[0] = 0x01;
     buff[1] = status;
     buffer_write_adv(b, 2);
     return 2;

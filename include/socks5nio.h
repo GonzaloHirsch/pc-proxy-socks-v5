@@ -332,7 +332,10 @@ typedef struct socks5
     struct socks5 *next;
 
     /** Authentication method */
-    uint8_t auth;    
+    uint8_t auth;
+
+    /** Credentials */
+    uint8_t * username;    
 
     /** Information about the origin server */
     struct socks5_origin_info origin_info;

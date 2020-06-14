@@ -360,14 +360,14 @@ userpass_read_close(const unsigned state, struct selector_key *key)
 }
 
 static unsigned
-userpass_process(const struct userpass_st *up_s);
+userpass_process(struct userpass_st *up_s, bool * auth_valid);
 
 static unsigned
 userpass_read(struct selector_key *key)
 {
     struct userpass_st *up_s = &ATTACHMENT(key)->client.userpass;
     unsigned ret = USERPASS_READ;
-    bool error = false;
+    bool error = false, auth_valid = false;
     uint8_t *ptr;
     size_t count;
     ssize_t n;
@@ -377,13 +377,18 @@ userpass_read(struct selector_key *key)
     if (n > 0)
     {
         buffer_write_adv(up_s->rb, n);
+        // Parse the inofmration
         const enum up_req_state st = up_consume_message(up_s->rb, &up_s->parser, &error);
         if (up_done_parsing(st, &error) && !error)
-        {
+        {   
+            // Set the fd to write for the userpass write state
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
             {
                 // Process the user password info.
-                ret = userpass_process(up_s);
+                ret = userpass_process(up_s, &auth_valid);
+                // Save the credential if auth is valid
+                if(auth_valid)
+                    ATTACHMENT(key)->username = up_s->user;
             }
             else
             {
@@ -401,9 +406,8 @@ userpass_read(struct selector_key *key)
 }
 
 static unsigned
-userpass_process(const struct userpass_st *up_s){
+userpass_process(struct userpass_st *up_s, bool * auth_valid){
     unsigned ret = USERPASS_WRITE;
-    bool auth_valid = false;
     uint8_t * uid = up_s->parser.uid, * uid_stored;
     uint8_t * pw = up_s->parser.pw, * pw_stored;
     uint8_t uid_l = up_s->parser.uidLen;
@@ -418,7 +422,7 @@ userpass_process(const struct userpass_st *up_s){
     uint8_t line[256];
 
     // Simple: Scan every line to see if the user and password matches.
-    while (fgets(line, sizeof(line), file) && !auth_valid) {
+    while (fgets(line, sizeof(line), file) && !(*auth_valid)) {
         
         //Spliting the string to separate user from passwd, get the uid first
         uid_stored = strtok(line, " ");
@@ -428,14 +432,17 @@ userpass_process(const struct userpass_st *up_s){
             pw_stored = strtok(NULL, " ");
             //If the password matches
             if(!strncmp(pw, pw_stored, pw_l)){
-                auth_valid = true;
+                *auth_valid = true;
+                up_s->user = malloc(uid_l);
+                memcpy(up_s, uid, uid_l);
+                
             }
         }   
     }
     fclose(file);
 
     // Serialize the auth result in the write buffer for the response.
-    if(-1 == up_marshall(up_s->wb, auth_valid ? AUTH_SUCCESS : AUTH_FAILURE)){
+    if(-1 == up_marshall(up_s->wb, *auth_valid ? AUTH_SUCCESS : AUTH_FAILURE)){
         ret = ERROR;
     }
 
