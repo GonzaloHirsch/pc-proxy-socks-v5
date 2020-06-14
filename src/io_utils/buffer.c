@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <assert.h>
 
-#include "buffer.h"
+#include "io_utils/buffer.h"
 
 inline void
 buffer_reset(buffer *b) {
