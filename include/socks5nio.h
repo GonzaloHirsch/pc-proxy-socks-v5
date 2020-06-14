@@ -26,6 +26,7 @@
 /** TODO: define appropiate size */
 #define BUFFERSIZE 4096
 #define MAX_IPS 10
+#define USER_PASS_FILE "./serverdata/user_pass.txt"
 
 // OSx users don't have the MSG_NOSIGNAL defined
 // We define it as 0 so that systems that don't offer this signal don't use it
@@ -158,6 +159,12 @@ typedef enum AuthOType
     NO_AUTH = 0x00,
     USER_PASSWORD = 0x02
 } AuthType;
+
+typedef enum AuthStatus
+{
+    AUTH_SUCCESS = 0x00,
+    AUTH_FAILURE = 0xFF,
+} AuthStatus;
 
 typedef enum AddrType
 {
@@ -325,7 +332,10 @@ typedef struct socks5
     struct socks5 *next;
 
     /** Authentication method */
-    uint8_t auth;    
+    uint8_t auth;
+
+    /** Credentials */
+    uint8_t * username;    
 
     /** Information about the origin server */
     struct socks5_origin_info origin_info;
