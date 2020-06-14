@@ -2,6 +2,7 @@
 
 void hello_parser_init(hello_parser hp) {
     memset(hp, 0, sizeof(struct hello_parser));
+    hp->auth=NULL;
 }
 
 enum hello_state hello_read_next_byte(hello_parser p, const uint8_t b) {
@@ -79,8 +80,9 @@ const uint8_t * get_auth_types(hello_parser p) {
 
 // Free all hello_parser-Related memory
 void free_hello_parser(hello_parser p) {
-    free(p->auth);
-    // free(p);
+    if(p->auth != NULL)
+        free(p->auth);
+    
 }
 
 extern int
