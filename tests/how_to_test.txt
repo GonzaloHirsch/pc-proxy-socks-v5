@@ -1,0 +1,24 @@
+Guide on how to test the server
+
+Test connection with netcat:
+
+3 terminals are needed for this, terminal A, terminal B and terminal C
+
+1 - Compile and run server on terminal C
+2 - Run "ncat -l -k -v 9090" in terminal B
+3 - Run "ncat --proxy-type socks5 -v --proxy 127.0.0.1:1080 ::1 9090" in terminal A
+4 - You should have a way to talk between terminals
+
+Test file download - Medium file
+
+Download: http://old-releases.ubuntu.com/releases/18.04.3/ubuntu-18.04.3-desktop-amd64.iso
+
+3 terminals are needed for this, terminal A, terminal B and terminal C
+
+1 - Compile and run server on terminal C
+2 - Run "curl -o normal.iso http://old-releases.ubuntu.com/releases/18.04.3/ubuntu-18.04.3-desktop-amd64.iso" in terminal B
+3 - Calculate checksum of file with "md5sum debian-10.4.0-amd64-netinst.iso > normal.txt" in terminal C
+4 - (OPTIONAL) If the server does not have name resolution, you have to resolve the address first with "dig +short cdimage.debian.org"
+5 - Run "curl -o proxy.iso -x socks5://localhost:1080 http://91.189.88.153:80/releases/18.04.3/ubuntu-18.04.3-desktop-amd64.iso" in terminal B
+6 - Calculate checksum of file with "md5sum debian-10.4.0-amd64-netinst.iso > proxy.txt" in terminal C
+7 - Check diff

@@ -27,6 +27,13 @@
 #define BUFFERSIZE 4096
 #define MAX_IPS 10
 
+// OSx users don't have the MSG_NOSIGNAL defined
+// We define it as 0 so that systems that don't offer this signal don't use it
+// Source: https://github.com/lpeterse/haskell-socket/issues/8
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0x0
+#endif
+
 /** Function to try to accept requests */
 void socksv5_passive_accept(struct selector_key *key);
 
@@ -128,20 +135,6 @@ enum socks_v5state
     CONNECTING,
 
     /**
-     * State when sending/receiving the request to/from the destination server
-     * 
-     * Interests:
-     *  - OP_READ -> Reading over the server response
-     *  - OP_WRITE -> Writing to server the request
-     * 
-     * Transitions:
-     *  - REPLY -> While the request is being sent and the response is still being copied
-     *  - COPY -> When the server response is finished
-     *  - ERROR -> In case of an error
-     * */
-    REPLY,
-
-    /**
      * State when copying the response to the client fd
      * 
      * Interests:
@@ -185,6 +178,18 @@ typedef enum AddressSize {
     PORT_SIZE = 2,
 } AddressSize;
 
+typedef enum ConnectionResponse {
+    CONN_RESP_REQ_GRANTED = 0x00,
+    CONN_RESP_GENERAL_FAILURE,
+    CONN_RESP_NOT_ALLOWED_BY_RULESET,
+    CONN_RESP_NET_UNREACHABLE,
+    CONN_RESP_HOST_UNREACHABLE,
+    CONN_RESP_REFUSED_BY_DEST_HOST,
+    CONN_RESP_TTL_EXPIRED,
+    CONN_RESP_CMD_NOT_SUPPORTED,
+    CONN_RESP_ADDR_TYPE_NOT_SUPPORTED
+}ConnectionResponse;
+
 /** Used by the HELLO_READ and HELLO_WRITE states */
 typedef struct hello_st
 {
@@ -215,7 +220,7 @@ typedef struct resolve_st
     /** Buffers used for IO */
     buffer *rb, *wb;
     /** Pointer to the resolve parser */
-    socks_5_addr_parser parser;
+    struct socks_5_addr_parser parser;
     /** Resolved ip address */
     char *resolvedAddress;
 } resolve_st;
@@ -226,15 +231,22 @@ typedef struct request_st
     /** Buffer used for IO */
     buffer *rb;
     /** Pointer to request parser */
-    connection_req_parser parser;
+    struct connection_req_parser parser;
 } request_st;
 
 /** Used by the COPY state */
 typedef struct copy_st
-{
-    /** Buffer used for IO */
-    buffer *rb;
-
+{   
+    /** File descriptor */
+    int fd;
+    /** Reading buffer */
+    buffer * rb;
+    /** Writing buffer */
+    buffer * wb;
+    /** Interest of the copy */
+    fd_interest interest;
+    /** Pointer to the structure of the opposing copy state*/
+    struct copy_st * other_copy;
 } copy_st;
 
 /** Used by the CONNECTING state */
@@ -242,17 +254,9 @@ typedef struct connecting_st
 {
     /** Buffer used for IO */
     buffer *rb;
+    unsigned int first_working_ip_index;
 
 } connecting_st;
-
-/** Used by REPLY the state */
-typedef struct reply_st
-{
-    /** Buffer used for IO */
-    buffer *rb;
-
-} reply_st;
-
 
 /** Struct for origin server information */
 typedef struct socks5_origin_info
@@ -302,7 +306,7 @@ typedef struct socks5
     /** States for the origin fd */
     union {
         connecting_st conn;
-        reply_st reply;
+        copy_st copy;
     } orig;
 
     /** Address info for the origin server */

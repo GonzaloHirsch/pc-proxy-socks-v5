@@ -1,3 +1,5 @@
+# Makefile
+
 GCC=gcc
 GCCFLAGS=-Wall -g -fsanitize=address
 # LDFLAGS=-lrt -pthread
@@ -10,5 +12,7 @@ INCLUDE=include
 all:
 	gcc -g -pthread $(SOURCES) $(SOURCES2) -I$(INCLUDE) -o server
 
+client:
+	gcc -g tests/socksClient.c tests/Utility.c -Iinclude -o socksClient
 clean:
 	rm -rf application slaveProcess view
