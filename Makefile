@@ -1,3 +1,5 @@
+# Makefile
+
 GCC=gcc
 GCCFLAGS=-Wall -g -fsanitize=address
 # LDFLAGS=-lrt -pthread
