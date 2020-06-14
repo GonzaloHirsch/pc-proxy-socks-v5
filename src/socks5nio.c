@@ -424,7 +424,7 @@ request_init(const unsigned state, struct selector_key *key)
     d->rb = &(ATTACHMENT(key)->read_buffer);
 
     // Parser init
-    connection_req_parser_init(d->parser);
+    connection_req_parser_init(&d->parser);
 
 }
 
@@ -453,9 +453,9 @@ request_read(struct selector_key *key)
         // Notifying the data to the buffer
         buffer_write_adv(b, n);
         // Consuming the message
-        const enum connection_req_state st = connection_req_consume_message(b, d->parser, &error);
+        const enum connection_req_state st = connection_req_consume_message(b, &d->parser, &error);
         //If done parsing and no error
-        if (connection_req_done_parsing(d->parser, &error) && !error){
+        if (connection_req_done_parsing(&d->parser, &error) && !error){
            ret = request_process(key, d);
         }
 
@@ -500,7 +500,7 @@ request_process(struct selector_key *key, struct request_st *d)
 {
     unsigned ret = ERROR; 
     struct socks5 *s = ATTACHMENT(key);
-    connection_req_parser r_parser = d->parser;
+    connection_req_parser r_parser = &d->parser;
     // Request information obtained by the parser
     uint8_t cmd = r_parser->finalMessage.cmd;
     uint8_t addr_t = r_parser->socks_5_addr_parser->type;

@@ -227,7 +227,7 @@ typedef struct resolve_st
     /** Buffers used for IO */
     buffer *rb, *wb;
     /** Pointer to the resolve parser */
-    socks_5_addr_parser parser;
+    struct socks_5_addr_parser parser;
     /** Resolved ip address */
     char *resolvedAddress;
 } resolve_st;
@@ -238,7 +238,7 @@ typedef struct request_st
     /** Buffer used for IO */
     buffer *rb;
     /** Pointer to request parser */
-    connection_req_parser parser;
+    struct connection_req_parser parser;
 } request_st;
 
 /** Used by the COPY state */
