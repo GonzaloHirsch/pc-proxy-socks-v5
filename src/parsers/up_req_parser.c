@@ -19,8 +19,7 @@ enum up_req_state up_read_next_byte(up_req_parser p, const uint8_t b) {
             else { // (b <= 255)
                 p->state = UP_REQ_ID;
                 p->uidLen = b;
-                // TODO RFC doesn't specify null-terminator. Add one either way
-                p->uid = malloc(p->uidLen + 1);
+                p->uid = malloc(p->uidLen);
                 p->bytes_to_read = b;
             }
             break;
@@ -39,7 +38,7 @@ enum up_req_state up_read_next_byte(up_req_parser p, const uint8_t b) {
             else { // (b <= 255)
                 p->state = UP_REQ_PW;
                 p->pwLen = b;
-                p->pw = malloc(p->pwLen + 1);
+                p->pw = malloc(p->pwLen);
                 p->bytes_to_read = b;
             }
             break;
@@ -47,7 +46,6 @@ enum up_req_state up_read_next_byte(up_req_parser p, const uint8_t b) {
             p->pw[p->pwLen - p->bytes_to_read] = b;
             p->bytes_to_read--;
             if (p->bytes_to_read <= 0) {
-                p->pw[p->pwLen+1] = '\0';
                 p->state = UP_REQ_DONE;            
             }
             break;
@@ -65,12 +63,14 @@ enum up_req_state up_read_next_byte(up_req_parser p, const uint8_t b) {
         default:
             break;
     }
+
+    return p->state;
 }
 
-enum up_req_state up_consume_message(buffer * b, up_req_parser p, int *errored) {
+enum up_req_state up_consume_message(buffer * b, up_req_parser p, bool *errored) {
     enum up_req_state st = p->state;
 
-    while (buffer_can_read(b) && !up_done_parsing(p, errored)) {
+    while (buffer_can_read(b) && !up_done_parsing(p->state, errored)) {
         const uint8_t c = buffer_read(b);
         st = up_read_next_byte(p, c);
     }
@@ -90,24 +90,10 @@ const char * upErrorString(const up_req_parser p) {
         }
 }
 
-int up_done_parsing(up_req_parser p, int * errored) {
-    switch(p->state) {
-        case UP_REQ_DONE:
-            *errored = 0; 
-            return 1;
-        case UP_ERROR_INV_VERSION:
-            *errored = UP_ERROR_INV_VERSION;
-        case UP_ERROR_INV_IDLEN:
-            *errored = UP_ERROR_INV_IDLEN;
-        case UP_ERROR_INV_PWLEN:
-            *errored = UP_ERROR_INV_PWLEN;    
-        case UP_ERROR_INV_AUTH:
-            *errored = UP_ERROR_INV_AUTH;
-            return 1;
-        default:
-            *errored = 0;
-            return 0;
-    }
+int up_done_parsing(up_req_state st, bool * errored) {
+    if (st > UP_REQ_DONE )
+        *errored = true;
+    return st >= UP_REQ_DONE;
 }
 
 void free_up_req_parser(up_req_parser p) {

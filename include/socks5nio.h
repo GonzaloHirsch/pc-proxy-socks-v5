@@ -26,6 +26,7 @@
 /** TODO: define appropiate size */
 #define BUFFERSIZE 4096
 #define MAX_IPS 10
+#define USER_PASS_FILE "./serverdata/user_pass.txt"
 
 // OSx users don't have the MSG_NOSIGNAL defined
 // We define it as 0 so that systems that don't offer this signal don't use it

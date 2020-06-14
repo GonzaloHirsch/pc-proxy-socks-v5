@@ -32,6 +32,9 @@ struct hello_parser {
 
 /** Constant for no authentication required for the user */
 static const uint8_t SOCKS_HELLO_NOAUTHENTICATION_REQUIRED = 0x00;
+
+/** Constant for user password auth */
+static const uint8_t SOCKS_HELLO_USERPASS = 0x02;
 /*
  * If the selected METHOD is X'FF', none of the methods listed by the
    client are acceptable, and the client MUST close the connection.

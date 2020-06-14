@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
   //------------------------HELLO READ------------------------------
 
   uint8_t data[] = {
-        0x05, 0x02, 0x00, 0x03,
+        0x05, 0x02, 0x00, 0x02,
     };
 
   // Send the string to the server
@@ -70,6 +70,37 @@ int main(int argc, char *argv[]) {
   buffer[2] = '\0';    // Terminate the string!
   printf("Version %d\n", buffer[0]);
   printf("Method %d\n", buffer[1]);
+
+  //------------------USSERPASS_READ--------------------------
+
+  uint8_t up[] = {
+      0x01, 0x01, 0x32, 0x01, 0x32
+  };
+
+  // Send the string to the server
+  printf("Sending userpass\n");
+  numBytes = send(sock, up, 5, 0);
+  if (numBytes < 0){
+    DieWithSystemMessage("send() failed"); 
+  }
+
+  //---------------USERPASS_WRITE-----------------
+
+  uint8_t resp[3]; // I/O buffer
+  // Receive up to the buffer size (minus 1 to leave space for
+  // a null terminator) bytes from the sender
+  numBytes = recv(sock, resp, 2, 0);
+  if (numBytes < 0)
+    DieWithSystemMessage("recv() failed");
+  else if (numBytes == 0)
+    DieWithUserMessage("recv()", "I was terminated by the server");
+
+
+  resp[2] = '\0';    // Terminate the string!
+  printf("Version %d\n", resp[0]);
+  printf("Method %d\n", resp[1]);
+
+
 
   //---------------------REQUEST SEND------------------
 

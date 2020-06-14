@@ -260,11 +260,8 @@ hello_process(const struct hello_st *d)
     */
     for (int i = 0; i < methods_c; i++)
     {
-
-        if (methods[i] == SOCKS_HELLO_NOAUTHENTICATION_REQUIRED)
-        {
-            m = SOCKS_HELLO_NOAUTHENTICATION_REQUIRED;
-        }
+        if (methods[i] == SOCKS_HELLO_USERPASS)
+            m = SOCKS_HELLO_USERPASS;
     }
 
     // Save the version and the selected method in the write buffer of hello_st
@@ -308,7 +305,7 @@ hello_write(struct selector_key *key)
 
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
     ssize_t n;
-    unsigned ret = REQUEST_READ;
+    unsigned ret = USERPASS_READ;
     size_t nr;
     uint8_t *buffer_read = buffer_read_ptr(d->wb, &nr);
 
@@ -359,7 +356,8 @@ userpass_read_init(const unsigned state, struct selector_key *key)
 static void
 userpass_read_close(const unsigned state, struct selector_key *key)
 {
-    
+    printf("Im forever stuck in up_close...\n");
+    while(1){}   
 }
 
 static unsigned
@@ -380,7 +378,7 @@ userpass_read(struct selector_key *key)
     if (n > 0)
     {
         buffer_write_adv(up_s->rb, n);
-        const enum hello_state st = up_consume_message(up_s->rb, &up_s->parser, &error);
+        const enum up_req_state st = up_consume_message(up_s->rb, &up_s->parser, &error);
         if (up_done_parsing(st, &error) && !error)
         {
             if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
@@ -405,30 +403,39 @@ userpass_read(struct selector_key *key)
 
 static unsigned
 userpass_process(const struct userpass_st *up_s){
-    unsigned ret = HELLO_WRITE;
-    uint8_t *methods = d->parser.auth;
-    uint8_t methods_c = d->parser.nauth;
-    uint8_t m = SOCKS_HELLO_NO_ACCEPTABLE_METHODS;
+    unsigned ret = USERPASS_WRITE;
+    bool auth_valid = false;
+    uint8_t * uid = up_s->parser.uid, * uid_stored;
+    uint8_t * pw = up_s->parser.pw, * pw_stored;
+    uint8_t uid_l = up_s->parser.uidLen;
+    uint8_t pw_l = up_s->parser.pwLen;
 
-    /** TODO: Change to accept multiple methods 
-     * For now only accepting NO_AUTH
-    */
-    for (int i = 0; i < methods_c; i++)
-    {
 
-        if (methods[i] == SOCKS_HELLO_NOAUTHENTICATION_REQUIRED)
-        {
-            m = SOCKS_HELLO_NOAUTHENTICATION_REQUIRED;
-        }
+    FILE* file = fopen(USER_PASS_FILE, "r");
+    if(file == NULL){
+        abort();
     }
+    
+    uint8_t line[256];
 
-    // Save the version and the selected method in the write buffer of hello_st
-    if (-1 == hello_marshall(d->wb, m))
-    {
-        ret = ERROR;
+    while (fgets(line, sizeof(line), file) && !auth_valid) {
+        
+        //Spliting the string to separate user from passwd, get the uid first
+        uid_stored = strtok(line, " ");
+
+        // If the user matches
+        if(!strncmp(uid, uid_stored, uid_l)){
+            pw_stored = strtok(NULL, " ");
+            //If the password matches
+            if(!strncmp(pw, pw_stored, pw_l)){
+                auth_valid = true;
+            }
+        }   
     }
+    fclose(file);
 
-    return ret;
+    return auth_valid ? ret : ERROR;   
+    
 }
 
 ////////////////////////////////////////
@@ -498,7 +505,7 @@ request_close(const unsigned state, struct selector_key *key)
     }
     printf("    port: %d%d\n", s->origin_info.port[0], s->origin_info.port[1]);
 
-    printf("Im forever stuck in request_close...\n");
+
 }
 
 static void
@@ -1023,7 +1030,7 @@ static const struct state_definition client_statbl[] = {
         .state = USERPASS_READ,
         .on_arrival = userpass_read_init,
         .on_departure = userpass_read_close,
-        .on_write_ready = userpass_read,
+        .on_read_ready = userpass_read,
     },
     {
         .state = USERPASS_WRITE,
