@@ -28,21 +28,20 @@ static char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
 static int mod_table[] = {0, 2, 1};
 
 
-char *base64_encode(char *data,
+char *base64_encode(const unsigned char *data,
                     size_t input_length,
                     size_t *output_length) {
 
     *output_length = 4 * ((input_length + 2) / 3);
-
 
     char *encoded_data = malloc(*output_length);
     if (encoded_data == NULL) return NULL;
 
     for (int i = 0, j = 0; i < input_length;) {
 
-        uint32_t octet_a = i < input_length ? (char)data[i++] : 0;
-        uint32_t octet_b = i < input_length ? (char)data[i++] : 0;
-        uint32_t octet_c = i < input_length ? (char)data[i++] : 0;
+        uint32_t octet_a = i < input_length ? (unsigned char)data[i++] : 0;
+        uint32_t octet_b = i < input_length ? (unsigned char)data[i++] : 0;
+        uint32_t octet_c = i < input_length ? (unsigned char)data[i++] : 0;
 
         uint32_t triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
 
@@ -181,10 +180,10 @@ int request_length = 0;
 int dns_length;
 size_t dns_encoded_length;
 
-char * dns_request = generate_dns_req(domain, &dns_length);    //gets the dns request wirh the host name 
+uint8_t * dns_request = generate_dns_req(domain, &dns_length);    //gets the dns request wirh the host name 
                                                                 //returns the request and the size of the request
 
-char * encoded_dns_request = base64_encode(dns_request, dns_length,&dns_encoded_length);
+char * encoded_dns_request = base64_encode((char *)dns_request, dns_length,&dns_encoded_length);
 
 
 char sendline[BUFFERSIZE];
@@ -291,7 +290,7 @@ void parse_to_crlf(char * response, int *size){
 int main(){
 
 
-    char * example = "www.facebook.com";
+    char * example = "www.example.com";
 
     int size;
     size_t size2;

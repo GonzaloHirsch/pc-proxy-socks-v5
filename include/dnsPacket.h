@@ -17,6 +17,8 @@
 #define T_PTR 12 /* domain name pointer */
 #define T_MX 15 //Mail server
 
+#define IN 1
+
 //Constant sized fields of query structure
 struct QUESTION
 {
@@ -76,6 +78,6 @@ struct DNS_HEADER
 
 
 
-char * generate_dns_req(char * host, int * final_size);
+uint8_t * generate_dns_req(char * host, int * final_size);
 
-char * parse_dns_resp(char * to_parse, char * domain);
+uint8_t * parse_dns_resp(uint8_t * to_parse, char * domain);

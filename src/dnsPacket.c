@@ -1,11 +1,11 @@
 
 #include "dnsPacket.h"
 
-void host_dns_format(char * dns, char * host);
-char * ReadName(unsigned char* reader,char * buffer,int* count);
+void host_dns_format(uint8_t * dns, char * host);
+uint8_t * ReadName(unsigned char* reader,uint8_t * buffer,int* count);
 
 
-char * generate_dns_req(char * host, int * final_size){
+uint8_t * generate_dns_req(char * host, int * final_size){
 
     int length = 0;
 
@@ -44,13 +44,13 @@ char * generate_dns_req(char * host, int * final_size){
 
     host_dns_format(qname , host);
 
-    length += strlen(qname) + 1; //size of the host plus the '.' translated
+    length += strlen((const char *)qname) + 1; //size of the host plus the '.' translated
 
 
     qinfo =(struct QUESTION*)&buf[sizeof(struct DNS_HEADER) + (strlen((const char*)qname) + 1)]; //fill it
  
     qinfo->qtype = htons(T_A); //type of the query , A , MX , CNAME , NS etc
-    qinfo->qclass = htons(1); //internet 
+    qinfo->qclass = htons(IN); //internet 
     
 
     length += sizeof(struct QUESTION);
@@ -70,12 +70,12 @@ char * generate_dns_req(char * host, int * final_size){
 
 //if it is www.google.com it converts to 3www6google3com
 
- void host_dns_format(char * dns, char * host){ //we need this later to parse
+ void host_dns_format(uint8_t * dns, char * host){ //we need this later to parse
 
     int lock = 0 , i;
 
-    char * host_name = malloc((const char *)strlen(host) + 2);
-    strcpy((const char *)host_name, host);
+    char * host_name = malloc(strlen((const char *)host) + 2);
+    strcpy((char *)host_name, host);
     strcat((char*)host_name,".");
      
     for(i = 0 ; i < strlen((char *)host_name) ; i++) 
@@ -94,7 +94,7 @@ char * generate_dns_req(char * host, int * final_size){
 }
 
 
-char * parse_dns_resp(char * to_parse, char * domain){
+uint8_t * parse_dns_resp(uint8_t * to_parse, char * domain){
     int stop, i, j;
     struct DNS_HEADER *dns = NULL;
     char * reader;
@@ -117,7 +117,7 @@ char * parse_dns_resp(char * to_parse, char * domain){
  
         if(ntohs(answers[i].resource->type) == 1) //if its an ipv4 address
         {
-            answers[i].rdata = (char*)malloc(ntohs(answers[i].resource->data_len));
+            answers[i].rdata = (uint8_t *)malloc(ntohs(answers[i].resource->data_len));
  
             for(j=0 ; j<ntohs(answers[i].resource->data_len) ; j++)
             {
@@ -146,7 +146,7 @@ char * parse_dns_resp(char * to_parse, char * domain){
             p=(long*)answers[i].rdata;
             a.sin_addr.s_addr=(*p); //working without ntohl
             printf("has IPv4 address : %s",inet_ntoa(a.sin_addr));
-        }
+        }   
          
         if(ntohs(answers[i].resource->type)==5) 
         {
@@ -160,14 +160,14 @@ char * parse_dns_resp(char * to_parse, char * domain){
 }
 
 
-char * ReadName(unsigned char* reader,char * buffer,int* count)
+uint8_t * ReadName(unsigned char* reader,uint8_t * buffer,int* count)
 {
-    char *name;
+    uint8_t *name;
     unsigned int p=0,jumped=0,offset;
     int i , j;
  
     *count = 1;
-    name = (char *)malloc(256);
+    name = (uint8_t *)malloc(256);
  
     name[0]='\0';
  
