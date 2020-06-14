@@ -347,16 +347,88 @@ hello_write(struct selector_key *key)
 static void
 userpass_read_init(const unsigned state, struct selector_key *key)
 {
+    struct socks5 *s = ATTACHMENT(key);
+
+    struct userpass_st * up_s= &s->client.userpass;
+
+    up_s->rb = &(s->read_buffer);
+    up_s->wb = &(s->write_buffer);
+    up_req_parser_init(&up_s->parser);
 }
 
 static void
 userpass_read_close(const unsigned state, struct selector_key *key)
 {
+    
 }
+
+static unsigned
+userpass_process(const struct userpass_st *up_s);
 
 static unsigned
 userpass_read(struct selector_key *key)
 {
+    struct userpass_st *up_s = &ATTACHMENT(key)->client.userpass;
+    unsigned ret = USERPASS_READ;
+    bool error = false;
+    uint8_t *ptr;
+    size_t count;
+    ssize_t n;
+
+    ptr = buffer_write_ptr(up_s->rb, &count);
+    n = recv(key->fd, ptr, count, 0);
+    if (n > 0)
+    {
+        buffer_write_adv(up_s->rb, n);
+        const enum hello_state st = up_consume_message(up_s->rb, &up_s->parser, &error);
+        if (up_done_parsing(st, &error) && !error)
+        {
+            if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
+            {
+                // Process the user password info.
+                ret = userpass_process(up_s);
+            }
+            else
+            {
+                ret = ERROR;
+            }
+        }
+    }
+    else
+    {
+        ret = ERROR;
+    }
+
+    return error ? ERROR : ret;
+
+}
+
+static unsigned
+userpass_process(const struct userpass_st *up_s){
+    unsigned ret = HELLO_WRITE;
+    uint8_t *methods = d->parser.auth;
+    uint8_t methods_c = d->parser.nauth;
+    uint8_t m = SOCKS_HELLO_NO_ACCEPTABLE_METHODS;
+
+    /** TODO: Change to accept multiple methods 
+     * For now only accepting NO_AUTH
+    */
+    for (int i = 0; i < methods_c; i++)
+    {
+
+        if (methods[i] == SOCKS_HELLO_NOAUTHENTICATION_REQUIRED)
+        {
+            m = SOCKS_HELLO_NOAUTHENTICATION_REQUIRED;
+        }
+    }
+
+    // Save the version and the selected method in the write buffer of hello_st
+    if (-1 == hello_marshall(d->wb, m))
+    {
+        ret = ERROR;
+    }
+
+    return ret;
 }
 
 ////////////////////////////////////////
