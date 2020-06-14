@@ -160,6 +160,12 @@ typedef enum AuthOType
     USER_PASSWORD = 0x02
 } AuthType;
 
+typedef enum AuthStatus
+{
+    AUTH_SUCCESS = 0x00,
+    AUTH_FAILURE = 0xFF,
+} AuthStatus;
+
 typedef enum AddrType
 {
     IPv4 = 0x01,

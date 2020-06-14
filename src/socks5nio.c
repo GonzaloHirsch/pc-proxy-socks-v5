@@ -198,9 +198,7 @@ hello_read_init(const unsigned state, struct selector_key *key)
 static void
 hello_read_close(const unsigned state, struct selector_key *key)
 {
-    bool errored;
-    struct hello_st *d = &ATTACHMENT(key)->client.hello;
-    hello_done_parsing(&d->parser, &errored);
+   
 }
 
 static unsigned
@@ -356,8 +354,7 @@ userpass_read_init(const unsigned state, struct selector_key *key)
 static void
 userpass_read_close(const unsigned state, struct selector_key *key)
 {
-    printf("Im forever stuck in up_close...\n");
-    while(1){}   
+   
 }
 
 static unsigned
@@ -435,7 +432,12 @@ userpass_process(const struct userpass_st *up_s){
     }
     fclose(file);
 
-    return auth_valid ? ret : ERROR;   
+    // Serialize the auth result in the write buffer for the response.
+    if(-1 == up_marshall(up_s->wb, auth_valid ? AUTH_SUCCESS : AUTH_FAILURE)){
+        ret = ERROR;
+    }
+
+    return ret;   
     
 }
 
@@ -451,11 +453,49 @@ userpass_write_init(const unsigned state, struct selector_key *key)
 static void
 userpass_write_close(const unsigned state, struct selector_key *key)
 {
+    struct socks5 *sock_state = ATTACHMENT(key);
+
+    // Reset read and write buffer for reuse.
+    buffer_reset(&sock_state->write_buffer);
+    buffer_reset(&sock_state->read_buffer);
+
+    /** TODO: Free memory of userpass_st */   
 }
 
 static unsigned
 userpass_write(struct selector_key *key)
 {
+    struct userpass_st *up_s = &ATTACHMENT(key)->client.userpass;
+    ssize_t n;
+    unsigned ret = REQUEST_READ;
+    size_t nr;
+    uint8_t *up_response = buffer_read_ptr(up_s->wb, &nr);
+
+    uint8_t data[] = {up_response[0], up_response[1]};
+    buffer_read_adv(up_s->wb, 2);
+
+    // Send the version and the authentication result
+    n = send(key->fd, data, 2, 0);
+    if (n > 0)
+    {
+        // Setting the fd to read.
+        if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_READ))
+        {
+            ret = ERROR;
+        }
+    }
+    else
+    {
+        ret = ERROR;
+    }
+
+    // Check if the authentication was successful if not --> Error
+    if (up_response[1] != AUTH_SUCCESS)
+    {
+        ret = ERROR;
+    }
+
+    return ret;
 }
 
 ////////////////////////////////////////
