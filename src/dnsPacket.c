@@ -72,6 +72,8 @@ uint8_t * generate_dns_req(char * host, int * final_size){
 
 
     length += sizeof(struct QUESTION);
+
+    
     */
 
     uint8_t * ret = malloc(length);

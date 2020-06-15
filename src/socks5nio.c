@@ -525,9 +525,10 @@ request_close(const unsigned state, struct selector_key *key)
     else
     {
         printf("    dom: ");
+
         for (int i = 0; i < s->origin_info.resolve_addr_len; i++)
         {
-            printf("%d ", s->origin_info.resolve_addr[i]);
+            printf("%c", s->origin_info.resolve_addr[i]);
         }
         printf("\n");
     }
@@ -557,6 +558,8 @@ request_read(struct selector_key *key)
     // Getting the state struct
     struct request_st *d = &ATTACHMENT(key)->client.request;
     // Getting the read buffer
+
+
     buffer *b = d->rb;
     unsigned ret = REQUEST_READ;
     bool error = false;
@@ -661,8 +664,9 @@ request_process(struct selector_key *key, struct request_st *d)
 
         case DOMAIN_NAME:
             // Save the domain name
-            s->origin_info.resolve_addr = malloc(addr_l);
+            s->origin_info.resolve_addr = malloc(addr_l + 1);
             memcpy(s->origin_info.resolve_addr, addr, addr_l);
+            s->origin_info.resolve_addr[addr_l] = '\0' ;
             s->origin_info.resolve_addr_len = addr_l;
 
             //Save the port.
@@ -693,16 +697,16 @@ static void
 resolve_init(const unsigned state, struct selector_key *key)
 {   
     // Resolve state
+    struct socks5 * s = ATTACHMENT(key);
+    
     struct resolve_st *r_s = &ATTACHMENT(key)->orig.resolve;
-
+    
     // Saving the buffers
     r_s->rb = &(ATTACHMENT(key)->read_buffer);
     r_s->wb = &(ATTACHMENT(key)->write_buffer);
 
     // Create the socket for the nginx server that will serve as dns.
     struct sockaddr_in serv_addr;
-    uint8_t * ret;
-    char * message;
     selector_status st = SELECTOR_SUCCESS;
 
     char * final_buffer = NULL;
@@ -752,6 +756,8 @@ resolve_process(struct userpass_st *up_s);
 static unsigned
 resolve_read(struct selector_key *key)
 {
+    struct resolve_st *r_s = &ATTACHMENT(key)->orig.resolve;
+
 
 }
 
@@ -759,8 +765,31 @@ resolve_read(struct selector_key *key)
 static unsigned
 resolve_write(struct selector_key *key)
 {
+    struct socks5 * s = ATTACHMENT(key);
+    fd_interest interest = OP_NOOP;
+    interest |= OP_READ;
      // Resolve state
+
     struct resolve_st *r_s = &ATTACHMENT(key)->orig.resolve;
+
+
+    int final_buffer_size = 0;
+
+
+
+    char * http_request = request_generate(s->origin_info.resolve_addr, &final_buffer_size);
+
+    send(r_s->doh_fd, http_request,final_buffer_size, 0);
+
+    // Set the interests for the selector
+    if (SELECTOR_SUCCESS != selector_set_interest(key->s, r_s->doh_fd, interest))
+    {
+        printf("Could not set interest of %d for %d\n", interest, r_s->doh_fd);
+        abort();
+    }
+
+
+
 }
 
 static unsigned

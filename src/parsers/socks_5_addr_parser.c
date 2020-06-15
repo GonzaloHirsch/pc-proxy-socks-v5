@@ -51,8 +51,11 @@ enum socks_5_addr_state socks_5_addr_read_next_byte(socks_5_addr_parser p, const
             if (p->bytes_to_read) {
                 p->addr[p->addrLen - p->bytes_to_read] = b;
                 p->bytes_to_read--;
-                if (p->bytes_to_read == 0)
+
+            
+            if (p->bytes_to_read == 0){
                     p->state = SOCKS5ADDR_DONE;
+            }
             }
             else {
                 if (p->state == SOCKS5ADDR_DNAME)
