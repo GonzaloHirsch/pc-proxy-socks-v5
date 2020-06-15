@@ -255,9 +255,7 @@ hello_process(const struct hello_st *d)
     uint8_t methods_c = d->parser.nauth;
     uint8_t m = SOCKS_HELLO_NO_ACCEPTABLE_METHODS;
 
-    /** TODO: Change to accept multiple methods 
-     * For now only accepting NO_AUTH
-    */
+
     for (int i = 0; i < methods_c; i++)
     {
         if (methods[i] == SOCKS_HELLO_USERPASS)
@@ -413,33 +411,13 @@ userpass_process(struct userpass_st *up_s, bool * auth_valid){
     uint8_t uid_l = up_s->parser.uidLen;
     uint8_t pw_l = up_s->parser.pwLen;
 
-
-    FILE* file = fopen(USER_PASS_FILE, "r");
-    if(file == NULL){
-        abort();
-    }
+    *auth_valid = validate_user_proxy(uid, pw);
     
-    uint8_t line[256];
-
-    // Simple: Scan every line to see if the user and password matches.
-    while (fgets(line, sizeof(line), file) && !(*auth_valid)) {
-        
-        //Spliting the string to separate user from passwd, get the uid first
-        uid_stored = strtok(line, " ");
-
-        // If the user matches
-        if(!strncmp(uid, uid_stored, uid_l)){
-            pw_stored = strtok(NULL, " ");
-            //If the password matches
-            if(!strncmp(pw, pw_stored, pw_l)){
-                *auth_valid = true;
-                up_s->user = malloc(uid_l);
-                memcpy(up_s, uid, uid_l);
-                
-            }
-        }   
-    }
-    fclose(file);
+    if(*auth_valid){            
+        up_s->user = malloc(uid_l);
+        memcpy(up_s, uid, uid_l);
+    }           
+            
 
     // Serialize the auth result in the write buffer for the response.
     if(-1 == up_marshall(up_s->wb, *auth_valid ? AUTH_SUCCESS : AUTH_FAILURE)){

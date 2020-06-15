@@ -21,6 +21,7 @@
 #include "parsers/up_req_parser.h"
 #include "selector.h"
 #include "stateMachine.h"
+#include "authentication.h"
 
 #define N(x) (sizeof(x) / sizeof((x)[0]))
 /** TODO: define appropiate size */
