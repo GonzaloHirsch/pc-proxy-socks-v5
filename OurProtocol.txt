@@ -73,11 +73,11 @@ Campos:
 
 Y la respuesta del servidor sigue el siguiente formato:
 
-            +------+-------+--------+-----------+
-            | TYPE |  CMD  |  ULEN  |    DATA   |
-            +------+-------+--------+-----------+
-            |   1  |   1   |    1   |  Variable |
-            +------+-------+--------+-----------+
+            +------+-------+--------+--------+-----------+
+            | TYPE |  CMD  | STATUS |  ULEN  |    DATA   |
+            +------+-------+--------+--------+-----------+
+            |   1  |   1   |    1   |    1   |  Variable |
+            +------+-------+--------+--------+-----------+
 
 Campos:
             TYPE -> Tipo de uso, X’01’ (USUARIOS)
@@ -87,15 +87,16 @@ Campos:
 
 Para realizar un alta de un usuario, se envía una request de creacion de un usuario:
 
-            +------+-------+------+----------+------+----------+
-            | TYPE |  CMD  | ULEN |   UNAME  | PLEN |  PASSWD  |
-            +------+-------+------+----------+------+----------+
-            |   1  |   1   |   1  | 1 to 255 |   1  | 1 to 255 |
-            +------+-------+------+----------+------+----------+
+            +------+-------+-----+------+----------+------+----------+
+            | TYPE |  CMD  | VER | ULEN |   UNAME  | PLEN |  PASSWD  |
+            +------+-------+-----+------+----------+------+----------+
+            |   1  |   1   |  1  |   1  | 1 to 255 |   1  | 1 to 255 |
+            +------+-------+-----+------+----------+------+----------+
 
 Campos:
             TYPE -> Tipo de uso, X’01’ (USUARIOS)
             CMD -> Comando a realizar, X’02’ (CREAR)
+            VER -> Version de la negociación, X’01’
             ULEN -> Longitud del nombre del usuario
             UNAME -> Nombre del usuario
             PLEN -> Longitud de la Contraseña
@@ -103,11 +104,11 @@ Campos:
 
 Y la respuesta del servidor sigue el siguiente formato:
 
-            +------+-------+----------+
-            | TYPE |  CMD  |  STATUS  |
-            +------+-------+----------+
-            |   1  |   1   |     1    |
-            +------+-------+----------+
+            +------+-------+----------+-----+
+            | TYPE |  CMD  |  STATUS  | VER |
+            +------+-------+----------+-----+
+            |   1  |   1   |     1    |  1  |
+            +------+-------+----------+-----+
 
 Campos:
             TYPE -> Tipo de uso, X’01’ (USUARIOS)
@@ -117,6 +118,7 @@ Campos:
                 - ERROR GENERICO -> X’01’
                 - ERROR USUARIO REPETIDO -> X’02’
                 - ERROR LIMITE DE USUARIOS -> X’03’
+            VER -> Version de la negociación, X’01’
 
 3.2 - Obtención de métricas
 
@@ -134,15 +136,18 @@ Campos:
 
 Y la respuesta del servidor sigue el siguiente formato:
 
-            +------+-------+--------+-----------+
-            | TYPE |  CMD  |  MLEN  |    DATA   |
-            +------+-------+--------+-----------+
-            |   1  |   1   |    1   |  Variable |
-            +------+-------+--------+-----------+
+            +------+-------+--------+--------+-----------+
+            | TYPE |  CMD  | STATUS |  MLEN  |    DATA   |
+            +------+-------+--------+--------+-----------+
+            |   1  |   1   |    1   |    1   |  Variable |
+            +------+-------+--------+--------+-----------+
 
 Campos:
             TYPE -> Tipo de uso, X’02’ (METRICAS)
             CMD -> Comando a realizar, X’01’ (LISTAR)
+            STATUS -> Estado de la creacion:
+                - EXITO -> X’00’
+                - ERROR GENERICO -> X’01’
             MLEN -> Cantidad de metricas a devolver
             DATA -> Pares clave valor, siguiendo el formato "clave:valor", separadas por coma (",")
 
@@ -164,15 +169,18 @@ Campos:
 
 Y la respuesta del servidor sigue el siguiente formato:
 
-            +------+-------+--------+-----------+
-            | TYPE |  CMD  |  CLEN  |    DATA   |
-            +------+-------+--------+-----------+
-            |   1  |   1   |    1   |  Variable |
-            +------+-------+--------+-----------+
+            +------+-------+--------+--------+-----------+
+            | TYPE |  CMD  | STATUS |  CLEN  |    DATA   |
+            +------+-------+--------+--------+-----------+
+            |   1  |   1   |    1   |    1   |  Variable |
+            +------+-------+--------+--------+-----------+
 
 Campos:
             TYPE -> Tipo de uso, X’03’ (CONFIGURACION)
             CMD -> Comando a realizar, X’01’ (LISTAR)
+            STATUS -> Estado de la creacion:
+                - EXITO -> X’00’
+                - ERROR GENERICO -> X’01’
             CLEN -> Cantidad de configuraciones a devolver
             DATA -> Pares clave valor, siguiendo el formato "clave:valor", separadas por coma (",")
 
@@ -194,20 +202,20 @@ Campos:
 
 Y la respuesta del servidor sigue el siguiente formato:
 
-            +------+-------+--------+----------+
-            | TYPE |  CMD  |  CONF  |  STATUS  |
-            +------+-------+--------+----------+
-            |   1  |   1   |    1   |     1    |
-            +------+-------+--------+----------+
+            +------+-------+--------+--------+
+            | TYPE |  CMD  | STATUS |  CONF  |
+            +------+-------+--------+--------+
+            |   1  |   1   |    1   |    1   |
+            +------+-------+--------+--------+
 
 Campos:
             TYPE -> Tipo de uso, X’03’ (CONFIGURACION)
             CMD -> Comando a realizar, X’03’ (EDITAR)
-            CONF -> Numero de configuración a editar
-                - LISTAR LAS CONFIGS QUE PERMITIMOS -> TODO
             STATUS -> Estado de la creacion:
                 - EXITO -> X’00’
                 - ERROR GENERICO -> X’01’
+            CONF -> Numero de configuración a editar
+                - LISTAR LAS CONFIGS QUE PERMITIMOS -> TODO
 
 4 - Información de los Autores
 

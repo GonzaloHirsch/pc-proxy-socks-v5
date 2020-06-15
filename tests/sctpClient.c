@@ -36,6 +36,8 @@ int main(int argc, char *argv[])
 
     // -------------------------------- LOGIN --------------------------------
 
+    printf("\nLOGGING IN\n\n");
+
     /* VER(1), ULEN(1), USER(5 -> gonza), PLEN(1), PASS(8 -> admin123)*/
     uint8_t data_good[] = {
         0x01, 0x05, 0x67, 0x6F, 0x6E, 0x7A, 0x61, 0x08, 0x61, 0x64, 0x6D, 0x69, 0x6E, 0x31, 0x32, 0x33};
@@ -86,7 +88,74 @@ int main(int argc, char *argv[])
         printf("BAD LOGIN\n");
     }
 
+    // -------------------------------- USER CREATE REQUEST --------------------------------
+
+    printf("\nCREATING USER\n\n");
+
+    uint8_t user_create_list[] = {0x01, 0x02, 0x01, 0x08, 0x6E, 0x65, 0x77, 0x61, 0x64, 0x6D, 0x69, 0x6E, 0x07, 0x6E, 0x65, 0x77, 0x70, 0x61, 0x73, 0x73};
+
+    // Sending login request
+    ret = sctp_sendmsg(serverSocket, (void *)user_create_list, N(user_create_list), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+    if (ret < 0)
+    {
+        printf("Error creating user \n");
+        close(serverSocket);
+        exit(0);
+    }
+
+    // -------------------------------- USER CREATE RESPONSE --------------------------------
+
+    uint8_t user_create_buffer[2048];
+    size_t user_create_count = N(user_create_buffer);
+
+    // Receiving login response
+    ret = sctp_recvmsg(serverSocket, user_create_buffer, user_create_count, NULL, 0, &sndrcvinfo, &recv_flags);
+    if (ret <= 0)
+    {
+        printf("Error receiving user creation response\n");
+        close(serverSocket);
+        exit(0);
+    }
+
+    if (user_create_buffer[0] == 0x01)
+    {
+        printf("TYPE OK\n");
+    }
+    else
+    {
+        printf("BAD TYPE\n");
+    }
+
+    if (user_create_buffer[1] == 0x02)
+    {
+        printf("CMD OK\n");
+    }
+    else
+    {
+        printf("BAD CMD\n");
+    }
+
+    if (user_create_buffer[2] == 0x00)
+    {
+        printf("STATUS OK\n");
+    }
+    else
+    {
+        printf("BAD STATUS\n");
+    }
+
+    if (user_create_buffer[3] == 0x01)
+    {
+        printf("VERSION OK\n");
+    }
+    else
+    {
+        printf("BAD VERSION\n");
+    }
+
     // -------------------------------- USER LIST REQUEST --------------------------------
+
+    printf("\nLISTING USERS\n\n");
 
     uint8_t user_list[] = {0x01, 0x01};
 
@@ -108,7 +177,7 @@ int main(int argc, char *argv[])
     ret = sctp_recvmsg(serverSocket, user_list_buffer, user_list_count, NULL, 0, &sndrcvinfo, &recv_flags);
     if (ret <= 0)
     {
-        printf("Error receiving login response\n");
+        printf("Error receiving user list response\n");
         close(serverSocket);
         exit(0);
     }
@@ -131,28 +200,18 @@ int main(int argc, char *argv[])
         printf("BAD CMD\n");
     }
 
-    printf("Given %d users %s\n", user_list_buffer[2], user_list_buffer + 3);
-
-    while (1)
-        ;
-
-    /*
-    fgets(buffer, MAX_BUFFER, stdin);
-    buffer[strcspn(buffer, "\r\n")] = 0;
-    datalen = strlen(buffer);
-
-    
-    ret = sctp_sendmsg(serverSocket, (void *)buffer, (size_t)datalen,
-                       NULL, 0, 0, 0, 0, 0, 0);
-    if (ret == -1)
+    if (user_list_buffer[2] == 0x00)
     {
-        printf("Error in sctp_sendmsg\n");
-        perror("sctp_sendmsg()");
+        printf("STATUS OK\n");
     }
     else
-        printf("Successfully sent %d bytes data to server\n", ret);
+    {
+        printf("BAD STATUS\n");
+    }
 
-    close(connSock);
-*/
+    printf("Given %d users %s\n", user_list_buffer[3], user_list_buffer + 4);
+
+    close(serverSocket);
+
     return 0;
 }

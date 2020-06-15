@@ -71,3 +71,23 @@ void list_user_admin(uint8_t ** users, uint8_t * count){
     }
     fclose(file);
 }
+
+bool create_user_admin(uint8_t * username, uint8_t * pass, uint8_t ulen, uint8_t plen){
+    // Opening the file to be read
+    FILE* file = fopen("./serverdata/admin_user_pass.txt", "a");
+    if(file == NULL){
+        return false;
+    }
+
+    size_t size = 1 + ulen + ulen;
+    char * user_pass = malloc(size * sizeof(char));
+    sprintf(user_pass, "%s %s", username, pass);
+
+    // Writing to file
+    fprintf(file, "\n%s", user_pass);
+
+    fclose(file);
+    free(user_pass);
+
+    return true;
+}

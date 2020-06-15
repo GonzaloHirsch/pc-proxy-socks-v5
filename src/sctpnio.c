@@ -23,6 +23,7 @@ static void sctp_close(struct selector_key *key);
 
 // TYPE + CMD handlers
 static unsigned handle_list_users(struct selector_key *key);
+static unsigned handle_user_create(struct selector_key *key, buffer *b);
 
 // Response preparers
 static uint8_t *prepare_list_users(uint8_t **users, int count);
@@ -247,26 +248,36 @@ sctp_write(struct selector_key *key)
         case CMD_LIST:
             if (d->state == SCTP_ERROR)
             {
-                uint8_t user_list_error_data[] = {SCTP_VERSION, 0x01}; // VERSION 1, ERROR 1
+                uint8_t user_list_error_data[] = {d->info.type, d->info.cmd, 0x01, 0, 0}; // VERSION 1, ERROR 1
                 n = sctp_sendmsg(key->fd, (void *)user_list_error_data, N(user_list_error_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
             }
             else
             {
                 // Getting the representation for the users
-                uint8_t *users = prepare_list_users(d->datagram.user_list.users, d->datagram.user_list.user_count);                
+                uint8_t *users = prepare_list_users(d->datagram.user_list.users, d->datagram.user_list.user_count);
                 // Adding the info to the buffer
-                uint8_t *user_list_data = calloc(3 + strlen(users), sizeof(uint8_t));
+                uint8_t *user_list_data = calloc(4 + strlen(users), sizeof(uint8_t));
                 user_list_data[0] = d->info.type;
                 user_list_data[1] = d->info.cmd;
-                user_list_data[2] = d->datagram.user_list.user_count;
-                memcpy(&user_list_data[3], users, strlen(users));
-                n = sctp_sendmsg(key->fd, (void *)user_list_data, 3 + strlen(users), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+                user_list_data[2] = 0x00;
+                user_list_data[3] = d->datagram.user_list.user_count;
+                memcpy(&user_list_data[4], users, strlen(users));
+                n = sctp_sendmsg(key->fd, (void *)user_list_data, 4 + strlen(users), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
             }
             break;
         case CMD_CREATE:
+            if (d->state == SCTP_ERROR)
+            {
+                uint8_t user_create_error_data[] = {d->info.type, d->info.cmd, 0x01, SCTP_VERSION}; // VERSION 1, ERROR 1
+                n = sctp_sendmsg(key->fd, (void *)user_create_error_data, N(user_create_error_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            }
+            else
+            {
+                uint8_t user_create_success_data[] = {d->info.type, d->info.cmd, 0x00, SCTP_VERSION}; // VERSION 1, ERROR 0
+                n = sctp_sendmsg(key->fd, (void *)user_create_success_data, N(user_create_success_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            }
             break;
-            // CMD not allowed
-        default:
+        default: // CMD not allowed
             ret = SCTP_ERROR;
             break;
         }
@@ -453,6 +464,7 @@ static unsigned handle_normal_request(struct selector_key *key)
     }
     else
     {
+        printf("Buffer cannot read");
         return SCTP_ERROR;
     }
 
@@ -466,6 +478,7 @@ static unsigned handle_normal_request(struct selector_key *key)
     }
     else
     {
+        printf("Buffer cannot read");
         return SCTP_ERROR;
     }
 
@@ -480,6 +493,7 @@ static unsigned handle_normal_request(struct selector_key *key)
 
     printf("Setting CMD and TYPE \n");
 
+    printf("The tyype is %d and cmd is %d\n", d->info.type, d->info.cmd);
     // Switching TYPE and CMD to determine available operations
     switch (type)
     {
@@ -487,12 +501,13 @@ static unsigned handle_normal_request(struct selector_key *key)
         switch (cmd)
         {
         case CMD_LIST:
+            printf("Handling user list\n");
             ret = handle_list_users(key);
             break;
         case CMD_CREATE:
+            ret = handle_user_create(key, b);
             break;
-            // CMD not allowed
-        default:
+        default: // CMD not allowed
             ret = SCTP_ERROR;
             break;
         }
@@ -527,9 +542,11 @@ static unsigned handle_normal_request(struct selector_key *key)
         break;
     }
 
+    // Compacting the buffer
+    buffer_compact(b);
+
     if (SELECTOR_SUCCESS != selector_set_interest(key->s, key->fd, OP_WRITE))
     {
-        selector_unregister_fd(key->s, d->client_fd);
         ret = SCTP_ERROR;
     }
 
@@ -560,7 +577,6 @@ static unsigned handle_login_request(struct selector_key *key)
         selector_status ss = selector_set_interest(key->s, key->fd, OP_WRITE);
         if (ss != SELECTOR_SUCCESS)
         {
-            selector_unregister_fd(key->s, d->client_fd);
             ret = SCTP_ERROR;
         }
         else
@@ -616,6 +632,54 @@ static unsigned handle_list_users(struct selector_key *key)
     ATTACHMENT(key)->datagram.user_list.user_count = count;
 
     return SCTP_RESPONSE;
+}
+
+static unsigned handle_user_create(struct selector_key *key, buffer *b)
+{
+    printf("Creating user\n\n");
+    // Getting the sctp struct
+    struct sctp *d = ATTACHMENT(key);
+    // Boolean for parser error and auth validity
+    bool error = false;
+    // Variable for the return value of the request
+    unsigned ret = SCTP_RESPONSE;
+
+    // Initializing the u+p parser
+    up_req_parser_init(&d->paser.up_request);
+
+    // Parsing the information
+    const enum up_req_state st = up_consume_message(b, &d->paser.up_request, &error);
+    // Checking if the parser is done parsing the message
+    if (up_done_parsing(st, &error) && !error)
+    {
+        selector_status ss = selector_set_interest(key->s, key->fd, OP_WRITE);
+        if (ss != SELECTOR_SUCCESS)
+        {
+            printf("Could not set interest\n\n");
+            ret = SCTP_ERROR;
+        }
+        else
+        {
+            d->datagram.user.user = d->paser.up_request.uid;
+            d->datagram.user.pass = d->paser.up_request.pw;
+            memcpy(d->datagram.user.user, d->paser.up_request.uid, d->paser.up_request.uidLen);
+            memcpy(d->datagram.user.pass, d->paser.up_request.pw, d->paser.up_request.pwLen);
+            d->datagram.user.ulen = d->paser.up_request.uidLen;
+            d->datagram.user.plen = d->paser.up_request.pwLen;
+
+            // Validating the login request
+            error = !create_user_admin(d->datagram.user.user, d->datagram.user.pass, d->datagram.user.ulen, d->datagram.user.plen);
+
+            printf("Result of user create %d \n", error);
+
+            ret = !error ? SCTP_RESPONSE : SCTP_ERROR;
+        }
+    }
+
+    // Liberating the parser
+    free_up_req_parser(&d->paser.up_request);
+
+    return ret;
 }
 
 ///////////////////////////////////////////////////////////////////
