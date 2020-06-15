@@ -45,7 +45,8 @@ int main(int argc, char *argv[])
 
     // Sending login request
     ret = sctp_sendmsg(serverSocket, (void *)data_good, N(data_good), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
-    if (ret < 0){
+    if (ret < 0)
+    {
         printf("Error sending login \n");
         close(serverSocket);
         exit(0);
@@ -53,32 +54,84 @@ int main(int argc, char *argv[])
 
     // -------------------------------- LOGIN RESPONSE --------------------------------
 
-    uint8_t response_buffer[2];
+    uint8_t login_response_buffer[2];
     struct sctp_sndrcvinfo sndrcvinfo;
-    size_t count = N(response_buffer);
+    size_t login_count = N(login_response_buffer);
     int recv_flags = 0;
 
     // Receiving login response
-    ret = sctp_recvmsg(serverSocket, response_buffer, count, NULL, 0, &sndrcvinfo, &recv_flags);
-    if (ret <= 0){
+    ret = sctp_recvmsg(serverSocket, login_response_buffer, login_count, NULL, 0, &sndrcvinfo, &recv_flags);
+    if (ret <= 0)
+    {
         printf("Error receiving login response\n");
         close(serverSocket);
         exit(0);
     }
 
-    printf("Version %d, login %d, total data %d, count %ld\n", response_buffer[0], response_buffer[1], ret, count);
-
-    if (response_buffer[0] == 0x01){
+    if (login_response_buffer[0] == 0x01)
+    {
         printf("VERSION OK\n");
-    } else {
+    }
+    else
+    {
         printf("BAD VERSION\n");
     }
 
-    if (response_buffer[1] == 0x00){
+    if (login_response_buffer[1] == 0x00)
+    {
         printf("LOGIN OK\n");
-    } else {
+    }
+    else
+    {
         printf("BAD LOGIN\n");
     }
+
+    // -------------------------------- USER LIST REQUEST --------------------------------
+
+    uint8_t user_list[] = {0x01, 0x01};
+
+    // Sending login request
+    ret = sctp_sendmsg(serverSocket, (void *)user_list, N(user_list), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+    if (ret < 0)
+    {
+        printf("Error sending user list \n");
+        close(serverSocket);
+        exit(0);
+    }
+
+    // -------------------------------- USER LIST RESPONSE --------------------------------
+
+    uint8_t user_list_buffer[2048];
+    size_t user_list_count = N(user_list_buffer);
+
+    // Receiving login response
+    ret = sctp_recvmsg(serverSocket, user_list_buffer, user_list_count, NULL, 0, &sndrcvinfo, &recv_flags);
+    if (ret <= 0)
+    {
+        printf("Error receiving login response\n");
+        close(serverSocket);
+        exit(0);
+    }
+
+    if (user_list_buffer[0] == 0x01)
+    {
+        printf("TYPE OK\n");
+    }
+    else
+    {
+        printf("BAD TYPE\n");
+    }
+
+    if (user_list_buffer[1] == 0x01)
+    {
+        printf("CMD OK\n");
+    }
+    else
+    {
+        printf("BAD CMD\n");
+    }
+
+    printf("Given %d users %s\n", user_list_buffer[2], user_list_buffer + 3);
 
     while (1)
         ;

@@ -21,6 +21,12 @@ static void sctp_read(struct selector_key *key);
 static void sctp_write(struct selector_key *key);
 static void sctp_close(struct selector_key *key);
 
+// TYPE + CMD handlers
+static unsigned handle_list_users(struct selector_key *key);
+
+// Response preparers
+static uint8_t *prepare_list_users(uint8_t **users, int count);
+
 // Selector event handler
 static const struct fd_handler sctp_handler = {
     .handle_read = sctp_read,
@@ -211,8 +217,11 @@ sctp_read(struct selector_key *key)
     ret = handle_request(key);
     if (ret != SCTP_RESPONSE)
     {
+        printf("I was unregistered\n");
         selector_unregister_fd(key->s, d->client_fd);
     }
+
+    printf("I REALLY FINISHED\n");
 }
 
 static void
@@ -229,25 +238,86 @@ sctp_write(struct selector_key *key)
     uint8_t *ptr = buffer_read_ptr(&d->buffer_write, &nr);
 
     // TYPE -> TYPE_NOTYPE + CMD -> CMD_NOCMD = LOGIN
-    printf("\n\nResponding to SCTP client state %d, cmd %d and type %d\n\n", d->state, d->datagram.data.cmd, d->datagram.data.type);
-    if (d->datagram.data.cmd == CMD_NOCMD && d->datagram.data.type == TYPE_NOTYPE)
+    printf("\n\nResponding to SCTP client state %d, cmd %d and type %d\n\n", d->state, d->info.cmd, d->info.type);
+    switch (d->info.type)
     {
-        if (d->state == SCTP_ERROR)
+    case TYPE_USERS:
+        switch (d->info.cmd)
         {
-            printf("Got login error\n");
-            uint8_t login_error_data[] = {SCTP_VERSION, 0x01}; // VERSION 1, ERROR 1
-            n = sctp_sendmsg(key->fd, (void *)login_error_data, N(login_error_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+        case CMD_LIST:
+            if (d->state == SCTP_ERROR)
+            {
+                uint8_t user_list_error_data[] = {SCTP_VERSION, 0x01}; // VERSION 1, ERROR 1
+                n = sctp_sendmsg(key->fd, (void *)user_list_error_data, N(user_list_error_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            }
+            else
+            {
+                // Getting the representation for the users
+                uint8_t *users = prepare_list_users(d->datagram.user_list.users, d->datagram.user_list.user_count);                
+                // Adding the info to the buffer
+                uint8_t *user_list_data = calloc(3 + strlen(users), sizeof(uint8_t));
+                user_list_data[0] = d->info.type;
+                user_list_data[1] = d->info.cmd;
+                user_list_data[2] = d->datagram.user_list.user_count;
+                memcpy(&user_list_data[3], users, strlen(users));
+                n = sctp_sendmsg(key->fd, (void *)user_list_data, 3 + strlen(users), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            }
+            break;
+        case CMD_CREATE:
+            break;
+            // CMD not allowed
+        default:
+            ret = SCTP_ERROR;
+            break;
         }
-        else
+        break;
+    case TYPE_CONFIG:
+        switch (d->info.cmd)
         {
-            printf("Got login ok\n");
-            uint8_t login_success_data[] = {SCTP_VERSION, 0x00}; // VERSION 1, ERROR 0
-            n = sctp_sendmsg(key->fd, (void *)login_success_data, N(login_success_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+        case CMD_LIST:
+            break;
+        case CMD_EDIT:
+            break;
+        // CMD not allowed
+        default:
+            ret = SCTP_ERROR;
+            break;
         }
-    }
-    else
-    {
-        // TODO: IMPLEMENT FUTURE STATES
+        break;
+    case TYPE_METRICS:
+        switch (d->info.cmd)
+        {
+        case CMD_LIST:
+            break;
+            // CMD not allowed
+        default:
+            ret = SCTP_ERROR;
+            break;
+        }
+        break;
+    // TYPE not allowed
+    case TYPE_NOTYPE:
+        switch (d->info.cmd)
+        {
+        case CMD_NOCMD:
+            if (d->state == SCTP_ERROR)
+            {
+                printf("Got login error\n");
+                uint8_t login_error_data[] = {SCTP_VERSION, 0x01}; // VERSION 1, ERROR 1
+                n = sctp_sendmsg(key->fd, (void *)login_error_data, N(login_error_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            }
+            else
+            {
+                printf("Got login ok\n");
+                uint8_t login_success_data[] = {SCTP_VERSION, 0x00}; // VERSION 1, ERROR 0
+                n = sctp_sendmsg(key->fd, (void *)login_success_data, N(login_success_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            }
+            break;
+        default:
+            ret = SCTP_ERROR;
+            break;
+        }
+        break;
     }
 
     if (n > 0)
@@ -278,6 +348,40 @@ sctp_close(struct selector_key *key)
 ///////////////////////////////////////////////////////////////////
 // REQUESTS
 ///////////////////////////////////////////////////////////////////
+
+static TYPE determine_type(int val)
+{
+    switch (val)
+    {
+    case TYPE_NOTYPE:
+        return TYPE_NOTYPE;
+    case TYPE_CONFIG:
+        return TYPE_CONFIG;
+    case TYPE_METRICS:
+        return TYPE_METRICS;
+    case TYPE_USERS:
+        return TYPE_USERS;
+    default:
+        return TYPE_NOTYPE;
+    }
+}
+
+static CMD determine_cmd(int val)
+{
+    switch (val)
+    {
+    case CMD_CREATE:
+        return CMD_CREATE;
+    case CMD_EDIT:
+        return CMD_EDIT;
+    case CMD_LIST:
+        return CMD_LIST;
+    case CMD_NOCMD:
+        return CMD_NOCMD;
+    default:
+        return CMD_NOCMD;
+    }
+}
 
 static unsigned handle_request(struct selector_key *key)
 {
@@ -310,21 +414,128 @@ static unsigned handle_request(struct selector_key *key)
     buffer_write_adv(b, length);
 
     // If user is logged, parse a request
+
+    printf("This user logged %d\n", d->is_logged);
+
     if (d->is_logged)
     {
+        printf("Normal\n");
         ret = handle_normal_request(key);
     }
     else
     {
+        printf("Login\n");
         ret = handle_login_request(key);
     }
+
+    printf("Handler read finished\n");
 
     return ret;
 }
 
 static unsigned handle_normal_request(struct selector_key *key)
 {
-    return SCTP_ERROR;
+    // Getting the sctp struct
+    struct sctp *d = ATTACHMENT(key);
+    // Getting the buffer to read the data
+    buffer *b = &d->buffer_read;
+    // Boolean for parser error and auth validity
+    bool error = false, auth_valid = false;
+    // Variable for the return value of the request
+    unsigned ret = SCTP_RESPONSE;
+    // Values that determine the request type parser
+    int given_type = -1, given_cmd = -1;
+
+    // Reading the request TYPE
+    if (buffer_can_read(b))
+    {
+        given_type = *b->read;
+    }
+    else
+    {
+        return SCTP_ERROR;
+    }
+
+    // Advancing the buffer
+    buffer_read_adv(b, 1);
+
+    // reading the request CMD
+    if (buffer_can_read(b))
+    {
+        given_cmd = *b->read;
+    }
+    else
+    {
+        return SCTP_ERROR;
+    }
+
+    // Advancing the buffer
+    buffer_read_adv(b, 1);
+
+    TYPE type = determine_type(given_type);
+    CMD cmd = determine_cmd(given_cmd);
+
+    d->info.cmd = cmd;
+    d->info.type = type;
+
+    printf("Setting CMD and TYPE \n");
+
+    // Switching TYPE and CMD to determine available operations
+    switch (type)
+    {
+    case TYPE_USERS:
+        switch (cmd)
+        {
+        case CMD_LIST:
+            ret = handle_list_users(key);
+            break;
+        case CMD_CREATE:
+            break;
+            // CMD not allowed
+        default:
+            ret = SCTP_ERROR;
+            break;
+        }
+        break;
+    case TYPE_CONFIG:
+        switch (cmd)
+        {
+        case CMD_LIST:
+            break;
+        case CMD_EDIT:
+            break;
+        // CMD not allowed
+        default:
+            ret = SCTP_ERROR;
+            break;
+        }
+        break;
+    case TYPE_METRICS:
+        switch (cmd)
+        {
+        case CMD_LIST:
+            break;
+            // CMD not allowed
+        default:
+            ret = SCTP_ERROR;
+            break;
+        }
+        break;
+    // TYPE not allowed
+    case TYPE_NOTYPE:
+        ret = SCTP_ERROR;
+        break;
+    }
+
+    if (SELECTOR_SUCCESS != selector_set_interest(key->s, key->fd, OP_WRITE))
+    {
+        selector_unregister_fd(key->s, d->client_fd);
+        ret = SCTP_ERROR;
+    }
+
+    printf("Finished stting CMD and TYPE\n");
+
+    return ret;
 }
 
 static unsigned handle_login_request(struct selector_key *key)
@@ -367,6 +578,7 @@ static unsigned handle_login_request(struct selector_key *key)
                 // Setting the username in the sctp object
                 d->username = malloc(uid_l * sizeof(uint8_t));
                 memcpy(d->username, uid, uid_l);
+                d->is_logged = true;
                 ret = SCTP_RESPONSE;
             }
             else
@@ -375,8 +587,8 @@ static unsigned handle_login_request(struct selector_key *key)
             }
 
             // Setting the type and command as no type and no command
-            d->datagram.data.cmd = CMD_NOCMD;
-            d->datagram.data.type = TYPE_NOTYPE;
+            d->info.cmd = CMD_NOCMD;
+            d->info.type = TYPE_NOTYPE;
         }
     }
 
@@ -384,4 +596,57 @@ static unsigned handle_login_request(struct selector_key *key)
     free_up_req_parser(&d->paser.up_request);
 
     return ret;
+}
+
+static unsigned handle_list_users(struct selector_key *key)
+{
+    printf("Handling user list\n");
+    // Getting all the users
+    uint8_t count = 0;
+    uint8_t *users[MAX_USERS];
+    list_user_admin(users, &count);
+    if (users == NULL)
+    {
+        printf("NULL USER POINTER \n");
+        return SCTP_ERROR;
+    }
+
+    // Adding the list and the count to the requets data
+    ATTACHMENT(key)->datagram.user_list.users = users;
+    ATTACHMENT(key)->datagram.user_list.user_count = count;
+
+    return SCTP_RESPONSE;
+}
+
+///////////////////////////////////////////////////////////////////
+// RESPONSE PREPARERS
+///////////////////////////////////////////////////////////////////
+
+static uint8_t *prepare_list_users(uint8_t **users, int count)
+{
+    int i = 0;
+    int previousLength = 0;
+    uint8_t *value = NULL;
+    for (i = 0; i < count; i++)
+    {
+        if (i == 0)
+        {
+            value = realloc(value, strlen(users[i]));
+            if (value == NULL)
+            {
+                return NULL;
+            }
+            sprintf(value, "%s", users[i]);
+        }
+        else
+        {
+            value = realloc(value, strlen(users[i]) + 1 + strlen(value));
+            if (value == NULL)
+            {
+                return NULL;
+            }
+            sprintf(value, "%s,%s", value, users[i]);
+        }
+    }
+    return value;
 }

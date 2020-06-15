@@ -1,5 +1,7 @@
 #include "authentication.h"
 
+static const char * SEP = " ";
+
 bool
 validate_up(uint8_t * uid, uint8_t * pw, const char * file_name)
 {
@@ -45,4 +47,27 @@ bool
 validate_user_proxy(uint8_t * uid, uint8_t * pw)
 {
     validate_up(uid, pw, "./serverdata/user_pass.txt");
+}
+
+void list_user_admin(uint8_t ** users, uint8_t * count){
+    uint8_t * uid_stored;
+    *count = 0;
+
+    // Opening the file to be read
+    FILE* file = fopen("./serverdata/admin_user_pass.txt", "r");
+    if(file == NULL){
+        abort();
+    }
+    
+    uint8_t line[256];
+
+    while (fgets(line, sizeof(line), file)) {
+        // Spliting the string to separate user from passwd, get the uid first
+        uid_stored = strtok(line, SEP);
+        // Copy the username into the array
+        users[*count] = malloc(strlen(uid_stored) + 1);
+        memcpy(users[*count], uid_stored, strlen(uid_stored) + 1);
+        (*count)++;
+    }
+    fclose(file);
 }

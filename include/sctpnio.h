@@ -30,7 +30,8 @@
  *   REQUEST -> RESPONSE -> REQUEST -> RESPONSE ...
  * If error, the state is ERROR
 */
-typedef enum SCTP_STATES {
+typedef enum SCTP_STATES
+{
     SCTP_REQUEST,
     SCTP_RESPONSE,
     SCTP_ERROR
@@ -59,8 +60,6 @@ typedef struct sctp_message
 {
     CMD cmd;
     TYPE type;
-    uint8_t option;
-    uint8_t value;
 } sctp_message;
 
 /** Struct to represent authentication message sent by the client */
@@ -72,26 +71,36 @@ typedef struct sctp_auth_message
     uint8_t *pass;
 } sctp_auth_message;
 
+/** Struct to hold information about a list user requet */
+typedef struct sctp_user_list_message
+{
+    uint8_t user_count;
+    uint8_t **users;
+} sctp_user_list_message;
+
 /** Struct to represent the state of a SCTP connection and the related information */
 typedef struct sctp
 {
     /** State of the sctp request */
-    SCTP_STATES state; 
+    SCTP_STATES state;
 
     /** Client information */
     struct sockaddr_storage client_addr;
     socklen_t client_addr_len;
     int client_fd;
 
+    /** Request information */
+    sctp_message info;
+
     /** Union to represent the possible datagram sent by a user */
     union {
         sctp_auth_message user;
-        sctp_message data;
+        sctp_user_list_message user_list;
     } datagram;
 
     /** Union to represent the parser the sctp connection is using in that moment */
     union {
-        struct up_req_parser up_request; 
+        struct up_req_parser up_request;
     } paser;
 
     /** Buffers for reading and writing */
