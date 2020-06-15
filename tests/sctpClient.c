@@ -33,9 +33,16 @@ int main(int argc, char *argv[])
         close(serverSocket);
         exit(1);
     }
-    while(1);
 
-/*
+    /* VER(1), ULEN(1), USER(5 -> gonza), PLEN(1), PASS(8 -> admin123)*/
+    uint8_t data[] = {
+        0x01, 0x05, 0x67, 0x6F, 0x6E, 0x7A, 0x62, 0x08, 0x61, 0x64, 0x6D, 0x69, 0x6E, 0x31, 0x32, 0x33};
+
+    ret = sctp_sendmsg(serverSocket, (void *)data, N(data), NULL, 0, 0, 0, 0, 0, 0);
+    while (1)
+        ;
+
+    /*
     fgets(buffer, MAX_BUFFER, stdin);
     buffer[strcspn(buffer, "\r\n")] = 0;
     datalen = strlen(buffer);

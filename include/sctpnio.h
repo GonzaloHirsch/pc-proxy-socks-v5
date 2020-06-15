@@ -11,18 +11,17 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "selector.h"
+#include "authentication.h"
 #include "io_utils/buffer.h"
 #include "parsers/up_req_parser.h"
 #include <arpa/inet.h>
 // This header does not exist in OSX, so the compilation has to be done in Linux
 #include <netinet/sctp.h>
 
-#define BUFFERSIZE 2048
-
-#define ADMIN_USER_PASS_FILE = "./serverdata/admins_user_pass.txt";
+#define SCTP_BUFFERSIZE 2048
 
 /** Version of the negotiation */
-#define VERSION 0x01;
+#define SCTP_VERSION 0x01;
 
 /** 
  * States the SCTP process goes through 
@@ -86,6 +85,11 @@ typedef struct sctp
         sctp_auth_message user;
         sctp_message data;
     } datagram;
+
+    /** Union to represent the parser the sctp connection is using in that moment */
+    union {
+        struct up_req_parser up_request; 
+    } paser;
 
     /** Buffers for reading and writing */
     buffer buffer_write, buffer_read;

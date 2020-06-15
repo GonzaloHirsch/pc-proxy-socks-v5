@@ -106,15 +106,7 @@ sctp_read(struct selector_key *key)
 static void
 sctp_write(struct selector_key *key)
 {
-    /*
-    struct state_machine *stm = &ATTACHMENT(key)->stm;
-    const enum socks_v5state st = stm_handler_write(stm, key);
-
-    if (ERROR == st || DONE == st)
-    {
-        socksv5_done(key);
-    }
-    */
+    abort();
 }
 
 static void
@@ -140,9 +132,9 @@ static struct sctp *sctp_new(const int client)
     }
 
     // Write Buffer for the socket(Initialized)
-    buffer_init(&(sctpState->buffer_write), BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
+    buffer_init(&(sctpState->buffer_write), SCTP_BUFFERSIZE + 1, malloc(SCTP_BUFFERSIZE + 1));
     // Read Buffer for the socket(Initialized)
-    buffer_init(&(sctpState->buffer_read), BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
+    buffer_init(&(sctpState->buffer_read), SCTP_BUFFERSIZE + 1, malloc(SCTP_BUFFERSIZE + 1));
 
     // Intialize the client_fd
     sctpState->client_fd = client;
@@ -233,7 +225,6 @@ static unsigned handle_request(struct selector_key *key)
     }
 
     printf("Im processing the request\n");
-    /*
     
     // Advancing the buffer
     buffer_write_adv(b, length);
@@ -244,13 +235,13 @@ static unsigned handle_request(struct selector_key *key)
     } else {
         ret = handle_login_request(key);
     }
-    */
+    
     return ret;
 }
 
 static unsigned handle_normal_request(struct selector_key *key)
 {
-    // TODO: HANDLE
+    return SCTP_ERROR;
 }
 
 static unsigned handle_login_request(struct selector_key *key)
@@ -259,18 +250,16 @@ static unsigned handle_login_request(struct selector_key *key)
     struct sctp *d = ATTACHMENT(key);
     // Getting the buffer to read the data
     buffer *b = &d->buffer_read;
-    // Variable to hold the parser
-    struct up_request_parser *parser;
     // Boolean for parser error and auth validity
     bool error = false, auth_valid = false;
     // Variable for the return value of the request
     unsigned ret = SCTP_RESPONSE;
 
     // Initializing the u+p parser
-    up_req_parser_init(parser);
+    up_req_parser_init(&d->paser.up_request);
 
     // Parsing the information
-    const enum up_req_state st = up_consume_message(b, parser, &error);
+    const enum up_req_state st = up_consume_message(b, &d->paser.up_request, &error);
     // Checking if the parser is done parsing the message
     if (up_done_parsing(st, &error) && !error)
     {
@@ -282,18 +271,28 @@ static unsigned handle_login_request(struct selector_key *key)
         }
         else
         {
-            /*
-            // Process the user password info.
-            ret = userpass_process(up_s, &auth_valid);
-            // Save the credential if auth is valid
-            if(auth_valid)
-                ATTACHMENT(key)->username = up_s->user;
-                */
+            uint8_t * uid = d->paser.up_request.uid;
+            uint8_t * pw = d->paser.up_request.pw;
+            uint8_t uid_l = d->paser.up_request.uidLen;
+            uint8_t pw_l = d->paser.up_request.pwLen;
+
+            // Validating the login request
+            auth_valid = validate_user_admin(uid, pw);
+            
+            if(auth_valid){
+                d->username = malloc(uid_l * sizeof(uint8_t));           
+                memcpy(d->username, uid, uid_l);
+                ret = SCTP_RESPONSE;
+                printf("BITCH, IM FUCKING IN!\n");
+            } else {
+                 printf("ERROR, HACKER!\n");
+                ret = SCTP_ERROR;
+            }
         }
     }
 
     // Liberating the parser
-    free_up_req_parser(&parser);
+    free_up_req_parser(&d->paser.up_request);
 
     return ret;
 }

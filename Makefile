@@ -14,5 +14,7 @@ all:
 
 client:
 	gcc -g tests/socksClient.c tests/Utility.c -Iinclude -o socksClient
+sctp_client:
+	gcc -g tests/sctpClient.c -Iinclude -L/usr/local/lib -lsctp -o sctp_client
 clean:
-	rm -rf application slaveProcess view
+	rm -rf application slaveProcess view sctp_client socksClient server

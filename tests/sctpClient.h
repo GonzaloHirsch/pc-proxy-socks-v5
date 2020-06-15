@@ -11,6 +11,8 @@
 #include <netinet/sctp.h>
 #include <arpa/inet.h>
 
+#define N(x) (sizeof(x)/sizeof((x)[0]))
+
 #define MAX_BUFFER 1024
 #define SERVER_PORT 8080
 
