@@ -779,6 +779,13 @@ void connecting_init(const unsigned state, struct selector_key *key)
 {
 
     printf("Connecting Init\n");
+
+}
+
+static unsigned connecting_write(struct selector_key *key)
+{
+    // write connection response to client
+
     struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
     struct socks5 *s = ATTACHMENT(key);
     struct socks5_origin_info *s5oi = &s->origin_info;
@@ -810,17 +817,12 @@ void connecting_init(const unsigned state, struct selector_key *key)
             printf("Successfully registered origin fd in selector\n");
     }
     d->rb = &(ATTACHMENT(key)->read_buffer);
-}
-
-static unsigned connecting_write(struct selector_key *key)
-{
-    // write connection response to client
 
     //                  ver---status-----------------rsv--
     printf("Writing back to client (fd = %d)\n", key->fd);
-    struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
-    struct socks5 *s = ATTACHMENT(key);
-    struct socks5_origin_info *s5oi = &s->origin_info;
+    // struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
+    // struct socks5 *s = ATTACHMENT(key);
+    // struct socks5_origin_info *s5oi = &s->origin_info;
     // response_size =  1b + 1b + 1b + 1b  + variable + 2b
     // response fields: VER  ST   RSV  TYPE  ADDR       PRT
     int response_size = 6;
