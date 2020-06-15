@@ -115,7 +115,7 @@ uint8_t * generate_dns_req(char * host, int * final_size){
 }
 
 
-uint8_t * parse_dns_resp(uint8_t * to_parse, char * domain){
+void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * errored){
     int stop, i, j;
     struct DNS_HEADER *dns = NULL;
     char * reader, *reader2, * ret;
@@ -136,7 +136,7 @@ uint8_t * parse_dns_resp(uint8_t * to_parse, char * domain){
         answers[i].resource = (struct R_DATA*)(reader);
         reader = reader + sizeof(struct R_DATA);
  
-        if(ntohs(answers[i].resource->type) == 1) //if its an ipv4 address
+        if(ntohs(answers[i].resource->type) == T_A) //if its an ipv4 address
         {
             answers[i].rdata = (uint8_t *)malloc(ntohs(answers[i].resource->data_len));
  
@@ -155,7 +155,8 @@ uint8_t * parse_dns_resp(uint8_t * to_parse, char * domain){
             reader = reader + stop;
         }
     }
-    //print answers
+
+
     for(i=0 ; i < ntohs(dns->ans_count) ; i++)
     {
  
@@ -163,20 +164,18 @@ uint8_t * parse_dns_resp(uint8_t * to_parse, char * domain){
         {
             long *p;
             p= (long*) answers[i].rdata;
-            a.sin_addr.s_addr=(*p); //working without ntohl
-            ret = inet_ntoa(a.sin_addr);
+            memcpy(s->origin_info.ipv4_addrs[s->origin_info.ipv4_c++], p, IP_V4_ADDR_SIZE);
+
         }   
-         if( ntohs(answers[i].resource->type) == T_AAAA) //IPv4 address
+         if( ntohs(answers[i].resource->type) == T_AAAA) //IPv6 address
         {
-            char dest[500];
             long *p;
             p=(long*)answers[i].rdata;
-            a.sin_addr.s_addr=(*p); //working without ntohl
-            ret = (char *)inet_ntop(AF_INET6, &(a.sin_addr),dest, INET6_ADDRSTRLEN);
+            memcpy(s->origin_info.ipv6_addrs[s->origin_info.ipv6_c++], p, IP_V6_ADDR_SIZE);
+
         }   
         
     }
-    return ret;
 }
 
 

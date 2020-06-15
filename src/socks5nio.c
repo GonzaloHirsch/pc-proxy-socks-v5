@@ -759,7 +759,53 @@ resolve_process(struct userpass_st *up_s);
 static unsigned
 resolve_read(struct selector_key *key)
 {
+
     struct resolve_st *r_s = &ATTACHMENT(key)->orig.resolve;
+    struct socks5 * s = ATTACHMENT(key);
+    
+    char * final_buffer = NULL;
+    int final_buffer_size = 0;
+    ssize_t bytes = 0;
+    int buf_size = 0;
+    char buffer[BUFFERSIZE_DOH + 1];
+
+
+  do{
+
+      ssize_t bytes = recv(r_s->doh_fd, buffer, BUFFERSIZE_DOH, 0);
+      if(bytes < 0){
+          perror("DOH recv failed");
+          exit(EXIT_FAILURE);
+      }
+      else
+      {
+          final_buffer = realloc(final_buffer, final_buffer_size + bytes);
+          if(final_buffer == NULL){
+              perror("Error in doh final buffer realloc");
+              exit(EXIT_FAILURE);
+          }
+          buf_size += bytes;
+          memcpy(final_buffer, buffer, bytes);
+      }
+    }while (bytes > 0);
+
+    int errored = 0;
+    receive_dns_parse(final_buffer, s->origin_info.resolve_addr,buf_size, s, &errored);
+    
+    
+
+
+    if(errored){
+        perror("Not a valid url");
+        exit(EXIT_FAILURE);
+    }
+
+    unsigned ret = CONNECTING;
+
+
+    return ret;
+    
+
 
 
 }

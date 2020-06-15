@@ -1,6 +1,6 @@
-#include "dnsPacket.h"
+
 #include "dohClient.h"
-#include "parsers/http_message_parser.h"
+
 
 
 /*  code from stack overflow */
@@ -57,7 +57,7 @@ char *base64_encode(const unsigned char *data,
 
 /* code from stack overflow */
 
-
+/*
 uint8_t * get_host_by_name(char * domain){
 
 
@@ -168,6 +168,7 @@ ret = parse_dns_resp(http_parser.body, domain);
 
 
 }
+*/
 
 
 char * request_generate(char * domain, int *length){
@@ -255,6 +256,43 @@ return request;
 }
 
 
+void receive_dns_parse(char * final_buffer, char * domain, int buf_size, struct socks5 * s, int * errored){
+
+    uint8_t * ret;
+    parse_to_crlf(final_buffer, &buf_size); //it removes  \r from headers so that parser is consistent
+
+    struct buffer to_parse;
+
+
+    char data[DATA_MAX_SIZE];
+    buffer_init(&to_parse, DATA_MAX_SIZE, (uint8_t *)data);
+    int i = 0;
+
+        for (char * b = final_buffer; i<buf_size; b++, i++) {
+            buffer_write(&to_parse, *b);
+        }
+
+        buffer_write(&to_parse, '\n'); //doh responds without terminating the vody
+        buffer_write(&to_parse, '\n');
+
+
+    struct http_message_parser http_parser;
+    http_message_parser_init(&http_parser);
+
+    http_message_state http_state = http_consume_message(&to_parse, &http_parser, errored);
+
+    char * body;
+
+    if(http_state != HTTP_F){
+        perror("Received an unrecognizable http response in doh client");
+        exit(EXIT_FAILURE);
+    }
+
+    parse_dns_resp(http_parser.body, domain, s, errored);
+
+}
+
+
 
 
 
@@ -282,24 +320,3 @@ void parse_to_crlf(char * response, int *size){
 
 
 }
-
-/*
-int main(){
-
-
-    char * example = "www.facebook.com";
-
-    int size;
-    size_t size2;
-
-
-
-
-    uint8_t * ret = get_host_by_name(example);
-
-    printf("%s\n", ret);
-
-
-    return 0;
-}
-*/

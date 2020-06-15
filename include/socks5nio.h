@@ -22,7 +22,7 @@
 #include "selector.h"
 #include "stateMachine.h"
 #include "authentication.h"
-#include "dohClient.h"
+
 
 #define N(x) (sizeof(x) / sizeof((x)[0]))
 /** TODO: define appropiate size */
@@ -342,5 +342,5 @@ typedef struct socks5
     struct socks5_origin_info origin_info;
 } socks5;
 
-
+#include "dohClient.h"
 #endif

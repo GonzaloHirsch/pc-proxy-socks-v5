@@ -1,3 +1,6 @@
+#ifndef __DNS_PACKET_H__
+#define __DNS_PACKET_H__
+
 
 //Header Files
 #include<stdio.h> //printf
@@ -7,6 +10,7 @@
 #include<arpa/inet.h> //inet_addr , inet_ntoa , ntohs etc
 #include<netinet/in.h>
 #include<unistd.h>    //getpid
+#include "socks5nio.h" //socks5 struct
 
 
 #define MAX_HOST_SIZE 255
@@ -81,4 +85,7 @@ struct DNS_HEADER
 
 uint8_t * generate_dns_req(char * host, int * final_size);
 
-uint8_t * parse_dns_resp(uint8_t * to_parse, char * domain);
+void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * errored);
+
+
+#endif
