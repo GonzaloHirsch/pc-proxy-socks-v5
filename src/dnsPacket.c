@@ -160,7 +160,7 @@ uint8_t * parse_dns_resp(uint8_t * to_parse, char * domain){
         if( ntohs(answers[i].resource->type) == T_A) //IPv4 address
         {
             long *p;
-            p=(long*)answers[i].rdata;
+            p= (long*) answers[i].rdata;
             a.sin_addr.s_addr=(*p); //working without ntohl
             ret = inet_ntoa(a.sin_addr);
         }   
@@ -170,7 +170,7 @@ uint8_t * parse_dns_resp(uint8_t * to_parse, char * domain){
             long *p;
             p=(long*)answers[i].rdata;
             a.sin_addr.s_addr=(*p); //working without ntohl
-            ret = inet_ntop(AF_INET6, &(a.sin_addr),dest, INET6_ADDRSTRLEN);
+            ret = (char *)inet_ntop(AF_INET6, &(a.sin_addr),dest, INET6_ADDRSTRLEN);
         }   
         
     }
