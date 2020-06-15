@@ -68,8 +68,8 @@ Para realizar un listado de usuarios, simplemente se envía la siguiente request
             +------+-------+
 
 Campos:
-            TYPE -> Tipo de uso, X’00’ (USUARIOS)
-            CMD -> Comando a realizar, X’00’ (LISTAR)
+            TYPE -> Tipo de uso, X’01’ (USUARIOS)
+            CMD -> Comando a realizar, X’01’ (LISTAR)
 
 Y la respuesta del servidor sigue el siguiente formato:
 
@@ -80,8 +80,8 @@ Y la respuesta del servidor sigue el siguiente formato:
             +------+-------+--------+-----------+
 
 Campos:
-            TYPE -> Tipo de uso, X’00’ (USUARIOS)
-            CMD -> Comando a realizar, X’00’ (LISTAR)
+            TYPE -> Tipo de uso, X’01’ (USUARIOS)
+            CMD -> Comando a realizar, X’01’ (LISTAR)
             ULEN -> Cantidad de usuarios a devolver
             DATA -> Nombres de los usuarios, separados por coma (",")
 
@@ -94,8 +94,8 @@ Para realizar un alta de un usuario, se envía una request de creacion de un usu
             +------+-------+------+----------+------+----------+
 
 Campos:
-            TYPE -> Tipo de uso, X’00’ (USUARIOS)
-            CMD -> Comando a realizar, X’01’ (CREAR)
+            TYPE -> Tipo de uso, X’01’ (USUARIOS)
+            CMD -> Comando a realizar, X’02’ (CREAR)
             ULEN -> Longitud del nombre del usuario
             UNAME -> Nombre del usuario
             PLEN -> Longitud de la Contraseña
@@ -110,8 +110,8 @@ Y la respuesta del servidor sigue el siguiente formato:
             +------+-------+----------+
 
 Campos:
-            TYPE -> Tipo de uso, X’00’ (USUARIOS)
-            CMD -> Comando a realizar, X’01’ (CREAR)
+            TYPE -> Tipo de uso, X’01’ (USUARIOS)
+            CMD -> Comando a realizar, X’02’ (CREAR)
             STATUS -> Estado de la creacion:
                 - EXITO -> X’00’
                 - ERROR GENERICO -> X’01’
@@ -129,8 +129,8 @@ Para realizar la obtención de las métricas, se puede realizar una request sigu
             +------+-------+
 
 Campos:
-            TYPE -> Tipo de uso, X’01’ (METRICAS)
-            CMD -> Comando a realizar, X’00’ (LISTAR)
+            TYPE -> Tipo de uso, X’02’ (METRICAS)
+            CMD -> Comando a realizar, X’01’ (LISTAR)
 
 Y la respuesta del servidor sigue el siguiente formato:
 
@@ -141,8 +141,8 @@ Y la respuesta del servidor sigue el siguiente formato:
             +------+-------+--------+-----------+
 
 Campos:
-            TYPE -> Tipo de uso, X’01’ (METRICAS)
-            CMD -> Comando a realizar, X’00’ (LISTAR)
+            TYPE -> Tipo de uso, X’02’ (METRICAS)
+            CMD -> Comando a realizar, X’01’ (LISTAR)
             MLEN -> Cantidad de metricas a devolver
             DATA -> Pares clave valor, siguiendo el formato "clave:valor", separadas por coma (",")
 
@@ -159,8 +159,8 @@ Para poder listar todas las configuraciones se utiliza la siguiente request:
             +------+-------+
 
 Campos:
-            TYPE -> Tipo de uso, X’02’ (CONFIGURACION)
-            CMD -> Comando a realizar, X’00’ (LISTAR)
+            TYPE -> Tipo de uso, X’03’ (CONFIGURACION)
+            CMD -> Comando a realizar, X’01’ (LISTAR)
 
 Y la respuesta del servidor sigue el siguiente formato:
 
@@ -171,8 +171,8 @@ Y la respuesta del servidor sigue el siguiente formato:
             +------+-------+--------+-----------+
 
 Campos:
-            TYPE -> Tipo de uso, X’02’ (CONFIGURACION)
-            CMD -> Comando a realizar, X’00’ (LISTAR)
+            TYPE -> Tipo de uso, X’03’ (CONFIGURACION)
+            CMD -> Comando a realizar, X’01’ (LISTAR)
             CLEN -> Cantidad de configuraciones a devolver
             DATA -> Pares clave valor, siguiendo el formato "clave:valor", separadas por coma (",")
 
@@ -185,8 +185,8 @@ Para poder editar la configuración de alguna métrica se utiliza la siguiente r
             +------+-------+--------+--------+---------+
 
 Campos:
-            TYPE -> Tipo de uso, X’02’ (CONFIGURACION)
-            CMD -> Comando a realizar, X’02’ (EDITAR)
+            TYPE -> Tipo de uso, X’03’ (CONFIGURACION)
+            CMD -> Comando a realizar, X’03’ (EDITAR)
             CONF -> Numero de configuración a editar
                 - LISTAR LAS CONFIGS QUE PERMITIMOS -> TODO
             CLEN -> Longitud de la nueva configuracion
@@ -201,8 +201,8 @@ Y la respuesta del servidor sigue el siguiente formato:
             +------+-------+--------+----------+
 
 Campos:
-            TYPE -> Tipo de uso, X’02’ (CONFIGURACION)
-            CMD -> Comando a realizar, X’02’ (EDITAR)
+            TYPE -> Tipo de uso, X’03’ (CONFIGURACION)
+            CMD -> Comando a realizar, X’03’ (EDITAR)
             CONF -> Numero de configuración a editar
                 - LISTAR LAS CONFIGS QUE PERMITIMOS -> TODO
             STATUS -> Estado de la creacion:

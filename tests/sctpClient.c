@@ -34,11 +34,52 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    // -------------------------------- LOGIN --------------------------------
+
     /* VER(1), ULEN(1), USER(5 -> gonza), PLEN(1), PASS(8 -> admin123)*/
-    uint8_t data[] = {
+    uint8_t data_good[] = {
+        0x01, 0x05, 0x67, 0x6F, 0x6E, 0x7A, 0x61, 0x08, 0x61, 0x64, 0x6D, 0x69, 0x6E, 0x31, 0x32, 0x33};
+
+    uint8_t data_bad[] = {
         0x01, 0x05, 0x67, 0x6F, 0x6E, 0x7A, 0x62, 0x08, 0x61, 0x64, 0x6D, 0x69, 0x6E, 0x31, 0x32, 0x33};
 
-    ret = sctp_sendmsg(serverSocket, (void *)data, N(data), NULL, 0, 0, 0, 0, 0, 0);
+    // Sending login request
+    ret = sctp_sendmsg(serverSocket, (void *)data_good, N(data_good), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+    if (ret < 0){
+        printf("Error sending login \n");
+        close(serverSocket);
+        exit(0);
+    }
+
+    // -------------------------------- LOGIN RESPONSE --------------------------------
+
+    uint8_t response_buffer[2];
+    struct sctp_sndrcvinfo sndrcvinfo;
+    size_t count = N(response_buffer);
+    int recv_flags = 0;
+
+    // Receiving login response
+    ret = sctp_recvmsg(serverSocket, response_buffer, count, NULL, 0, &sndrcvinfo, &recv_flags);
+    if (ret <= 0){
+        printf("Error receiving login response\n");
+        close(serverSocket);
+        exit(0);
+    }
+
+    printf("Version %d, login %d, total data %d, count %ld\n", response_buffer[0], response_buffer[1], ret, count);
+
+    if (response_buffer[0] == 0x01){
+        printf("VERSION OK\n");
+    } else {
+        printf("BAD VERSION\n");
+    }
+
+    if (response_buffer[1] == 0x00){
+        printf("LOGIN OK\n");
+    } else {
+        printf("BAD LOGIN\n");
+    }
+
     while (1)
         ;
 

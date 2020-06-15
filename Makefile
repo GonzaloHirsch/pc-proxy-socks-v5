@@ -17,4 +17,4 @@ client:
 sctp_client:
 	gcc -g tests/sctpClient.c -Iinclude -L/usr/local/lib -lsctp -o sctp_client
 clean:
-	rm -rf application slaveProcess view sctp_client socksClient server
+	rm -rf application slaveProcess view sctp_client socksClient

@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <signal.h>
 #include "selector.h"
 #include "authentication.h"
 #include "io_utils/buffer.h"
@@ -21,7 +22,7 @@
 #define SCTP_BUFFERSIZE 2048
 
 /** Version of the negotiation */
-#define SCTP_VERSION 0x01;
+#define SCTP_VERSION 0x01
 
 /** 
  * States the SCTP process goes through 
@@ -38,17 +39,19 @@ typedef enum SCTP_STATES {
 /** Enum for the different types of areas to be used */
 typedef enum TYPE
 {
-    TYPE_USERS = 0x00,
-    TYPE_METRICS = 0x01,
-    TYPE_CONFIG = 0x02
+    TYPE_NOTYPE = 0x00,
+    TYPE_USERS = 0x01,
+    TYPE_METRICS = 0x02,
+    TYPE_CONFIG = 0x03
 } TYPE;
 
 /** Enum for the different types of actions to be performed */
 typedef enum CMD
 {
-    CMD_LIST = 0x00,
-    CMD_CREATE = 0x01,
-    CMD_EDIT = 0x02
+    CMD_NOCMD = 0x00,
+    CMD_LIST = 0x01,
+    CMD_CREATE = 0x02,
+    CMD_EDIT = 0x03
 } CMD;
 
 /** Struct to represent the message sent by the client */
