@@ -198,9 +198,9 @@ hello_read_init(const unsigned state, struct selector_key *key)
 static void
 hello_read_close(const unsigned state, struct selector_key *key)
 {
-    bool errored;
-    struct hello_st *d = &ATTACHMENT(key)->client.hello;
-    hello_done_parsing(&d->parser, &errored);
+   struct socks5 *sock_state = ATTACHMENT(key);
+
+   free_hello_parser(&sock_state->client.hello.parser);
 }
 
 static unsigned
@@ -255,16 +255,11 @@ hello_process(const struct hello_st *d)
     uint8_t methods_c = d->parser.nauth;
     uint8_t m = SOCKS_HELLO_NO_ACCEPTABLE_METHODS;
 
-    /** TODO: Change to accept multiple methods 
-     * For now only accepting NO_AUTH
-    */
+
     for (int i = 0; i < methods_c; i++)
     {
-
-        if (methods[i] == SOCKS_HELLO_NOAUTHENTICATION_REQUIRED)
-        {
-            m = SOCKS_HELLO_NOAUTHENTICATION_REQUIRED;
-        }
+        if (methods[i] == SOCKS_HELLO_USERPASS)
+            m = SOCKS_HELLO_USERPASS;
     }
 
     // Save the version and the selected method in the write buffer of hello_st
@@ -280,9 +275,7 @@ hello_process(const struct hello_st *d)
 // HELLO_WRITE
 ////////////////////////////////////////
 
-/** Writes the version and the selected method 
- * This is done in the init because we already have the info.
-*/
+
 static void
 hello_write_init(const unsigned state, struct selector_key *key)
 {
@@ -308,7 +301,7 @@ hello_write(struct selector_key *key)
 
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
     ssize_t n;
-    unsigned ret = REQUEST_READ;
+    unsigned ret = USERPASS_READ;
     size_t nr;
     uint8_t *buffer_read = buffer_read_ptr(d->wb, &nr);
 
@@ -347,16 +340,92 @@ hello_write(struct selector_key *key)
 static void
 userpass_read_init(const unsigned state, struct selector_key *key)
 {
+    struct socks5 *s = ATTACHMENT(key);
+
+    struct userpass_st * up_s= &s->client.userpass;
+
+    up_s->rb = &(s->read_buffer);
+    up_s->wb = &(s->write_buffer);
+    up_req_parser_init(&up_s->parser);
 }
 
 static void
 userpass_read_close(const unsigned state, struct selector_key *key)
 {
+    struct socks5 *sock_state = ATTACHMENT(key);
+
+    free_up_req_parser(&sock_state->client.userpass.parser);
 }
+
+static unsigned
+userpass_process(struct userpass_st *up_s, bool * auth_valid);
 
 static unsigned
 userpass_read(struct selector_key *key)
 {
+    struct userpass_st *up_s = &ATTACHMENT(key)->client.userpass;
+    unsigned ret = USERPASS_READ;
+    bool error = false, auth_valid = false;
+    uint8_t *ptr;
+    size_t count;
+    ssize_t n;
+
+    ptr = buffer_write_ptr(up_s->rb, &count);
+    n = recv(key->fd, ptr, count, 0);
+    if (n > 0)
+    {
+        buffer_write_adv(up_s->rb, n);
+        // Parse the inofmration
+        const enum up_req_state st = up_consume_message(up_s->rb, &up_s->parser, &error);
+        if (up_done_parsing(st, &error) && !error)
+        {   
+            // Set the fd to write for the userpass write state
+            if (SELECTOR_SUCCESS == selector_set_interest_key(key, OP_WRITE))
+            {
+                // Process the user password info.
+                ret = userpass_process(up_s, &auth_valid);
+                // Save the credential if auth is valid
+                if(auth_valid)
+                    ATTACHMENT(key)->username = up_s->user;
+            }
+            else
+            {
+                ret = ERROR;
+            }
+        }
+    }
+    else
+    {
+        ret = ERROR;
+    }
+
+    return error ? ERROR : ret;
+
+}
+
+static unsigned
+userpass_process(struct userpass_st *up_s, bool * auth_valid){
+    unsigned ret = USERPASS_WRITE;
+    uint8_t * uid = up_s->parser.uid, * uid_stored;
+    uint8_t * pw = up_s->parser.pw, * pw_stored;
+    uint8_t uid_l = up_s->parser.uidLen;
+    uint8_t pw_l = up_s->parser.pwLen;
+
+    *auth_valid = validate_user_proxy(uid, pw);
+    
+    if(*auth_valid){            
+        up_s->user = malloc(uid_l);
+        memcpy(up_s, uid, uid_l);
+    }           
+            
+
+    // Serialize the auth result in the write buffer for the response.
+    if(-1 == up_marshall(up_s->wb, *auth_valid ? AUTH_SUCCESS : AUTH_FAILURE)){
+        ret = ERROR;
+    }
+
+    return ret;   
+    
 }
 
 ////////////////////////////////////////
@@ -371,11 +440,49 @@ userpass_write_init(const unsigned state, struct selector_key *key)
 static void
 userpass_write_close(const unsigned state, struct selector_key *key)
 {
+    struct socks5 *sock_state = ATTACHMENT(key);
+
+    // Reset read and write buffer for reuse.
+    buffer_reset(&sock_state->write_buffer);
+    buffer_reset(&sock_state->read_buffer);
+
+    /** TODO: Free memory of userpass_st */   
 }
 
 static unsigned
 userpass_write(struct selector_key *key)
 {
+    struct userpass_st *up_s = &ATTACHMENT(key)->client.userpass;
+    ssize_t n;
+    unsigned ret = REQUEST_READ;
+    size_t nr;
+    uint8_t *up_response = buffer_read_ptr(up_s->wb, &nr);
+
+    uint8_t data[] = {up_response[0], up_response[1]};
+    buffer_read_adv(up_s->wb, 2);
+
+    // Send the version and the authentication result
+    n = send(key->fd, data, 2, 0);
+    if (n > 0)
+    {
+        // Setting the fd to read.
+        if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_READ))
+        {
+            ret = ERROR;
+        }
+    }
+    else
+    {
+        ret = ERROR;
+    }
+
+    // Check if the authentication was successful if not --> Error
+    if (up_response[1] != AUTH_SUCCESS)
+    {
+        ret = ERROR;
+    }
+
+    return ret;
 }
 
 ////////////////////////////////////////
@@ -426,7 +533,7 @@ request_close(const unsigned state, struct selector_key *key)
     }
     printf("    port: %d%d\n", s->origin_info.port[0], s->origin_info.port[1]);
 
-    printf("Im forever stuck in request_close...\n");
+
 }
 
 static void
@@ -962,7 +1069,7 @@ static const struct state_definition client_statbl[] = {
         .state = USERPASS_READ,
         .on_arrival = userpass_read_init,
         .on_departure = userpass_read_close,
-        .on_write_ready = userpass_read,
+        .on_read_ready = userpass_read,
     },
     {
         .state = USERPASS_WRITE,
