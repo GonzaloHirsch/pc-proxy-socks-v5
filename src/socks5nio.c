@@ -767,6 +767,8 @@ static int try_connection(int *connect_ret, connecting_st *d, socks5_origin_info
         memcpy((void *)&sin->sin_port, s5oi->port, 2);                                                               // Port
         s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
         *connect_ret = connect(origin_fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
+        if (errno == EINPROGRESS)
+            return origin_fd;
         if (*connect_ret < 0)
             d->first_working_ip_index++;
     } while (*connect_ret < 0 && d->first_working_ip_index < ((addrType == IPv4) ? s5oi->ipv4_c : s5oi->ipv6_c));
@@ -786,20 +788,39 @@ static unsigned connecting_write(struct selector_key *key)
 {
     // write connection response to client
 
+
     struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
     struct socks5 *s = ATTACHMENT(key);
     struct socks5_origin_info *s5oi = &s->origin_info;
     int connect_ret = -1;
     selector_status st = SELECTOR_SUCCESS;
 
-    s->origin_fd = try_connection(&connect_ret, d, s5oi, s5oi->ip_selec);
+    if (key->fd == s->client_fd) {
+        // regular case, try to connect to any of the ips provided
+        s->origin_fd = try_connection(&connect_ret, d, s5oi, s5oi->ip_selec);
+    } else if (key->fd == s->origin_fd) {
+        // this should be entered only when EINPROGRESS is obtained
+        // next thing up is to check if connection went well or wrong
+        connect_ret = connect(key->fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
+        switch (errno) {
+            case EISCONN:
+                // Connection successful
+                // one should reset interests for client_fd (which were set to OP_NOOP)
+                // and go to COPY state
+                selector_set_interest(key->s, s->client_fd, OP_READ | OP_WRITE);
+                break;
+            default:
+                return ERROR;
+        } 
+    }
 
     if (connect_ret < 0)
     {
-        // If the error is connection in progress, we have to register the fd to be able to respond to origin
+        // If the error is connection in progress, one needs to register the fd to be able to respond to origin
         if (errno == EINPROGRESS){
             printf("I'm waiting connection\n");
             st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
+            selector_set_interest(key->s, s->client_fd, OP_NOOP);
             if (st != SELECTOR_SUCCESS){
                 printf("Error registering FD to wait for connection\n");
                 s->origin_fd = -1;
