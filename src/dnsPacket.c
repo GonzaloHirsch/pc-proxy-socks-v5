@@ -162,15 +162,15 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
  
         if( ntohs(answers[i].resource->type) == T_A) //IPv4 address
         {
-            long *p;
-            p= (long*) answers[i].rdata;
+            uint8_t *p;
+            p=  answers[i].rdata;
             memcpy(s->origin_info.ipv4_addrs[s->origin_info.ipv4_c++], p, IP_V4_ADDR_SIZE);
 
         }   
          if( ntohs(answers[i].resource->type) == T_AAAA) //IPv6 address
         {
-            long *p;
-            p=(long*)answers[i].rdata;
+            uint8_t *p;
+            p= answers[i].rdata;
             memcpy(s->origin_info.ipv6_addrs[s->origin_info.ipv6_c++], p, IP_V6_ADDR_SIZE);
 
         }   
