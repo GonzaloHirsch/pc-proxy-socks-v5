@@ -699,11 +699,11 @@ resolve_init(const unsigned state, struct selector_key *key)
     // Resolve state
     struct socks5 * s = ATTACHMENT(key);
     
-    struct resolve_st *r_s = &ATTACHMENT(key)->orig.resolve;
+    struct resolve_st *r_s = &s->orig.resolve;
     
     // Saving the buffers
-    r_s->rb = &(ATTACHMENT(key)->read_buffer);
-    r_s->wb = &(ATTACHMENT(key)->write_buffer);
+    r_s->rb = &(s->read_buffer);
+    r_s->wb = &(s->write_buffer);
 
     // Create the socket for the nginx server that will serve as dns.
     struct sockaddr_in serv_addr;
@@ -738,14 +738,17 @@ resolve_init(const unsigned state, struct selector_key *key)
         r_s->doh_fd = -1;
     }
 
-    /** TODO: Remove interests from client fd */
-
+    // Removing interest from client fd(We dont need to read or write in resolve state)
+    if (SELECTOR_SUCCESS != selector_set_interest(key->s, s->client_fd, OP_NOOP)){
+        printf("Could not set interest of %d for %d\n", OP_NOOP, s->client_fd);
+        /** Todo see what we have to do! */
+    }
 }
 
 static void
 resolve_close(const unsigned state, struct selector_key *key)
 {
-    printf("Im forever stuck in resolve_close!");
+    printf("Im forever stuck in resolve_close!\n");
     while(1){}
 }
 
@@ -766,30 +769,36 @@ static unsigned
 resolve_write(struct selector_key *key)
 {
     struct socks5 * s = ATTACHMENT(key);
-    fd_interest interest = OP_NOOP;
-    interest |= OP_READ;
-     // Resolve state
+    struct resolve_st *r_s = &s->orig.resolve;
 
-    struct resolve_st *r_s = &ATTACHMENT(key)->orig.resolve;
-
-
+    unsigned ret = RESOLVE;
+    ssize_t n;
     int final_buffer_size = 0;
 
-
-
+    // Generate the DNS request
     char * http_request = request_generate(s->origin_info.resolve_addr, &final_buffer_size);
 
-    send(r_s->doh_fd, http_request,final_buffer_size, 0);
-
-    // Set the interests for the selector
-    if (SELECTOR_SUCCESS != selector_set_interest(key->s, r_s->doh_fd, interest))
-    {
-        printf("Could not set interest of %d for %d\n", interest, r_s->doh_fd);
-        abort();
+    // Validate that we were able to connect and the request is valid.
+    if(r_s->doh_fd > 0 && http_request != NULL){
+        // Send the doh request to the nginx server
+        n = send(r_s->doh_fd, http_request,final_buffer_size, MSG_DONTWAIT);
+        if(n > 0){
+            // Set the interests for the selector
+            if (SELECTOR_SUCCESS != selector_set_interest(key->s, r_s->doh_fd, OP_READ))
+            {
+                printf("Could not set interest of %d for %d\n", OP_READ, r_s->doh_fd);
+                ret = ERROR;
+            }
+        }
+        else {
+            ret = ERROR;
+        }
+    }
+    else{
+        ret = ERROR;
     }
 
-
-
+    return ret;
 }
 
 static unsigned
