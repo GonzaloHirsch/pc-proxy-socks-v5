@@ -82,7 +82,7 @@ int main()
     printf("Initializing management socket\n");
 
     // Creating the server socket to listen
-    management_socket = socket(AF_INET, SOCK_STREAM, 0);
+    management_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
     if (management_socket <= 0)
     {
         printf("Management socket creation failed");
@@ -91,11 +91,14 @@ int main()
     }
 
     // Setting the master socket to allow multiple connections, not required, just good habit
-    if (setsockopt(management_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0)
+    // This setsockopt gives an error when used, if not used, the client still works
+    /*
+    if (setsockopt(management_socket, IPPROTO_SCTP, SCTP_INITMSG, (char *)&opt, sizeof(opt)) < 0)
     {
         perror("ERROR: Failure setting setting management socket\n");
         exit(EXIT_FAILURE);
     }
+    */
 
     // Binding the socket to localhost
     if (bind(management_socket, (struct sockaddr *)&management_address, sizeof(management_address)) < 0)
@@ -160,23 +163,27 @@ int main()
     managementSocketHandler->handle_close = NULL;
 
     // Register the master socket to the managed fds
-    selector_status ss_master = SELECTOR_SUCCESS;
-    ss_master = selector_register(selector, master_socket, masterSocketHandler, OP_READ, NULL);
+    selector_status ss_master = selector_register(selector, master_socket, masterSocketHandler, OP_READ, NULL);
     if (ss_master != SELECTOR_SUCCESS)
     {
         printf("Error in master socket: %s", selector_error(ss_master));
     }
 
-    // TODO: Register the SCTP socket to the managed fds
+    // Register the SCTP socket to the managed fds
+    selector_status ss_management = selector_register(selector, management_socket, managementSocketHandler, OP_READ, NULL);
+    if (ss_management != SELECTOR_SUCCESS)
+    {
+        printf("Error in management socket: %s", selector_error(ss_management));
+    }
 
     // Accept the incoming connection
-    printf("Waiting for connections on socket %d\n", master_socket);
+    printf("Waiting for connections on socket %d and management connections on socket %d\n", master_socket, management_socket);
 
     // Cycle until a signal is received as finished
     while (!finished)
     {
         printf("Awaiting connection\n");
-        
+
         // Wait for activiy of one of the sockets:
         // -Master Socket --> New connection.
         // -Child Sockets --> Read or write operation

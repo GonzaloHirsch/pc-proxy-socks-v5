@@ -10,6 +10,14 @@ static unsigned pool_size = 0;
 /** Actual pool of objects */
 static struct sctp *pool = 0;
 
+// Handler function declarations
+static unsigned handle_request(struct selector_key *key);
+static unsigned handle_normal_request(struct selector_key *key);
+static unsigned handle_login_request(struct selector_key *key);
+static void sctp_read(struct selector_key *key);
+static void sctp_write(struct selector_key *key);
+static void sctp_close(struct selector_key *key);
+
 ///////////////////////////////////////////////////////////////////
 // OBJECT POOL
 ///////////////////////////////////////////////////////////////////
@@ -84,21 +92,12 @@ sctp_read(struct selector_key *key)
     // Obtain the sctp struct from the selector key
     struct sctp *d = ATTACHMENT(key);
 
-    // If the sctp struct has a logged user, handle its request
-    // Else, handle the login request
-    if (d->is_logged)
-    {
-        handle_normal_request(key);
-    }
-    else
-    {
-        handle_login_request(key);
-    }
+    // Result, next state to move in the process
+    unsigned ret = SCTP_RESPONSE;
 
-    // Set interest to write because the protocol used is 1 request & 1 response
-    // If interest set is not successful, unregister the file descriptor
-    selector_status ss = selector_set_interest(key->s, key->fd, OP_WRITE);
-    if (ss != SELECTOR_SUCCESS)
+    // If the request returns not the appropiate state, the fd is unregistered
+    ret = handle_request(key);
+    if (ret != SCTP_RESPONSE)
     {
         selector_unregister_fd(key->s, d->client_fd);
     }
@@ -107,6 +106,7 @@ sctp_read(struct selector_key *key)
 static void
 sctp_write(struct selector_key *key)
 {
+    /*
     struct state_machine *stm = &ATTACHMENT(key)->stm;
     const enum socks_v5state st = stm_handler_write(stm, key);
 
@@ -114,6 +114,7 @@ sctp_write(struct selector_key *key)
     {
         socksv5_done(key);
     }
+    */
 }
 
 static void
@@ -144,7 +145,7 @@ static struct sctp *sctp_new(const int client)
     buffer_init(&(sctpState->buffer_read), BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
 
     // Intialize the client_fd
-    sockState->client_fd = client;
+    sctpState->client_fd = client;
 
     return sctpState;
 }
@@ -154,7 +155,7 @@ static struct sctp *sctp_new(const int client)
  * */
 void sctp_passive_accept(struct selector_key *key)
 {
-    printf("Inside passive accept\n");
+    printf("Inside passive accept in SCTP\n");
 
     struct sockaddr_storage client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
@@ -188,8 +189,7 @@ void sctp_passive_accept(struct selector_key *key)
     memcpy(&state->client_addr, &client_addr, client_addr_len);
     state->client_addr_len = client_addr_len;
 
-    if (SELECTOR_SUCCESS != selector_register(key->s, client, &socks5_handler,
-                                              OP_READ, state))
+    if (SELECTOR_SUCCESS != selector_register(key->s, client, &sctp_handler, OP_READ, state))
     {
         goto fail;
     }
@@ -207,12 +207,93 @@ fail:
 // REQUESTS
 ///////////////////////////////////////////////////////////////////
 
-void handle_normal_request(struct selector_key *key)
+static unsigned handle_request(struct selector_key *key)
+{
+    // Getting the sctp struct
+    struct sctp *d = ATTACHMENT(key);
+    // Struct for information about the sender
+    struct sctp_sndrcvinfo sender_info;
+    // Getting the buffer to read the data
+    buffer *b = &d->buffer_read;
+    // Amount that can be read
+    size_t count;
+    // Flags for the recv
+    int flags = 0;
+    // Getting the pointer to reading data
+    uint8_t *ptr = buffer_write_ptr(b, &count);
+    // Variable for the return value of the request
+    unsigned ret = SCTP_RESPONSE;
+
+    // Receiving the message
+    ssize_t length = sctp_recvmsg(d->client_fd, ptr, count, NULL, 0, &sender_info, &flags);
+    if (length <= 0)
+    {
+        printf("Error in recv SCTP\n");
+        return SCTP_ERROR;
+    }
+
+    printf("Im processing the request\n");
+    /*
+    
+    // Advancing the buffer
+    buffer_write_adv(b, length);
+
+    // If user is logged, parse a request
+    if (d->is_logged){
+        ret = handle_normal_request(key);
+    } else {
+        ret = handle_login_request(key);
+    }
+    */
+    return ret;
+}
+
+static unsigned handle_normal_request(struct selector_key *key)
 {
     // TODO: HANDLE
 }
 
-void handle_login_request(struct selector_key *key)
+static unsigned handle_login_request(struct selector_key *key)
 {
-    // TODO: HANDLE
+    // Getting the sctp struct
+    struct sctp *d = ATTACHMENT(key);
+    // Getting the buffer to read the data
+    buffer *b = &d->buffer_read;
+    // Variable to hold the parser
+    struct up_request_parser *parser;
+    // Boolean for parser error and auth validity
+    bool error = false, auth_valid = false;
+    // Variable for the return value of the request
+    unsigned ret = SCTP_RESPONSE;
+
+    // Initializing the u+p parser
+    up_req_parser_init(parser);
+
+    // Parsing the information
+    const enum up_req_state st = up_consume_message(b, parser, &error);
+    // Checking if the parser is done parsing the message
+    if (up_done_parsing(st, &error) && !error)
+    {
+        selector_status ss = selector_set_interest(key->s, key->fd, OP_WRITE);
+        if (ss != SELECTOR_SUCCESS)
+        {
+            selector_unregister_fd(key->s, d->client_fd);
+            ret = SCTP_ERROR;
+        }
+        else
+        {
+            /*
+            // Process the user password info.
+            ret = userpass_process(up_s, &auth_valid);
+            // Save the credential if auth is valid
+            if(auth_valid)
+                ATTACHMENT(key)->username = up_s->user;
+                */
+        }
+    }
+
+    // Liberating the parser
+    free_up_req_parser(&parser);
+
+    return ret;
 }

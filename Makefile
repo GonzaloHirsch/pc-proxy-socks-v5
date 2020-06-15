@@ -10,7 +10,7 @@ SOURCES2=$(wildcard src/**/*.c)
 INCLUDE=include
 
 all:
-	gcc -g -pthread $(SOURCES) $(SOURCES2) -I$(INCLUDE) -o server
+	gcc -g -pthread $(SOURCES) $(SOURCES2) -I$(INCLUDE) -L/usr/local/lib -lsctp -o server
 
 client:
 	gcc -g tests/socksClient.c tests/Utility.c -Iinclude -o socksClient
