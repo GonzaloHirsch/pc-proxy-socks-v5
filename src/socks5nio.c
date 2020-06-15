@@ -703,7 +703,6 @@ resolve_init(const unsigned state, struct selector_key *key)
     struct sockaddr_in serv_addr;
     uint8_t * ret;
     char * message;
-    int nginx_fd;
     selector_status st = SELECTOR_SUCCESS;
 
     char * final_buffer = NULL;
@@ -716,20 +715,20 @@ resolve_init(const unsigned state, struct selector_key *key)
 
     int portno  = DOH_PORT;
 
-    nginx_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if(nginx_fd <= 0){
+    r_s->doh_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if(r_s->doh_fd <= 0){
         perror("ERROR openning socket");
         r_s->doh_fd = -1;
     }
     
     // Connect to nginx server
-    if (connect(nginx_fd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0){
+    if (connect(r_s->doh_fd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0){
         perror("ERROR connecting");
         r_s->doh_fd = -1;
     }
 
     // Register the fd of the nginx server
-    st = selector_register(key->s, nginx_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
+    st = selector_register(key->s, r_s->doh_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
     if (st != SELECTOR_SUCCESS){
         printf("Error registering doh server\n");
         r_s->doh_fd = -1;
@@ -749,16 +748,19 @@ resolve_close(const unsigned state, struct selector_key *key)
 static unsigned
 resolve_process(struct userpass_st *up_s);
 
+/** State when receiving the doh response */
 static unsigned
 resolve_read(struct selector_key *key)
 {
 
 }
 
+/** State when sending the doh server the request */
 static unsigned
 resolve_write(struct selector_key *key)
 {
-
+     // Resolve state
+    struct resolve_st *r_s = &ATTACHMENT(key)->orig.resolve;
 }
 
 static unsigned
