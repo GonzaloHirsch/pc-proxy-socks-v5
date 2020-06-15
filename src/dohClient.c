@@ -2,13 +2,6 @@
 #include "dohClient.h"
 #include "parsers/http_message_parser.h"
 
-#define DOH_PORT 80
-#define BUFFERSIZE 1024
-#define MAX_FDQN 256
-#define DATA_MAX_SIZE 65536
-
-#define REQ_MAX_SIZE 65536
-
 
 /*  code from stack overflow */
 
@@ -68,7 +61,7 @@ char *base64_encode(const unsigned char *data,
 uint8_t * get_host_by_name(char * domain){
 
 
-    char buffer[BUFFERSIZE + 1];
+    char buffer[BUFFERSIZE_DOH + 1];
     struct sockaddr_in serv_addr;
     uint8_t * ret;
     char * message;
@@ -115,7 +108,7 @@ uint8_t * get_host_by_name(char * domain){
 
   do{
 
-      ssize_t bytes = recv(sockfd, buffer, BUFFERSIZE, 0);
+      ssize_t bytes = recv(sockfd, buffer, BUFFERSIZE_DOH, 0);
       if(bytes < 0){
           perror("DOH recv failed");
           exit(EXIT_FAILURE);
@@ -190,7 +183,7 @@ uint8_t * dns_request = generate_dns_req(domain, &dns_length);    //gets the dns
 char * encoded_dns_request = base64_encode((char *)dns_request, dns_length,&dns_encoded_length);
 
 
-char sendline[BUFFERSIZE];
+char sendline[BUFFERSIZE_DOH];
 char * ptr = sendline; //pointer used to copy the http request
 
 char * get_first_part = "GET /dns-query?dns="; 

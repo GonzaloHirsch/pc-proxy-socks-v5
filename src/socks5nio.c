@@ -689,6 +689,65 @@ request_process(struct selector_key *key, struct request_st *d)
 // RESOLVE
 ////////////////////////////////////////
 
+static void
+resolve_init(const unsigned state, struct selector_key *key)
+{   
+    // Create the socket for the nginx server that will serve as dns.
+    struct sockaddr_in serv_addr;
+    uint8_t * ret;
+    char * message;
+    int sockfd;
+
+    char * final_buffer = NULL;
+    char * servIP = "127.0.0.1";
+
+    in_port_t servPort = DOH_PORT;
+    memset(&serv_addr, 0, sizeof(serv_addr)); // Zero out structure
+    serv_addr.sin_family = AF_INET;          // IPv4 address family
+    serv_addr.sin_port = htons(servPort);    // Server port
+
+    int portno  = DOH_PORT;
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if(sockfd <= 0){
+        perror("ERROR openning socket");
+        exit(EXIT_FAILURE);
+    }
+    
+    // Connect to nginx server
+    if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0){
+        perror("ERROR connecting");
+        exit(EXIT_FAILURE);
+    }
+
+}
+
+static void
+resolve_close(const unsigned state, struct selector_key *key)
+{
+
+}
+
+static unsigned
+resolve_process(struct userpass_st *up_s);
+
+static unsigned
+resolve_read(struct selector_key *key)
+{
+
+}
+
+static unsigned
+resolve_write(struct selector_key *key)
+{
+
+}
+
+static unsigned
+resolve_process(struct userpass_st *up_s){
+    
+}
+
 ////////////////////////////////////////
 // CONNECTING
 ////////////////////////////////////////
@@ -1085,6 +1144,11 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state = RESOLVE,
+        .on_arrival = resolve_init,
+        .on_departure = resolve_close,
+        .on_read_ready = resolve_read,
+        .on_write_ready = resolve_write,
+        
     },
     {
         .state = CONNECTING,
