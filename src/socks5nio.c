@@ -692,11 +692,19 @@ request_process(struct selector_key *key, struct request_st *d)
 static void
 resolve_init(const unsigned state, struct selector_key *key)
 {   
+    // Resolve state
+    struct resolve_st *r_s = &ATTACHMENT(key)->orig.resolve;
+
+    // Saving the buffers
+    r_s->rb = &(ATTACHMENT(key)->read_buffer);
+    r_s->wb = &(ATTACHMENT(key)->write_buffer);
+
     // Create the socket for the nginx server that will serve as dns.
     struct sockaddr_in serv_addr;
     uint8_t * ret;
     char * message;
-    int sockfd;
+    int nginx_fd;
+    selector_status st = SELECTOR_SUCCESS;
 
     char * final_buffer = NULL;
     char * servIP = "127.0.0.1";
@@ -708,24 +716,34 @@ resolve_init(const unsigned state, struct selector_key *key)
 
     int portno  = DOH_PORT;
 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if(sockfd <= 0){
+    nginx_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if(nginx_fd <= 0){
         perror("ERROR openning socket");
-        exit(EXIT_FAILURE);
+        r_s->doh_fd = -1;
     }
     
     // Connect to nginx server
-    if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0){
+    if (connect(nginx_fd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0){
         perror("ERROR connecting");
-        exit(EXIT_FAILURE);
+        r_s->doh_fd = -1;
     }
+
+    // Register the fd of the nginx server
+    st = selector_register(key->s, nginx_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
+    if (st != SELECTOR_SUCCESS){
+        printf("Error registering doh server\n");
+        r_s->doh_fd = -1;
+    }
+
+    /** TODO: Remove interests from client fd */
 
 }
 
 static void
 resolve_close(const unsigned state, struct selector_key *key)
 {
-
+    printf("Im forever stuck in resolve_close!");
+    while(1){}
 }
 
 static unsigned
