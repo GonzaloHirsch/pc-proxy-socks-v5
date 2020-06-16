@@ -1028,10 +1028,12 @@ static unsigned connecting_write(struct selector_key *key)
                 printf("Error registering FD to wait for connection\n");
                 s->origin_fd = -1;
             }
+            return CONNECTING;
         } else {
             s->origin_fd = -1;
             fprintf(stderr, "Could not connect\n");
             determine_connect_error(errno);
+            return ERROR;
         }
     }
     else {
