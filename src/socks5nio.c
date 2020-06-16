@@ -820,7 +820,7 @@ resolve_read(struct selector_key *key)
     // If we are done with parsing and no errors happended -> set to write to clientfd
     if(!errored && ret == CONNECTING){
         // Setting the CLIENT fd for WRITE --> REQUEST WILL need to write
-        if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_WRITE))
+        if (SELECTOR_SUCCESS != selector_set_interest(key->s, s->client_fd, OP_WRITE));
         {
             ret = ERROR;
         }
