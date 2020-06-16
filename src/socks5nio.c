@@ -1315,6 +1315,26 @@ copy_write(struct selector_key *key)
     return ret;
 }
 
+// ERROR
+
+static void
+error_init(const unsigned state, struct selector_key *key) {
+    printf("error init\n");
+    close(key->fd);
+}
+
+static unsigned
+error_read(struct selector_key *key) {
+    printf("error read\n");
+    close(key->fd);
+}
+
+static unsigned
+error_write(struct selector_key *key) {
+    printf("error write\n");
+    close(key->fd);
+}
+
 //------------------------STATES DEFINITION--------------------------------------
 
 /** definición de handlers para cada estado */
@@ -1372,6 +1392,9 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state = ERROR,
+        .on_arrival = error_init,
+        .on_write_ready = error_write,
+        .on_read_ready = error_read
         // No now, no need to define any handlers, all in sockv5_done
     }};
 
