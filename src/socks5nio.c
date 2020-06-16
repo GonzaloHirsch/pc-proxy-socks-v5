@@ -1320,18 +1320,21 @@ copy_write(struct selector_key *key)
 static void
 error_init(const unsigned state, struct selector_key *key) {
     printf("error init\n");
+    selector_unregister_fd(key->s, key->fd);
     close(key->fd);
 }
 
 static unsigned
 error_read(struct selector_key *key) {
     printf("error read\n");
+    selector_unregister_fd(key->s, key->fd);
     close(key->fd);
 }
 
 static unsigned
 error_write(struct selector_key *key) {
     printf("error write\n");
+    selector_unregister_fd(key->s, key->fd);
     close(key->fd);
 }
 
