@@ -218,11 +218,8 @@ sctp_read(struct selector_key *key)
     ret = handle_request(key);
     if (ret != SCTP_RESPONSE)
     {
-        printf("I was unregistered\n");
         selector_unregister_fd(key->s, d->client_fd);
     }
-
-    printf("I REALLY FINISHED\n");
 }
 
 static void

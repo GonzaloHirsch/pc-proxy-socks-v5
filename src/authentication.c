@@ -74,9 +74,21 @@ void list_user_admin(uint8_t ** users, uint8_t * count){
 
 bool create_user_admin(uint8_t * username, uint8_t * pass, uint8_t ulen, uint8_t plen){
     // Opening the file to be read
-    FILE* file = fopen("./serverdata/admin_user_pass.txt", "a");
+    FILE* file = fopen("./serverdata/admin_user_pass.txt", "a+");
     if(file == NULL){
         return false;
+    }
+
+    uint8_t * uid_stored;
+    uint8_t line[256];
+
+    // Checking if the username already exists
+    while (fgets(line, sizeof(line), file)) {
+        // Spliting the string to separate user from passwd, get the uid first
+        uid_stored = strtok(line, SEP);
+        if (strcmp(uid_stored, username) == 0){
+            return false;
+        }
     }
 
     size_t size = 1 + ulen + ulen;
