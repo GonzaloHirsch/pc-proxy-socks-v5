@@ -257,9 +257,14 @@ hello_process(const struct hello_st *d)
 
 
     for (int i = 0; i < methods_c; i++)
-    {
-        if (methods[i] == SOCKS_HELLO_USERPASS)
+    {    
+        if (methods[i] == SOCKS_HELLO_NOAUTHENTICATION_REQUIRED){
+            m = SOCKS_HELLO_NOAUTHENTICATION_REQUIRED;
+            break;  // Priority to no auth required
+        }
+        else if (methods[i] == SOCKS_HELLO_USERPASS){
             m = SOCKS_HELLO_USERPASS;
+        }
     }
 
     // Save the version and the selected method in the write buffer of hello_st
@@ -301,9 +306,10 @@ hello_write(struct selector_key *key)
 
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
     ssize_t n;
-    unsigned ret = USERPASS_READ;
+    unsigned ret = ERROR;
     size_t nr;
     uint8_t *buffer_read = buffer_read_ptr(d->wb, &nr);
+    uint8_t auth = ATTACHMENT(key)->auth;
 
     // Get the data from the write buffer
     uint8_t data[] = {buffer_read[0], buffer_read[1]};
@@ -325,10 +331,15 @@ hello_write(struct selector_key *key)
     }
 
     // Check if there is an acceptable method, if not --> Error
-    if (data[1] == SOCKS_HELLO_NO_ACCEPTABLE_METHODS)
-    {
-        ret = ERROR;
+    if(auth == SOCKS_HELLO_NOAUTHENTICATION_REQUIRED){
+        ret = REQUEST_READ;
     }
+    else if(auth == SOCKS_HELLO_USERPASS){
+         ret = USERPASS_READ;
+    }
+   else{
+       ret = ERROR;
+   }
 
     return ret;
 }
