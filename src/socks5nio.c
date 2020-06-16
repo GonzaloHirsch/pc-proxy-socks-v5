@@ -753,8 +753,15 @@ resolve_init(const unsigned state, struct selector_key *key)
 static void
 resolve_close(const unsigned state, struct selector_key *key)
 {
-    printf("Im forever stuck in resolve_close!\n");
-    while(1){}
+    // Sock5 state
+    struct socks5 *s = ATTACHMENT(key);
+
+    // Reset read and write buffer for reuse.
+    buffer_reset(&s->write_buffer);
+    buffer_reset(&s->read_buffer);
+
+    /** TODO: Free the http buffer */
+
 }
 
 static unsigned
@@ -804,20 +811,23 @@ resolve_read(struct selector_key *key)
             ret = CONNECTING;
         }
 
-        
     }
     else{
         printf("DOH recv failed\n");
         ret = ERROR;
     }
 
-    // If we are done with parsing and no errors happended -> set to write and unregister dns fd
+    // If we are done with parsing and no errors happended -> set to write to clientfd
     if(!errored && ret == CONNECTING){
         // Setting the CLIENT fd for WRITE --> REQUEST WILL need to write
         if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_WRITE))
         {
             ret = ERROR;
         }
+    }
+
+    // If we are leaving the resolve state --> unregister the doh fd
+    if(errored || ret == CONNECTING){
         // Unregister the dns server fd.
         if(SELECTOR_SUCCESS != selector_unregister_fd(key->s, r_s->doh_fd)){
             ret = ERROR;
@@ -949,6 +959,8 @@ static int try_connection(int *connect_ret, connecting_st *d, socks5_origin_info
         memcpy((void *)&sin->sin_port, s5oi->port, 2);                                                               // Port
         s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
         *connect_ret = connect(origin_fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
+        if (errno == EINPROGRESS)
+            return origin_fd;
         if (*connect_ret < 0)
             d->first_working_ip_index++;
     } while (*connect_ret < 0 && d->first_working_ip_index < ((addrType == IPv4) ? s5oi->ipv4_c : s5oi->ipv6_c));
@@ -961,20 +973,46 @@ void connecting_init(const unsigned state, struct selector_key *key)
 {
 
     printf("Connecting Init\n");
+
+}
+
+static unsigned connecting_write(struct selector_key *key)
+{
+    // write connection response to client
+
+
     struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
     struct socks5 *s = ATTACHMENT(key);
     struct socks5_origin_info *s5oi = &s->origin_info;
     int connect_ret = -1;
     selector_status st = SELECTOR_SUCCESS;
 
-    s->origin_fd = try_connection(&connect_ret, d, s5oi, s5oi->ip_selec);
+    if (key->fd == s->client_fd) {
+        // regular case, try to connect to any of the ips provided
+        s->origin_fd = try_connection(&connect_ret, d, s5oi, s5oi->ip_selec);
+    } else if (key->fd == s->origin_fd) {
+        // this should be entered only when EINPROGRESS is obtained
+        // next thing up is to check if connection went well or wrong
+        connect_ret = connect(key->fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
+        switch (errno) {
+            case EISCONN:
+                // Connection successful
+                // one should reset interests for client_fd (which were set to OP_NOOP)
+                // and go to COPY state
+                selector_set_interest(key->s, s->client_fd, OP_READ | OP_WRITE);
+                break;
+            default:
+                return ERROR;
+        } 
+    }
 
     if (connect_ret < 0)
     {
-        // If the error is connection in progress, we have to register the fd to be able to respond to origin
+        // If the error is connection in progress, one needs to register the fd to be able to respond to origin
         if (errno == EINPROGRESS){
             printf("I'm waiting connection\n");
             st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
+            selector_set_interest(key->s, s->client_fd, OP_NOOP);
             if (st != SELECTOR_SUCCESS){
                 printf("Error registering FD to wait for connection\n");
                 s->origin_fd = -1;
@@ -992,17 +1030,12 @@ void connecting_init(const unsigned state, struct selector_key *key)
             printf("Successfully registered origin fd in selector\n");
     }
     d->rb = &(ATTACHMENT(key)->read_buffer);
-}
-
-static unsigned connecting_write(struct selector_key *key)
-{
-    // write connection response to client
 
     //                  ver---status-----------------rsv--
     printf("Writing back to client (fd = %d)\n", key->fd);
-    struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
-    struct socks5 *s = ATTACHMENT(key);
-    struct socks5_origin_info *s5oi = &s->origin_info;
+    // struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
+    // struct socks5 *s = ATTACHMENT(key);
+    // struct socks5_origin_info *s5oi = &s->origin_info;
     // response_size =  1b + 1b + 1b + 1b  + variable + 2b
     // response fields: VER  ST   RSV  TYPE  ADDR       PRT
     int response_size = 6;
