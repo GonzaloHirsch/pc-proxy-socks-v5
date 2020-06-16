@@ -768,7 +768,7 @@ resolve_read(struct selector_key *key)
     struct resolve_st *r_s = &s->orig.resolve;
 
     buffer *b = r_s->rb;
-    unsigned ret = CONNECTING;
+    unsigned ret = RESOLVE;
     int errored = 0;
     uint8_t *ptr;
     ssize_t n;
@@ -782,7 +782,7 @@ resolve_read(struct selector_key *key)
         //doh responds without terminating the body
         ptr[n++] = '\n'; 
         ptr[n++] = '\n';
-        
+
         //it removes  \r from headers so that parser is consistent
         parse_to_crlf(ptr, &n); 
         // Advancing the buffer
@@ -794,7 +794,7 @@ resolve_read(struct selector_key *key)
           
             // Parse the dns response and save the info in the origin_info
             parse_dns_resp(r_s->parser.body, s->origin_info.resolve_addr, s, &errored);
-                
+            ret = CONNECTING;
         }
 
         
@@ -804,10 +804,15 @@ resolve_read(struct selector_key *key)
         ret = ERROR;
     }
 
-    if(!errored){
+    // If we are done with parsing and no errors happended -> set to write and unregister dns fd
+    if(!errored && ret == CONNECTING){
         // Setting the CLIENT fd for WRITE --> REQUEST WILL need to write
         if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_WRITE))
         {
+            ret = ERROR;
+        }
+        // Unregister the dns server fd.
+        if(SELECTOR_SUCCESS != selector_unregister_fd(key->s, r_s->doh_fd)){
             ret = ERROR;
         }
     }
