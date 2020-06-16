@@ -128,6 +128,10 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
     reader = &to_parse[sizeof(struct DNS_HEADER) + ((strlen((const char*) domain)+ 2) + sizeof(struct QUESTION)) ]; //domain + 2 becuse host_dns_format adds a '.' and also a '\0' also * 2 because there are 2 queries
     struct RES_RECORD answers[20];
 
+    if(ntohs(dns-> ans_count) == 0){
+        *errored = 1;
+    }
+
     for(i=0;i<ntohs(dns->ans_count);i++)
     {
         answers[i].name=ReadName(reader,to_parse,&stop);

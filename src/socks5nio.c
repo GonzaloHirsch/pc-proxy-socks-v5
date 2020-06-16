@@ -764,8 +764,10 @@ resolve_process(struct userpass_st *up_s);
 static unsigned
 resolve_read(struct selector_key *key)
 {
+    
     struct socks5 * s = ATTACHMENT(key);
     struct resolve_st *r_s = &s->orig.resolve;
+    s->origin_info.ipv4_c = s->origin_info.ipv6_c = 0;
 
     buffer *b = r_s->rb;
     unsigned ret = RESOLVE;
@@ -794,6 +796,11 @@ resolve_read(struct selector_key *key)
           
             // Parse the dns response and save the info in the origin_info
             parse_dns_resp(r_s->parser.body, s->origin_info.resolve_addr, s, &errored);
+
+            if(s->origin_info.ipv4_c == 0 && s->origin_info.ipv6_c == 0){
+                perror("Not valid domain name");
+                errored = 1;
+            }
             ret = CONNECTING;
         }
 
