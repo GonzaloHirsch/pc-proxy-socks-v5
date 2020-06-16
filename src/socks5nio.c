@@ -753,8 +753,15 @@ resolve_init(const unsigned state, struct selector_key *key)
 static void
 resolve_close(const unsigned state, struct selector_key *key)
 {
-    printf("Im forever stuck in resolve_close!\n");
-    while(1){}
+    // Sock5 state
+    struct socks5 *s = ATTACHMENT(key);
+
+    // Reset read and write buffer for reuse.
+    buffer_reset(&s->write_buffer);
+    buffer_reset(&s->read_buffer);
+
+    /** TODO: Free the http buffer */
+
 }
 
 static unsigned
@@ -797,20 +804,23 @@ resolve_read(struct selector_key *key)
             ret = CONNECTING;
         }
 
-        
     }
     else{
         printf("DOH recv failed\n");
         ret = ERROR;
     }
 
-    // If we are done with parsing and no errors happended -> set to write and unregister dns fd
+    // If we are done with parsing and no errors happended -> set to write to clientfd
     if(!errored && ret == CONNECTING){
         // Setting the CLIENT fd for WRITE --> REQUEST WILL need to write
         if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_WRITE))
         {
             ret = ERROR;
         }
+    }
+
+    // If we are leaving the resolve state --> unregister the doh fd
+    if(errored || ret == CONNECTING){
         // Unregister the dns server fd.
         if(SELECTOR_SUCCESS != selector_unregister_fd(key->s, r_s->doh_fd)){
             ret = ERROR;
