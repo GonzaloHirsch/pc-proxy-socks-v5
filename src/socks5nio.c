@@ -956,9 +956,13 @@ static void determine_connect_error(int error)
     }
 }
 
+//                  ver---status-----------------rsv--
+// struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
+// struct socks5 *s = ATTACHMENT(key);
+// struct socks5_origin_info *s5oi = &s->origin_info;
+// response_size =  1b + 1b + 1b + 1b  + variable + 2b
+// response fields: VER  ST   RSV  TYPE  ADDR       PRT
 static int connecting_send_conn_response (struct selector_key * key) {
-    
-
     struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
     struct socks5 *s = ATTACHMENT(key);
     struct socks5_origin_info *s5oi = &s->origin_info;
@@ -1025,6 +1029,48 @@ static int try_connection(int *connect_ret, connecting_st *d, socks5_origin_info
 void connecting_init(const unsigned state, struct selector_key *key)
 {
     printf("Connecting Init\n");
+    struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
+    struct socks5 *s = ATTACHMENT(key);
+    struct socks5_origin_info *s5oi = &s->origin_info;
+    int connect_ret = -1;
+    selector_status st = SELECTOR_SUCCESS;
+    d->rb = &(ATTACHMENT(key)->read_buffer);
+    s->origin_fd = try_connection(&connect_ret, d, s5oi, s5oi->ip_selec);
+
+    if (connect_ret == -1)
+    {
+        // If the error is connection in progress, one needs to register the fd to be able to respond to origin
+        switch (errno) {
+            case EINPROGRESS:
+                printf("I'm waiting connection\n");
+                st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_WRITE | OP_READ, ATTACHMENT(key));
+                st = selector_set_interest(key->s, s->client_fd, OP_NOOP);
+                if (st != SELECTOR_SUCCESS){
+                    printf("Error registering FD to wait for connection\n");
+                    s->origin_fd = -1;
+                }
+                return CONNECTING;
+                break;
+            // case EALREADY:
+            // case EISCONN:
+            //     // Go on
+            //     printf("EALREADY or EISCONN\n");
+            //     break;
+            default:
+                s->origin_fd = -1;
+                fprintf(stderr, "Could not connect\n");
+                determine_connect_error(errno);
+                return ERROR;
+        }
+    }
+    // if (connect_ret > 0) {
+    printf("Connected to origin (fd = %d)\n", s->origin_fd);
+    st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_NOOP, ATTACHMENT(key));
+    if (st == SELECTOR_SUCCESS)
+        printf("Successfully registered origin fd in selector\n");
+    // }
+
+    return connecting_send_conn_response(key);
 }
 
 static unsigned connecting_read(struct selector_key * key) {
@@ -1036,22 +1082,23 @@ static unsigned connecting_read(struct selector_key * key) {
 static unsigned connecting_write(struct selector_key *key)
 {
     // write connection response to client
-
+    printf("on connecting write\n");
     struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
     struct socks5 *s = ATTACHMENT(key);
     struct socks5_origin_info *s5oi = &s->origin_info;
     int connect_ret = -1;
     selector_status st = SELECTOR_SUCCESS;
-    d->rb = &(ATTACHMENT(key)->read_buffer);
 
     if (key->fd == s->client_fd) {
-        // regular case, try to connect to any of the ips provided
-        s->origin_fd = try_connection(&connect_ret, d, s5oi, s5oi->ip_selec);
+        // shouldn't happen
+        printf("client fd on connecting write - SHOULDN'T HAVE HAPPENED\n");    
     } else if (key->fd == s->origin_fd) {
         // this should be entered only when EINPROGRESS is obtained
         // next thing up is to check if connection went well or wrong
         connect_ret = connect(key->fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
         switch (errno) {
+            case EINPROGRESS:
+                return CONNECTING;
             case EISCONN:
             case EALREADY:
                 // Connection successful
@@ -1069,44 +1116,6 @@ static unsigned connecting_write(struct selector_key *key)
         } 
     }
 
-    if (connect_ret == -1)
-    {
-        // If the error is connection in progress, one needs to register the fd to be able to respond to origin
-        switch (errno) {
-            case EINPROGRESS:
-                printf("I'm waiting connection\n");
-                st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_WRITE | OP_READ, ATTACHMENT(key));
-                selector_set_interest(key->s, s->client_fd, OP_NOOP);
-                if (st != SELECTOR_SUCCESS){
-                    printf("Error registering FD to wait for connection\n");
-                    s->origin_fd = -1;
-                }
-                break;
-            case EALREADY:
-            case EISCONN:
-                // Go on
-                break;
-            default:
-                s->origin_fd = -1;
-                fprintf(stderr, "Could not connect\n");
-                determine_connect_error(errno);
-                return ERROR;
-        }
-    }
-    else {
-        printf("Connected to origin (fd = %d)\n", s->origin_fd);
-        st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_NOOP, ATTACHMENT(key));
-        if (st == SELECTOR_SUCCESS)
-            printf("Successfully registered origin fd in selector\n");
-    }
-
-    //                  ver---status-----------------rsv--
-    // struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
-    // struct socks5 *s = ATTACHMENT(key);
-    // struct socks5_origin_info *s5oi = &s->origin_info;
-    // response_size =  1b + 1b + 1b + 1b  + variable + 2b
-    // response fields: VER  ST   RSV  TYPE  ADDR       PRT
-    
     return connecting_send_conn_response(key);
     // return COPY;
 }
