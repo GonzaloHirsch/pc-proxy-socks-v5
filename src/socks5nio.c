@@ -948,6 +948,7 @@ static void determine_connect_error(int error)
 static int try_connection(int *connect_ret, connecting_st *d, socks5_origin_info *s5oi, AddrType addrType)
 {
     int origin_fd = socket(AF_INET, SOCK_STREAM, 0);
+    selector_fd_set_nio(origin_fd);
     struct sockaddr_in *sin = (struct sockaddr_in *)&s5oi->origin_addr;
     d->first_working_ip_index = 0;
     do
