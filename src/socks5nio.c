@@ -525,9 +525,10 @@ request_close(const unsigned state, struct selector_key *key)
     else
     {
         printf("    dom: ");
+
         for (int i = 0; i < s->origin_info.resolve_addr_len; i++)
         {
-            printf("%d ", s->origin_info.resolve_addr[i]);
+            printf("%c", s->origin_info.resolve_addr[i]);
         }
         printf("\n");
     }
@@ -557,6 +558,8 @@ request_read(struct selector_key *key)
     // Getting the state struct
     struct request_st *d = &ATTACHMENT(key)->client.request;
     // Getting the read buffer
+
+
     buffer *b = d->rb;
     unsigned ret = REQUEST_READ;
     bool error = false;
@@ -661,8 +664,9 @@ request_process(struct selector_key *key, struct request_st *d)
 
         case DOMAIN_NAME:
             // Save the domain name
-            s->origin_info.resolve_addr = malloc(addr_l);
+            s->origin_info.resolve_addr = malloc(addr_l + 1);
             memcpy(s->origin_info.resolve_addr, addr, addr_l);
+            s->origin_info.resolve_addr[addr_l] = '\0' ;
             s->origin_info.resolve_addr_len = addr_l;
 
             //Save the port.
@@ -688,6 +692,193 @@ request_process(struct selector_key *key, struct request_st *d)
 ////////////////////////////////////////
 // RESOLVE
 ////////////////////////////////////////
+
+static void
+resolve_init(const unsigned state, struct selector_key *key)
+{   
+    // Resolve state
+    struct socks5 * s = ATTACHMENT(key);
+    struct resolve_st *r_s = &s->orig.resolve;
+    
+    // Saving the buffers
+    r_s->rb = &(s->read_buffer);
+    r_s->wb = &(s->write_buffer);
+
+    //Init the parser
+    http_message_parser_init(&r_s->parser);
+
+    /** TODO: MOVE TO WRITE*/
+    // Create the socket for the nginx server that will serve as dns.
+    struct sockaddr_in serv_addr;
+    selector_status st = SELECTOR_SUCCESS;
+
+    char * final_buffer = NULL;
+    char * servIP = "127.0.0.1";
+
+    in_port_t servPort = DOH_PORT;
+    memset(&serv_addr, 0, sizeof(serv_addr)); // Zero out structure
+    serv_addr.sin_family = AF_INET;          // IPv4 address family
+    serv_addr.sin_port = htons(servPort);    // Server port
+
+    int portno  = DOH_PORT;
+
+    r_s->doh_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if(r_s->doh_fd <= 0){
+        perror("ERROR openning socket");
+        r_s->doh_fd = -1;
+    }
+    
+    // Connect to nginx server
+    if (connect(r_s->doh_fd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0){
+        perror("ERROR connecting");
+        r_s->doh_fd = -1;
+    }
+
+    // Register the fd of the nginx server
+    st = selector_register(key->s, r_s->doh_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
+    if (st != SELECTOR_SUCCESS){
+        printf("Error registering doh server\n");
+        r_s->doh_fd = -1;
+    }
+
+    /** TODO: MOVE TO WRITE! */
+
+    // Removing interest from client fd(We dont need to read or write in resolve state)
+    if (SELECTOR_SUCCESS != selector_set_interest(key->s, s->client_fd, OP_NOOP)){
+        printf("Could not set interest of %d for %d\n", OP_NOOP, s->client_fd);
+        /** Todo see what we have to do! */
+    }
+}
+
+static void
+resolve_close(const unsigned state, struct selector_key *key)
+{
+    // Sock5 state
+    struct socks5 *s = ATTACHMENT(key);
+
+    // Reset read and write buffer for reuse.
+    buffer_reset(&s->write_buffer);
+    buffer_reset(&s->read_buffer);
+
+    /** TODO: Free the http buffer */
+
+}
+
+static unsigned
+resolve_process(struct userpass_st *up_s);
+
+/** State when receiving the doh response */
+static unsigned
+resolve_read(struct selector_key *key)
+{
+    
+    struct socks5 * s = ATTACHMENT(key);
+    struct resolve_st *r_s = &s->orig.resolve;
+    s->origin_info.ipv4_c = s->origin_info.ipv6_c = 0;
+
+    buffer *b = r_s->rb;
+    unsigned ret = RESOLVE;
+    int errored = 0;
+    uint8_t *ptr;
+    ssize_t n;
+    size_t count;
+
+    ptr = buffer_write_ptr(b, &count);
+    
+    n = recv(r_s->doh_fd, ptr, count, MSG_DONTWAIT);
+    if(n > 0){
+
+        //doh responds without terminating the body
+        ptr[n++] = '\n'; 
+        ptr[n++] = '\n';
+
+        //it removes  \r from headers so that parser is consistent
+        parse_to_crlf(ptr, &n); 
+        // Advancing the buffer
+        buffer_write_adv(b, n);
+
+        // Parse JUST the http message and check if done correctly
+        http_message_state http_state = http_consume_message(r_s->rb, &r_s->parser, &errored);
+        if(http_done_parsing_message(&r_s->parser, &errored) && !errored){
+          
+            // Parse the dns response and save the info in the origin_info
+            parse_dns_resp(r_s->parser.body, s->origin_info.resolve_addr, s, &errored);
+
+            if(s->origin_info.ipv4_c == 0 && s->origin_info.ipv6_c == 0){
+                perror("Not valid domain name");
+                errored = 1;
+            }
+            ret = CONNECTING;
+        }
+
+    }
+    else{
+        printf("DOH recv failed\n");
+        ret = ERROR;
+    }
+
+    // If we are done with parsing and no errors happended -> set to write to clientfd
+    if(!errored && ret == CONNECTING){
+        // Setting the CLIENT fd for WRITE --> REQUEST WILL need to write
+        if (SELECTOR_SUCCESS != selector_set_interest(key->s, s->client_fd, OP_WRITE)){
+            ret = ERROR;
+        }
+    }
+
+    // If we are leaving the resolve state --> unregister the doh fd
+    if(errored || ret == CONNECTING){
+        // Unregister the dns server fd.
+        if(SELECTOR_SUCCESS != selector_unregister_fd(key->s, r_s->doh_fd)){
+            ret = ERROR;
+        }
+    }
+
+
+    return errored ? ERROR : ret;
+
+}
+
+/** State when sending the doh server the request */
+static unsigned
+resolve_write(struct selector_key *key)
+{
+    struct socks5 * s = ATTACHMENT(key);
+    struct resolve_st *r_s = &s->orig.resolve;
+
+    unsigned ret = RESOLVE;
+    ssize_t n;
+    int final_buffer_size = 0;
+
+    // Generate the DNS request
+    char * http_request = request_generate(s->origin_info.resolve_addr, &final_buffer_size);
+
+    // Validate that we were able to connect and the request is valid.
+    if(r_s->doh_fd > 0 && http_request != NULL){
+        // Send the doh request to the nginx server
+        n = send(r_s->doh_fd, http_request,final_buffer_size, MSG_DONTWAIT);
+        if(n > 0){
+            // Set the interests for the selector
+            if (SELECTOR_SUCCESS != selector_set_interest(key->s, r_s->doh_fd, OP_READ))
+            {
+                printf("Could not set interest of %d for %d\n", OP_READ, r_s->doh_fd);
+                ret = ERROR;
+            }
+        }
+        else {
+            ret = ERROR;
+        }
+    }
+    else{
+        ret = ERROR;
+    }
+
+    return ret;
+}
+
+static unsigned
+resolve_process(struct userpass_st *up_s){
+    
+}
 
 ////////////////////////////////////////
 // CONNECTING
@@ -757,6 +948,7 @@ static void determine_connect_error(int error)
 static int try_connection(int *connect_ret, connecting_st *d, socks5_origin_info *s5oi, AddrType addrType)
 {
     int origin_fd = socket(AF_INET, SOCK_STREAM, 0);
+    selector_fd_set_nio(origin_fd);
     struct sockaddr_in *sin = (struct sockaddr_in *)&s5oi->origin_addr;
     d->first_working_ip_index = 0;
     do
@@ -1108,6 +1300,11 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state = RESOLVE,
+        .on_arrival = resolve_init,
+        .on_departure = resolve_close,
+        .on_read_ready = resolve_read,
+        .on_write_ready = resolve_write,
+        
     },
     {
         .state = CONNECTING,

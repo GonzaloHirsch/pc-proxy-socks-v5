@@ -19,9 +19,11 @@
 #include "parsers/socks_5_addr_parser.h"
 #include "parsers/connection_req_parser.h"
 #include "parsers/up_req_parser.h"
+#include "parsers/http_message_parser.h"
 #include "selector.h"
 #include "stateMachine.h"
 #include "authentication.h"
+
 
 #define N(x) (sizeof(x) / sizeof((x)[0]))
 /** TODO: define appropiate size */
@@ -222,17 +224,6 @@ typedef struct userpass_st
     uint8_t * password;
 } userpass_st;
 
-/** Used by the RESOLVE state */
-typedef struct resolve_st
-{
-    /** Buffers used for IO */
-    buffer *rb, *wb;
-    /** Pointer to the resolve parser */
-    struct socks_5_addr_parser parser;
-    /** Resolved ip address */
-    char *resolvedAddress;
-} resolve_st;
-
 /** Used by the REQUEST_READ state */
 typedef struct request_st
 {
@@ -241,6 +232,16 @@ typedef struct request_st
     /** Pointer to request parser */
     struct connection_req_parser parser;
 } request_st;
+
+/** Used by the RESOLVE state */
+typedef struct resolve_st
+{
+    /** Buffer used for IO */
+    buffer *rb, *wb;
+    /** File descriptor of the doh server */
+    int doh_fd;
+    struct http_message_parser parser;
+} resolve_st;
 
 /** Used by the COPY state */
 typedef struct copy_st
@@ -313,6 +314,7 @@ typedef struct socks5
     } client;
     /** States for the origin fd */
     union {
+        resolve_st resolve;
         connecting_st conn;
         copy_st copy;
     } orig;
@@ -342,5 +344,5 @@ typedef struct socks5
     struct socks5_origin_info origin_info;
 } socks5;
 
-
+#include "dohClient.h"
 #endif

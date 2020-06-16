@@ -456,8 +456,6 @@ handle_iteration(fd_selector s) {
         .s = s,
     };
 
-    printf("Iteration handled\n");
-
     for (int i = 0; i <= n; i++) {
         struct item *item = s->fds + i;
         if(ITEM_USED(item)) {
@@ -483,8 +481,6 @@ handle_iteration(fd_selector s) {
             }
         }
     }
-
-    printf("Iteration finished handle\n");
 }
 
 static void
