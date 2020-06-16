@@ -780,10 +780,9 @@ resolve_read(struct selector_key *key)
     if(n > 0){
 
         //doh responds without terminating the body
-        buffer_write(b, '\n'); 
-        buffer_write(b, '\n');
-        n += 2;
-
+        ptr[n++] = '\n'; 
+        ptr[n++] = '\n';
+        
         //it removes  \r from headers so that parser is consistent
         parse_to_crlf(ptr, &n); 
         // Advancing the buffer
