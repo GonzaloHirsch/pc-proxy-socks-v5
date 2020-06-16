@@ -956,6 +956,45 @@ static void determine_connect_error(int error)
     }
 }
 
+static int connecting_send_conn_response (struct selector_key * key) {
+    
+    struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
+    struct socks5 *s = ATTACHMENT(key);
+    struct socks5_origin_info *s5oi = &s->origin_info;
+    
+    int response_size = 6;
+    uint8_t *response = malloc(response_size);
+    response[0] = 0x05; // VERSION
+    //  STATUS
+    if (s->origin_fd < 0)
+        response[1] = CONN_RESP_GENERAL_FAILURE;
+    else
+        response[1] = CONN_RESP_REQ_GRANTED;
+    response[2] = 0x00; //RSV
+    //BNDADDR
+    switch (s5oi->ip_selec)
+    {
+    case IPv4:
+        response_size += IP_V4_ADDR_SIZE;
+        response = realloc(response, response_size);
+        response[3] = IPv4;
+        memcpy(response + 4, s5oi->ipv4_addrs[d->first_working_ip_index], IP_V4_ADDR_SIZE);
+        break;
+    case IPv6:
+        response_size += IP_V6_ADDR_SIZE;
+        response = realloc(response, response_size);
+        response[3] = IPv6;
+        memcpy(response + 4, s5oi->ipv6_addrs[d->first_working_ip_index], IP_V6_ADDR_SIZE);
+        break;
+    }
+    // PORT
+    response[response_size - 2] = s5oi->port[0];
+    response[response_size - 1] = s5oi->port[1];
+    send(key->fd, response, response_size, 0);
+    free(response);
+    return COPY;
+}
+
 static int try_connection(int *connect_ret, connecting_st *d, socks5_origin_info *s5oi, AddrType addrType)
 {
     int origin_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -1028,7 +1067,7 @@ static unsigned connecting_write(struct selector_key *key)
                 printf("Error registering FD to wait for connection\n");
                 s->origin_fd = -1;
             }
-            return CONNECTING;
+            // return CONNECTING;
         } else {
             s->origin_fd = -1;
             fprintf(stderr, "Could not connect\n");
@@ -1051,37 +1090,9 @@ static unsigned connecting_write(struct selector_key *key)
     // struct socks5_origin_info *s5oi = &s->origin_info;
     // response_size =  1b + 1b + 1b + 1b  + variable + 2b
     // response fields: VER  ST   RSV  TYPE  ADDR       PRT
-    int response_size = 6;
-    uint8_t *response = malloc(response_size);
-    response[0] = 0x05; // VERSION
-    //  STATUS
-    if (s->origin_fd < 0)
-        response[1] = CONN_RESP_GENERAL_FAILURE;
-    else
-        response[1] = CONN_RESP_REQ_GRANTED;
-    response[2] = 0x00; //RSV
-    //BNDADDR
-    switch (s5oi->ip_selec)
-    {
-    case IPv4:
-        response_size += IP_V4_ADDR_SIZE;
-        response = realloc(response, response_size);
-        response[3] = IPv4;
-        memcpy(response + 4, s5oi->ipv4_addrs[d->first_working_ip_index], IP_V4_ADDR_SIZE);
-        break;
-    case IPv6:
-        response_size += IP_V6_ADDR_SIZE;
-        response = realloc(response, response_size);
-        response[3] = IPv6;
-        memcpy(response + 4, s5oi->ipv6_addrs[d->first_working_ip_index], IP_V6_ADDR_SIZE);
-        break;
-    }
-    // PORT
-    response[response_size - 2] = s5oi->port[0];
-    response[response_size - 1] = s5oi->port[1];
-    send(key->fd, response, response_size, 0);
-    free(response);
-    return COPY;
+    
+    return connecting_send_conn_response(key);
+    // return COPY;
 }
 
 void connecting_close(const unsigned state, struct selector_key *key)
