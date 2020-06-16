@@ -698,13 +698,16 @@ resolve_init(const unsigned state, struct selector_key *key)
 {   
     // Resolve state
     struct socks5 * s = ATTACHMENT(key);
-    
     struct resolve_st *r_s = &s->orig.resolve;
     
     // Saving the buffers
     r_s->rb = &(s->read_buffer);
     r_s->wb = &(s->write_buffer);
 
+    //Init the parser
+    http_message_parser_init(&r_s->parser);
+
+    /** TODO: MOVE TO WRITE*/
     // Create the socket for the nginx server that will serve as dns.
     struct sockaddr_in serv_addr;
     selector_status st = SELECTOR_SUCCESS;
@@ -738,6 +741,8 @@ resolve_init(const unsigned state, struct selector_key *key)
         r_s->doh_fd = -1;
     }
 
+    /** TODO: MOVE TO WRITE! */
+
     // Removing interest from client fd(We dont need to read or write in resolve state)
     if (SELECTOR_SUCCESS != selector_set_interest(key->s, s->client_fd, OP_NOOP)){
         printf("Could not set interest of %d for %d\n", OP_NOOP, s->client_fd);
@@ -762,31 +767,54 @@ resolve_read(struct selector_key *key)
     struct socks5 * s = ATTACHMENT(key);
     struct resolve_st *r_s = &s->orig.resolve;
 
+    buffer *b = r_s->rb;
     unsigned ret = CONNECTING;
-    char buffer[BUFFERSIZE_DOH + 1];
-    int buf_size = 0, errored = 0;
+    int errored = 0;
+    uint8_t *ptr;
     ssize_t n;
-    
+    size_t count;
 
-    n = recv(r_s->doh_fd, buffer, BUFFERSIZE_DOH, MSG_DONTWAIT);
+    ptr = buffer_write_ptr(b, &count);
+    
+    n = recv(r_s->doh_fd, ptr, count, MSG_DONTWAIT);
     if(n > 0){
 
-        // Parse the dns response
-        receive_dns_parse(buffer, s->origin_info.resolve_addr, buf_size, s, &errored);
-        if(!errored){
-           
+        //doh responds without terminating the body
+        buffer_write(b, '\n'); 
+        buffer_write(b, '\n');
+        n += 2;
+
+        //it removes  \r from headers so that parser is consistent
+        parse_to_crlf(ptr, &n); 
+        // Advancing the buffer
+        buffer_write_adv(b, n);
+
+        // Parse JUST the http message and check if done correctly
+        http_message_state http_state = http_consume_message(r_s->rb, &r_s->parser, &errored);
+        if(http_done_parsing_message(&r_s->parser, &errored) && !errored){
+          
+            // Parse the dns response and save the info in the origin_info
+            parse_dns_resp(r_s->parser.body, s->origin_info.resolve_addr, s, &errored);
+                
         }
-        else{
-            printf("DOH Invalid Url\n");
-            ret = ERROR;
-        }
+
+        
     }
     else{
         printf("DOH recv failed\n");
         ret = ERROR;
     }
 
-    return ret;
+    if(!errored){
+        // Setting the CLIENT fd for WRITE --> REQUEST WILL need to write
+        if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_WRITE))
+        {
+            ret = ERROR;
+        }
+    }
+
+
+    return errored ? ERROR : ret;
 
 }
 

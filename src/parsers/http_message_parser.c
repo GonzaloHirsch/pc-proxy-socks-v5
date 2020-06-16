@@ -219,6 +219,9 @@ enum http_message_state http_consume_message(buffer * b, http_message_parser p, 
 }
 
 int http_done_parsing_message(http_message_parser p, int * errored) {
+    if(p->state > HTTP_F){
+        *errored = 1;
+    }
     return (p->state >= HTTP_F);
 }
 

@@ -19,6 +19,7 @@
 #include "parsers/socks_5_addr_parser.h"
 #include "parsers/connection_req_parser.h"
 #include "parsers/up_req_parser.h"
+#include "parsers/http_message_parser.h"
 #include "selector.h"
 #include "stateMachine.h"
 #include "authentication.h"
@@ -239,6 +240,7 @@ typedef struct resolve_st
     buffer *rb, *wb;
     /** File descriptor of the doh server */
     int doh_fd;
+    struct http_message_parser parser;
 } resolve_st;
 
 /** Used by the COPY state */

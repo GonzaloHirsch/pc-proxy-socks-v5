@@ -3,10 +3,6 @@
 
 
 
-/*  code from stack overflow */
-
-void parse_to_crlf(char * response, int *size);
-
 static char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
                                 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
                                 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
@@ -255,7 +251,7 @@ return request;
 
 }
 
-
+/*
 void receive_dns_parse(char * final_buffer, char * domain, int buf_size, struct socks5 * s, int * errored){
 
     uint8_t * ret;
@@ -272,8 +268,7 @@ void receive_dns_parse(char * final_buffer, char * domain, int buf_size, struct 
             buffer_write(&to_parse, *b);
         }
 
-        buffer_write(&to_parse, '\n'); //doh responds without terminating the vody
-        buffer_write(&to_parse, '\n');
+       
 
 
     struct http_message_parser http_parser;
@@ -291,23 +286,21 @@ void receive_dns_parse(char * final_buffer, char * domain, int buf_size, struct 
     parse_dns_resp(http_parser.body, domain, s, errored);
 
 }
+*/
 
-
-
-
-
-void parse_to_crlf(char * response, int *size){
+/*  code from stack overflow */
+void parse_to_crlf(uint8_t * response, size_t *size){
 
     int i = 0;
     int j = 0;
-    int old_size = *size;
-    int new_size = *size;
+    size_t old_size = *size;
+    size_t new_size = *size;
 
     while(i < old_size){
 
         if(response[i] == '\r'){
             i++;
-            new_size --;
+            new_size--;
         }
         else{
             response[j] = response[i];
@@ -317,6 +310,4 @@ void parse_to_crlf(char * response, int *size){
     }
 
     *size = new_size;
-
-
 }

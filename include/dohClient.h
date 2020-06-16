@@ -25,6 +25,7 @@
 char * request_generate(char * domain, int * length);
 uint8_t * get_host_by_name(char * domain);
 
+void parse_to_crlf(uint8_t * response, size_t *size);
 void receive_dns_parse(char * final_buffer, char * domain, int buf_size, struct socks5 * s, int * errored);
 
 
