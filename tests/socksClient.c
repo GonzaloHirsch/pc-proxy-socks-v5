@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
     numBytes = send(sock, req6, 22, 0);
   }
   else if(!strcmp("dom", reqT)){
-    numBytes = send(sock, reqdom, 16, 0);
+    numBytes = send(sock, reqdom, 21, 0);
   }
   else{
     DieWithSystemMessage("invalid req"); 
