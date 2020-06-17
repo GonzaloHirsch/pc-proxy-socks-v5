@@ -135,8 +135,6 @@ static struct sctp *sctp_new(const int client)
  * */
 void sctp_passive_accept(struct selector_key *key)
 {
-    printf("Inside passive accept in SCTP\n");
-
     struct sockaddr_storage client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
     struct sctp *state = NULL;
@@ -216,10 +214,8 @@ sctp_read(struct selector_key *key)
 
     // If the request returns not the appropiate state, the fd is unregistered
     ret = handle_request(key);
-    if (ret != SCTP_RESPONSE)
-    {
-        selector_unregister_fd(key->s, d->client_fd);
-    }
+
+    d->state = ret;
 }
 
 static void
@@ -235,8 +231,6 @@ sctp_write(struct selector_key *key)
     size_t nr;
     uint8_t *ptr = buffer_read_ptr(&d->buffer_write, &nr);
 
-    // TYPE -> TYPE_NOTYPE + CMD -> CMD_NOCMD = LOGIN
-    printf("\n\nResponding to SCTP client state %d, cmd %d and type %d\n\n", d->state, d->info.cmd, d->info.type);
     switch (d->info.type)
     {
     case TYPE_USERS:
@@ -310,13 +304,11 @@ sctp_write(struct selector_key *key)
         case CMD_NOCMD:
             if (d->state == SCTP_ERROR)
             {
-                printf("Got login error\n");
                 uint8_t login_error_data[] = {SCTP_VERSION, 0x01}; // VERSION 1, ERROR 1
                 n = sctp_sendmsg(key->fd, (void *)login_error_data, N(login_error_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
             }
             else
             {
-                printf("Got login ok\n");
                 uint8_t login_success_data[] = {SCTP_VERSION, 0x00}; // VERSION 1, ERROR 0
                 n = sctp_sendmsg(key->fd, (void *)login_success_data, N(login_success_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
             }
@@ -333,15 +325,12 @@ sctp_write(struct selector_key *key)
         // Setting the fd to read.
         if (SELECTOR_SUCCESS != selector_set_interest(key->s, key->fd, OP_READ))
         {
-            printf("Removing in ok fd\n");
             // Error setting interest, unregister
             selector_unregister_fd(key->s, d->client_fd);
         }
-        printf("Success fd\n");
     }
     else
     {
-        printf("Removing not ok fd\n");
         // Error sending message, unregister
         selector_unregister_fd(key->s, d->client_fd);
     }
@@ -412,31 +401,23 @@ static unsigned handle_request(struct selector_key *key)
     ssize_t length = sctp_recvmsg(d->client_fd, ptr, count, NULL, 0, &sender_info, &flags);
     if (length <= 0)
     {
-        printf("Error in recv SCTP\n");
+        selector_unregister_fd(key->s, d->client_fd);
         return SCTP_ERROR;
     }
-
-    printf("Im processing the request\n");
 
     // Advancing the buffer
     buffer_write_adv(b, length);
 
     // If user is logged, parse a request
 
-    printf("This user logged %d\n", d->is_logged);
-
     if (d->is_logged)
     {
-        printf("Normal\n");
         ret = handle_normal_request(key);
     }
     else
     {
-        printf("Login\n");
         ret = handle_login_request(key);
     }
-
-    printf("Handler read finished\n");
 
     return ret;
 }
@@ -461,7 +442,6 @@ static unsigned handle_normal_request(struct selector_key *key)
     }
     else
     {
-        printf("Buffer cannot read");
         return SCTP_ERROR;
     }
 
@@ -475,7 +455,6 @@ static unsigned handle_normal_request(struct selector_key *key)
     }
     else
     {
-        printf("Buffer cannot read");
         return SCTP_ERROR;
     }
 
@@ -488,9 +467,6 @@ static unsigned handle_normal_request(struct selector_key *key)
     d->info.cmd = cmd;
     d->info.type = type;
 
-    printf("Setting CMD and TYPE \n");
-
-    printf("The tyype is %d and cmd is %d\n", d->info.type, d->info.cmd);
     // Switching TYPE and CMD to determine available operations
     switch (type)
     {
@@ -498,7 +474,6 @@ static unsigned handle_normal_request(struct selector_key *key)
         switch (cmd)
         {
         case CMD_LIST:
-            printf("Handling user list\n");
             ret = handle_list_users(key);
             break;
         case CMD_CREATE:
@@ -544,10 +519,9 @@ static unsigned handle_normal_request(struct selector_key *key)
 
     if (SELECTOR_SUCCESS != selector_set_interest(key->s, key->fd, OP_WRITE))
     {
+        selector_unregister_fd(key->s, d->client_fd);
         ret = SCTP_ERROR;
     }
-
-    printf("Finished stting CMD and TYPE\n");
 
     return ret;
 }
@@ -574,6 +548,7 @@ static unsigned handle_login_request(struct selector_key *key)
         selector_status ss = selector_set_interest(key->s, key->fd, OP_WRITE);
         if (ss != SELECTOR_SUCCESS)
         {
+            selector_unregister_fd(key->s, d->client_fd);
             ret = SCTP_ERROR;
         }
         else
@@ -613,14 +588,12 @@ static unsigned handle_login_request(struct selector_key *key)
 
 static unsigned handle_list_users(struct selector_key *key)
 {
-    printf("Handling user list\n");
     // Getting all the users
     uint8_t count = 0;
-    uint8_t *users[MAX_USERS];
+    uint8_t *users[MAX_USER_PASS];
     list_user_admin(users, &count);
     if (users == NULL)
     {
-        printf("NULL USER POINTER \n");
         return SCTP_ERROR;
     }
 
@@ -633,7 +606,6 @@ static unsigned handle_list_users(struct selector_key *key)
 
 static unsigned handle_user_create(struct selector_key *key, buffer *b)
 {
-    printf("Creating user\n\n");
     // Getting the sctp struct
     struct sctp *d = ATTACHMENT(key);
     // Boolean for parser error and auth validity
@@ -652,7 +624,6 @@ static unsigned handle_user_create(struct selector_key *key, buffer *b)
         selector_status ss = selector_set_interest(key->s, key->fd, OP_WRITE);
         if (ss != SELECTOR_SUCCESS)
         {
-            printf("Could not set interest\n\n");
             ret = SCTP_ERROR;
         }
         else
@@ -665,9 +636,7 @@ static unsigned handle_user_create(struct selector_key *key, buffer *b)
             d->datagram.user.plen = d->paser.up_request.pwLen;
 
             // Validating the login request
-            error = !create_user_admin(d->datagram.user.user, d->datagram.user.pass, d->datagram.user.ulen, d->datagram.user.plen);
-
-            printf("Result of user create %d \n", error);
+            error = !create_user_admin(d->datagram.user.user, d->datagram.user.pass);
 
             ret = !error ? SCTP_RESPONSE : SCTP_ERROR;
         }

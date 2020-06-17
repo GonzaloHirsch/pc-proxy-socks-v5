@@ -1,4 +1,3 @@
-
 #include "socksv5.h"
 
 // -------------- INTERNAL FUNCTIONS-----------------------------------
@@ -24,6 +23,8 @@ static void signal_handler(const int signal)
 int main()
 {
     printf("Starting server.\n");
+
+
 
     int opt = TRUE;
     int master_socket, management_socket;
@@ -154,6 +155,12 @@ int main()
     // Create user-pass table for authentication
     if(create_up_table() == -1){
         perror("Error creating user pass table\n");
+        abort();
+    }
+
+    // Create admin user-pass table for authentication
+    if(create_up_admin_table() == -1){
+        perror("Error creating admin user pass table\n");
         abort();
     }
 

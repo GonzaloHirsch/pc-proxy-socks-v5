@@ -32,6 +32,4 @@
 #define MAX_PENDING_CONNECTIONS 5
 #define SELECTOR_MAX_ELEMENTS 1024
 
-
-
 #endif

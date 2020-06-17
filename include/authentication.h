@@ -24,10 +24,11 @@ typedef struct user_pass {
 
 
 int create_up_table();
+int create_up_admin_table();
 bool validate_up(uint8_t * uid, uint8_t * pw, uint8_t level);
 bool validate_user_admin(uint8_t * uid, uint8_t * pw);
 bool validate_user_proxy(uint8_t * uid, uint8_t * pw);
 void list_user_admin(uint8_t ** users, uint8_t * count);
-bool create_user_admin(uint8_t * username, uint8_t * pass, uint8_t ulen, uint8_t plen);
-
+bool create_user_proxy(uint8_t *username, uint8_t *pass);
+bool create_user_admin(uint8_t *username, uint8_t *pass);
 #endif
