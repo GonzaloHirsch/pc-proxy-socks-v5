@@ -16,39 +16,44 @@
 /**
  * Metrics struct to hold information
 */
-typedef struct metric {
-    uint8_t transfered_bytes;
-    uint8_t historic_connections;
-    uint8_t current_connections;
+typedef struct metric
+{
+    uint64_t transfered_bytes;
+    uint32_t historic_connections;
+    uint32_t current_connections;
+    /*
     uint8_t resolved_addresses;
     uint8_t given_ips;
     uint8_t ipv6_count;
     uint8_t ipv4_count;
     uint8_t log_in_count;
+    */
 } metric;
 
 /** Metrics pointer redefinition */
-typedef metric * metrics;
+typedef metric *metrics;
 
 /**
  * Method to init the metrics pointer
 */
 void init_metrics();
 
-void add_transfered_bytes(uint8_t n);
-void add_historic_connections(uint8_t n);
-void add_current_connections(uint8_t n);
-void remove_current_connections(uint8_t n);
+void add_transfered_bytes(uint64_t n);
+void add_historic_connections(uint32_t n);
+void add_current_connections(uint32_t n);
+void remove_current_connections(uint32_t n);
+/*
 void add_resolved_addresses(uint8_t n);
 void add_given_ips(uint8_t n);
 void add_ipv6(uint8_t n);
 void add_ipv4(uint8_t n);
 void add_login(uint8_t n);
+*/
 
 /**
- * Method to get the metrics in a human readable format
+ * Method to obtain the metrics
 */
-char * get_metrics_for_output();
+static metrics get_metrics();
 
 /**
  * Method to destroy the metrics pointer

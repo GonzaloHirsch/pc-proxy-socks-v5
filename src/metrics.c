@@ -10,26 +10,27 @@ void init_metrics()
     m = malloc(sizeof(metrics));
 }
 
-void add_transfered_bytes(uint8_t n)
+void add_transfered_bytes(uint64_t n)
 {
     m->transfered_bytes += n;
 }
 
-void add_historic_connections(uint8_t n)
+void add_historic_connections(uint32_t n)
 {
     m->historic_connections += n;
 }
 
-void add_current_connections(uint8_t n)
+void add_current_connections(uint32_t n)
 {
     m->current_connections += n;
 }
 
-void remove_current_connections(uint8_t n)
+void remove_current_connections(uint32_t n)
 {
     m->current_connections -= n;
 }
 
+/*
 void add_resolved_addresses(uint8_t n)
 {
     m->resolved_addresses += n;
@@ -54,24 +55,10 @@ void add_login(uint8_t n)
 {
     m->log_in_count += n;
 }
+*/
 
-char *get_metrics_for_output()
-{
-    if (m == NULL)
-    {
-        return NULL;
-    }
-
-    // Estimate on the size of the response
-    char * result = malloc(320);
-
-    // Format to be used
-    char *fmt = "transfered_bytes:%d, historic_connections:%d, current_connections:%d, resolved_addresses:%d, given_ips:%d, ipv6_count:%d, ipv4_count:%d, log_in_count:%d";
-
-    // Printing to the result buffer
-    sprintf(result, fmt, m->transfered_bytes, m->historic_connections, m->current_connections, m->resolved_addresses, m->given_ips, m->ipv6_count, m->ipv4_count, m->log_in_count);
-
-    return result;
+static metrics get_metrics(){
+    return m;
 }
 
 /**
