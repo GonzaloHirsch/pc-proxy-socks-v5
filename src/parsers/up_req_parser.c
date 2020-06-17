@@ -21,7 +21,7 @@ enum up_req_state up_read_next_byte(up_req_parser p, const uint8_t b) {
             else { // (b <= 255)
                 p->state = UP_REQ_ID;
                 p->uidLen = b;
-                p->uid = malloc(p->uidLen);
+                p->uid = malloc(p->uidLen+1);
                 p->bytes_to_read = b;
             }
             break;
@@ -30,7 +30,7 @@ enum up_req_state up_read_next_byte(up_req_parser p, const uint8_t b) {
             p->uid[p->uidLen - p->bytes_to_read] = b;
             p->bytes_to_read--;
             if (p->bytes_to_read <= 0) {
-                p->uid[p->uidLen+1] = '\0';
+                p->uid[p->uidLen] = '\0';
                 p->state = UP_REQ_PWLEN;            
             }
             break;
@@ -40,7 +40,7 @@ enum up_req_state up_read_next_byte(up_req_parser p, const uint8_t b) {
             else { // (b <= 255)
                 p->state = UP_REQ_PW;
                 p->pwLen = b;
-                p->pw = malloc(p->pwLen);
+                p->pw = malloc(p->pwLen+1);
                 p->bytes_to_read = b;
             }
             break;
@@ -48,6 +48,7 @@ enum up_req_state up_read_next_byte(up_req_parser p, const uint8_t b) {
             p->pw[p->pwLen - p->bytes_to_read] = b;
             p->bytes_to_read--;
             if (p->bytes_to_read <= 0) {
+                p->pw[p->pwLen] = '\0';
                 p->state = UP_REQ_DONE;            
             }
             break;

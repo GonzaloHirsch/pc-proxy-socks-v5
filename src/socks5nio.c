@@ -35,6 +35,7 @@ static struct socks5 *socks5_new(const int client)
     sockState->stm.current = &client_statbl[0]; // The first state is the HELLO_READ state
     sockState->stm.max_state = ERROR;
     sockState->stm.states = client_statbl;
+    sockState->stm.initial = HELLO_READ;
     stm_init(&(sockState->stm));
 
     // Write Buffer for the socket(Initialized)
