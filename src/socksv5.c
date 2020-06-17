@@ -203,8 +203,8 @@ int main()
     // Cycle until a signal is received as finished
     while (!finished)
     {
-        printf("Awaiting connection\n");
-
+        // printf("Awaiting connection\n");
+        
         // Wait for activiy of one of the sockets:
         // -Master Socket --> New connection.
         // -Child Sockets --> Read or write operation
