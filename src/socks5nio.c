@@ -1007,12 +1007,11 @@ static int try_connection(int *connect_ret, connecting_st *d, socks5_origin_info
     int origin_fd = socket(AF_INET, SOCK_STREAM, 0);
     selector_fd_set_nio(origin_fd);
     struct sockaddr_in *sin = (struct sockaddr_in *)&s5oi->origin_addr;
-    d->first_working_ip_index = 0;
     do
     {
         // Setting up in socket address
         sin->sin_family = AF_INET;
-        memcpy((void *)&sin->sin_addr, s5oi->ipv4_addrs[0], (addrType == IPv4) ? IP_V4_ADDR_SIZE : IP_V6_ADDR_SIZE); // Address
+        memcpy((void *)&sin->sin_addr, (addrType == IPv4) ? s5oi->ipv4_addrs[d->first_working_ip_index] : s5oi->ipv6_addrs[d->first_working_ip_index], (addrType == IPv4) ? IP_V4_ADDR_SIZE : IP_V6_ADDR_SIZE); // Address
         memcpy((void *)&sin->sin_port, s5oi->port, 2);                                                               // Port
         s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
         *connect_ret = connect(origin_fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
@@ -1035,6 +1034,7 @@ void connecting_init(const unsigned state, struct selector_key *key)
     int connect_ret = -1;
     selector_status st = SELECTOR_SUCCESS;
     d->rb = &(ATTACHMENT(key)->read_buffer);
+    d->first_working_ip_index = 0;
     s->origin_fd = try_connection(&connect_ret, d, s5oi, s5oi->ip_selec);
 
     if (connect_ret == -1)
@@ -1073,9 +1073,39 @@ void connecting_init(const unsigned state, struct selector_key *key)
     return connecting_send_conn_response(key);
 }
 
+static unsigned connecting_check_origin_connected(struct selector_key * key) {
+    int connect_ret = connect(key->fd, (struct sockaddr *)&ATTACHMENT(key)->origin_info.origin_addr, ATTACHMENT(key)->origin_info.origin_addr_len);
+    switch (errno) {
+        case EINPROGRESS:
+            printf("\t\t CONNECTING?\n");
+            return CONNECTING;
+        case EISCONN:
+        case EALREADY:
+            // Connection successful
+            // one should reset interests for client_fd (which were set to OP_NOOP)
+            // and go to COPY state
+            selector_set_interest(key->s, ATTACHMENT(key)->client_fd, OP_READ | OP_WRITE);
+            // Go on
+            connect_ret = -2;
+            break;
+        default:
+            ATTACHMENT(key)->origin_fd = -1;
+            fprintf(stderr, "Could not connect\n");
+            determine_connect_error(errno);
+            return ERROR;
+    }
+    return connecting_send_conn_response(key);
+}
+
 static unsigned connecting_read(struct selector_key * key) {
-    printf("Reading");
-    connecting_send_conn_response(key);
+    printf("Reading\n");
+    if (key->fd == ATTACHMENT(key)->origin_fd) {
+        return connecting_check_origin_connected(key);
+    }
+    else {
+        printf("WARNING: connecting reading but with client_fd\n");
+        sleep(1);
+    }
     return COPY;
 }
 
@@ -1095,29 +1125,9 @@ static unsigned connecting_write(struct selector_key *key)
     } else if (key->fd == s->origin_fd) {
         // this should be entered only when EINPROGRESS is obtained
         // next thing up is to check if connection went well or wrong
-        connect_ret = connect(key->fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
-        switch (errno) {
-            case EINPROGRESS:
-                return CONNECTING;
-            case EISCONN:
-            case EALREADY:
-                // Connection successful
-                // one should reset interests for client_fd (which were set to OP_NOOP)
-                // and go to COPY state
-                selector_set_interest(key->s, s->client_fd, OP_READ | OP_WRITE);
-                // Go on
-                connect_ret = -2;
-                break;
-            default:
-                s->origin_fd = -1;
-                fprintf(stderr, "Could not connect\n");
-                determine_connect_error(errno);
-                return ERROR;
-        } 
+        return connecting_check_origin_connected(key);
     }
-
-    return connecting_send_conn_response(key);
-    // return COPY;
+    return COPY;
 }
 
 void connecting_close(const unsigned state, struct selector_key *key)
@@ -1329,6 +1339,7 @@ error_read(struct selector_key *key) {
     printf("error read\n");
     selector_unregister_fd(key->s, key->fd);
     close(key->fd);
+    return ERROR;
 }
 
 static unsigned
@@ -1336,6 +1347,7 @@ error_write(struct selector_key *key) {
     printf("error write\n");
     selector_unregister_fd(key->s, key->fd);
     close(key->fd);
+    return ERROR;
 }
 
 //------------------------STATES DEFINITION--------------------------------------
