@@ -36,19 +36,6 @@ static const struct fd_handler sctp_handler = {
     .handle_block = NULL,
 };
 
-/** Handler for the SIGPIPE signal */
-static void sctp_sigpipe_handler()
-{
-    if (selector_set_interest(current_key->s, current_key->fd, OP_NOOP) != SELECTOR_SUCCESS)
-    {
-        exit(0);
-    }
-    else
-    {
-        exit(0);
-    }
-}
-
 ///////////////////////////////////////////////////////////////////
 // OBJECT POOL
 ///////////////////////////////////////////////////////////////////
@@ -167,16 +154,11 @@ void sctp_passive_accept(struct selector_key *key)
     memcpy(&state->client_addr, &client_addr, client_addr_len);
     state->client_addr_len = client_addr_len;
 
-    /*
-    // We have to handle the SIGPIPE signal to avoid the server getting killed
-    struct sigaction sa;
-    sa.sa_handler = sctp_sigpipe_handler;
-    sa.sa_flags = 0;
-    if (sigaction(SIGPIPE, &sa, 0) == -1)
-    {
-        // TODO: HANDLE ERROR
-    }
-    */
+    // Adding to metrics
+    add_current_connections(1);
+    add_historic_connections(1);
+
+    // Signal to avoid the SIGPIPE signal
     signal(SIGPIPE, SIG_IGN);
 
     if (SELECTOR_SUCCESS != selector_register(key->s, client, &sctp_handler, OP_READ, state))
@@ -229,6 +211,7 @@ sctp_write(struct selector_key *key)
 
     ssize_t n;
     size_t nr;
+    metrics m;
     uint8_t *ptr = buffer_read_ptr(&d->buffer_write, &nr);
 
     switch (d->info.type)
@@ -290,6 +273,30 @@ sctp_write(struct selector_key *key)
         switch (d->info.cmd)
         {
         case CMD_LIST:
+            // Getting the metrics
+            m = get_metrics();
+            if (d->state == SCTP_ERROR)
+            {
+                uint8_t metrics_list_error_data[20] = {0};
+                metrics_list_error_data[0] = d->info.type;
+                metrics_list_error_data[1] = d->info.cmd;
+                metrics_list_error_data[2] = 0x01;
+                metrics_list_error_data[3] = m->metrics_count;
+                n = sctp_sendmsg(key->fd, (void *)metrics_list_error_data, N(metrics_list_error_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            }
+            else
+            {
+                // Adding the info to the buffer
+                uint8_t metrics_list_data[20];
+                metrics_list_data[0] = d->info.type;
+                metrics_list_data[1] = d->info.cmd;
+                metrics_list_data[2] = 0x00;
+                metrics_list_data[3] = m->metrics_count;
+                hton64(metrics_list_data + 4, m->transfered_bytes);
+                hton32(metrics_list_data + 4 + 8, m->historic_connections);
+                hton32(metrics_list_data + 4 + 8 + 4, m->current_connections);
+                n = sctp_sendmsg(key->fd, (void *)metrics_list_data, N(metrics_list_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            }
             break;
             // CMD not allowed
         default:
@@ -322,6 +329,9 @@ sctp_write(struct selector_key *key)
 
     if (n > 0)
     {
+        // Add bytes to metrics
+        add_transfered_bytes(n);
+
         // Setting the fd to read.
         if (SELECTOR_SUCCESS != selector_set_interest(key->s, key->fd, OP_READ))
         {
@@ -339,6 +349,9 @@ sctp_write(struct selector_key *key)
 static void
 sctp_close(struct selector_key *key)
 {
+    // Removing the current connection from the metrics
+    remove_current_connections(1);
+
     sctp_destroy(ATTACHMENT(key));
 }
 
@@ -404,6 +417,9 @@ static unsigned handle_request(struct selector_key *key)
         selector_unregister_fd(key->s, d->client_fd);
         return SCTP_ERROR;
     }
+
+    // Add bytes to metrics
+    add_transfered_bytes(length);
 
     // Advancing the buffer
     buffer_write_adv(b, length);

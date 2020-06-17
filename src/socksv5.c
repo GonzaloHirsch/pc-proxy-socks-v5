@@ -164,6 +164,9 @@ int main()
         abort();
     }
 
+    // Initializing the metrics struct
+    init_metrics();
+
     // Create socket handler for the master socket
     fd_handler *masterSocketHandler = malloc(sizeof(fd_handler));
     masterSocketHandler->handle_read = socksv5_passive_accept;

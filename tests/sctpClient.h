@@ -11,6 +11,8 @@
 #include <netinet/sctp.h>
 #include <arpa/inet.h>
 
+#include "Utility.h"
+
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 
 #define MAX_BUFFER 1024

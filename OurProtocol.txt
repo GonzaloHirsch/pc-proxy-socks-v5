@@ -136,11 +136,11 @@ Campos:
 
 Y la respuesta del servidor sigue el siguiente formato:
 
-            +------+-------+--------+--------+-----------+
-            | TYPE |  CMD  | STATUS |  MLEN  |    DATA   |
-            +------+-------+--------+--------+-----------+
-            |   1  |   1   |    1   |    1   |  Variable |
-            +------+-------+--------+--------+-----------+
+            +------+-------+--------+--------+-----------+-----------+-----------+
+            | TYPE |  CMD  | STATUS |  MLEN  |   TBYTES  |   HCONN   |   CCONN   |
+            +------+-------+--------+--------+-----------+-----------+-----------+
+            |   1  |   1   |    1   |    1   |     8     |     4     |     4     |
+            +------+-------+--------+--------+-----------+-----------+-----------+
 
 Campos:
             TYPE -> Tipo de uso, X’02’ (METRICAS)
@@ -149,7 +149,9 @@ Campos:
                 - EXITO -> X’00’
                 - ERROR GENERICO -> X’01’
             MLEN -> Cantidad de metricas a devolver
-            DATA -> Pares clave valor, siguiendo el formato "clave:valor", separadas por coma (",")
+            TBYTES -> Cantidad de bytes transferidos historicamente (Big Endian)
+            HCONN -> Cantidad de conexiones historicas (Big Endian)
+            CCONN -> Cantidad de conexiones concurrentes (Big Endian)
 
 3.3 - Configuración remota
 

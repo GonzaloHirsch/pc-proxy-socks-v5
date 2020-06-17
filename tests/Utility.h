@@ -29,6 +29,14 @@ void HandleTCPClient(int clntSocket);
 // Create and connect a new TCP client socket
 int SetupTCPClientSocket(const char *server, const char *service);
 
+void hton64(uint8_t *b, uint64_t n);
+
+uint64_t ntoh64(uint8_t const *b);
+
+void hton32(uint8_t *b, uint32_t n);
+
+uint32_t ntoh32(uint8_t const *b);
+
 enum sizeConstants {
   MAXSTRINGLENGTH = 128,
   BUFSIZE = 512,

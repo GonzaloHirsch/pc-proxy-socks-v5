@@ -8,6 +8,8 @@ static metrics m;
 void init_metrics()
 {
     m = malloc(sizeof(metrics));
+    memset(m, 0, sizeof(struct metric));
+    m->metrics_count = 3;
 }
 
 void add_transfered_bytes(uint64_t n)
@@ -57,7 +59,7 @@ void add_login(uint8_t n)
 }
 */
 
-static metrics get_metrics(){
+metrics get_metrics(){
     return m;
 }
 

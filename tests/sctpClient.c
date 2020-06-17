@@ -211,6 +211,79 @@ int main(int argc, char *argv[])
 
     printf("Given %d users %s\n", user_list_buffer[3], user_list_buffer + 4);
 
+    // -------------------------------- METRICS LIST REQUEST --------------------------------
+
+    printf("\nLISTING METRICS\n\n");
+
+    uint8_t metrics_list[] = {0x02, 0x01};
+
+    // Sending login request
+    ret = sctp_sendmsg(serverSocket, (void *)metrics_list, N(metrics_list), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+    if (ret < 0)
+    {
+        printf("Error sending metrics list \n");
+        close(serverSocket);
+        exit(0);
+    }
+
+    // -------------------------------- METRICS LIST RESPONSE --------------------------------
+
+    uint8_t metrics_list_buffer[2048];
+    size_t metrics_list_count = N(metrics_list_buffer);
+
+    // Receiving login response
+    ret = sctp_recvmsg(serverSocket, metrics_list_buffer, metrics_list_count, NULL, 0, &sndrcvinfo, &recv_flags);
+    if (ret <= 0)
+    {
+        printf("Error receiving metrics list response\n");
+        close(serverSocket);
+        exit(0);
+    }
+
+    if (metrics_list_buffer[0] == 0x02)
+    {
+        printf("TYPE OK\n");
+    }
+    else
+    {
+        printf("BAD TYPE\n");
+    }
+
+    if (metrics_list_buffer[1] == 0x01)
+    {
+        printf("CMD OK\n");
+    }
+    else
+    {
+        printf("BAD CMD\n");
+    }
+
+    if (metrics_list_buffer[2] == 0x00)
+    {
+        printf("STATUS OK\n");
+    }
+    else
+    {
+        printf("BAD STATUS\n");
+    }
+
+    if (metrics_list_buffer[3] == 0x03)
+    {
+        printf("COUNT OK\n");
+    }
+    else
+    {
+        printf("BAD COUNT\n");
+    }
+
+    uint64_t bytes = ntoh64(metrics_list_buffer + 4);
+    uint32_t hist = ntoh32(metrics_list_buffer + 4 + 8);
+    uint32_t curr = ntoh32(metrics_list_buffer + 4 + 8 + 4);
+
+    printf("Bytes %lu, historic %u, current %u\n", bytes, hist, curr);
+
+    while(1){}
+
     close(serverSocket);
 
     return 0;

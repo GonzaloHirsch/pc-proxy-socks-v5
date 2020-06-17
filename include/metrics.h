@@ -21,6 +21,7 @@ typedef struct metric
     uint64_t transfered_bytes;
     uint32_t historic_connections;
     uint32_t current_connections;
+    uint8_t metrics_count;
     /*
     uint8_t resolved_addresses;
     uint8_t given_ips;
@@ -53,7 +54,7 @@ void add_login(uint8_t n);
 /**
  * Method to obtain the metrics
 */
-static metrics get_metrics();
+metrics get_metrics();
 
 /**
  * Method to destroy the metrics pointer
