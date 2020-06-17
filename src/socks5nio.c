@@ -803,6 +803,8 @@ resolve_read(struct selector_key *key)
                 perror("Not valid domain name");
                 errored = 1;
             }
+            // TODO remove (testing purposes)
+            s->origin_info.ip_selec = (s->origin_info.ipv4_c > 0) ? IPv4 : IPv6;
             ret = CONNECTING;
         }
 
@@ -1038,7 +1040,7 @@ void connecting_init(const unsigned state, struct selector_key *key)
                 break;
             default:
                 s->origin_fd = -1;
-                fprintf(stderr, "Could not connect\n");
+                fprintf(stderr, "Could not connect on init\n");
                 determine_connect_error(errno);
         }
     }
@@ -1071,7 +1073,7 @@ static unsigned connecting_check_origin_connected(struct selector_key * key) {
             default:
                 // s->origin_fd = -1;
                 if (d->first_working_ip_index >= ((s->origin_info.ip_selec == IPv4) ?  s->origin_info.ipv4_c : s->origin_info.ipv6_c)) {
-                    fprintf(stderr, "Could not connect\n");
+                    fprintf(stderr, "Could not connect after failure\n");
                     determine_connect_error(errno);
                     return ERROR;
                 }
@@ -1081,7 +1083,7 @@ static unsigned connecting_check_origin_connected(struct selector_key * key) {
                         switch (errno) {
                             // TODO try to remove code repetition
                             case EINPROGRESS:
-                                printf("I'm waiting a connection for a different IP\n");
+                                printf("I'm waiting for a connection for a different IP\n");
                                 // selector_status st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
                                 // if (st != SELECTOR_SUCCESS){
                                 //     printf("Error registering FD to wait for connection\n");
