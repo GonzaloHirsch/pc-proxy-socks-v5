@@ -89,6 +89,8 @@ const char * upErrorString(const up_req_parser p) {
             return "Invalid Password Length"; 
         case UP_ERROR_INV_AUTH:
             return "Invalid Auth Data";
+        default:
+            return "Not an error";
         }
 }
 

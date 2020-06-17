@@ -123,16 +123,16 @@ static const struct fd_handler socks5_handler = {
     .handle_block = socksv5_block,
 };
 
-static void socks5_origin_read(struct selector_key *key);
-static void socks5_origin_write(struct selector_key *key);
-static void socks5_origin_close(struct selector_key *key);
-static void socks5_origin_block(struct selector_key *key);
-static const struct fd_handler socks5_origin_handler = {
-    .handle_read = socks5_origin_read,
-    .handle_write = socks5_origin_write,
-    .handle_close = socks5_origin_close,
-    .handle_block = socks5_origin_block,
-};
+// static void socks5_origin_read(struct selector_key *key);
+// static void socks5_origin_write(struct selector_key *key);
+// static void socks5_origin_close(struct selector_key *key);
+// static void socks5_origin_block(struct selector_key *key);
+// static const struct fd_handler socks5_origin_handler = {
+//     .handle_read = socks5_origin_read,
+//     .handle_write = socks5_origin_write,
+//     .handle_close = socks5_origin_close,
+//     .handle_block = socks5_origin_block,
+// };
 
 /** Intenta aceptar la nueva conexión entrante*/
 void socksv5_passive_accept(struct selector_key *key)
@@ -417,10 +417,9 @@ userpass_read(struct selector_key *key)
 static unsigned
 userpass_process(struct userpass_st *up_s, bool * auth_valid){
     unsigned ret = USERPASS_WRITE;
-    uint8_t * uid = up_s->parser.uid, * uid_stored;
-    uint8_t * pw = up_s->parser.pw, * pw_stored;
+    uint8_t * uid = up_s->parser.uid;
+    uint8_t * pw = up_s->parser.pw;
     uint8_t uid_l = up_s->parser.uidLen;
-    uint8_t pw_l = up_s->parser.pwLen;
 
     *auth_valid = validate_user_proxy(uid, pw);
     
@@ -723,15 +722,13 @@ resolve_init(const unsigned state, struct selector_key *key)
     struct sockaddr_in serv_addr;
     selector_status st = SELECTOR_SUCCESS;
 
-    char * final_buffer = NULL;
-    char * servIP = "127.0.0.1";
+    // char * final_buffer = NULL;
+    // char * servIP = "127.0.0.1";
 
     in_port_t servPort = DOH_PORT;
     memset(&serv_addr, 0, sizeof(serv_addr)); // Zero out structure
     serv_addr.sin_family = AF_INET;          // IPv4 address family
     serv_addr.sin_port = htons(servPort);    // Server port
-
-    int portno  = DOH_PORT;
 
     r_s->doh_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(r_s->doh_fd <= 0){
@@ -775,8 +772,8 @@ resolve_close(const unsigned state, struct selector_key *key)
 
 }
 
-static unsigned
-resolve_process(struct userpass_st *up_s);
+// static unsigned
+// resolve_process(struct userpass_st *up_s);
 
 /** State when receiving the doh response */
 static unsigned
@@ -791,7 +788,7 @@ resolve_read(struct selector_key *key)
     unsigned ret = RESOLVE;
     int errored = 0;
     uint8_t *ptr;
-    ssize_t n;
+    size_t n;
     size_t count;
 
     ptr = buffer_write_ptr(b, &count);
@@ -809,11 +806,11 @@ resolve_read(struct selector_key *key)
         buffer_write_adv(b, n);
 
         // Parse JUST the http message and check if done correctly
-        http_message_state http_state = http_consume_message(r_s->rb, &r_s->parser, &errored);
+        // http_message_state http_state = http_consume_message(r_s->rb, &r_s->parser, &errored);
         if(http_done_parsing_message(&r_s->parser, &errored) && !errored){
           
             // Parse the dns response and save the info in the origin_info
-            parse_dns_resp(r_s->parser.body, s->origin_info.resolve_addr, s, &errored);
+            parse_dns_resp(r_s->parser.body, (char *) s->origin_info.resolve_addr, s, &errored);
 
             if(s->origin_info.ipv4_c == 0 && s->origin_info.ipv6_c == 0){
                 perror("Not valid domain name");
@@ -861,7 +858,7 @@ resolve_write(struct selector_key *key)
     int final_buffer_size = 0;
 
     // Generate the DNS request
-    char * http_request = request_generate(s->origin_info.resolve_addr, &final_buffer_size);
+    char * http_request = request_generate((char *) s->origin_info.resolve_addr, &final_buffer_size);
 
     // Validate that we were able to connect and the request is valid.
     if(r_s->doh_fd > 0 && http_request != NULL){
@@ -886,10 +883,10 @@ resolve_write(struct selector_key *key)
     return ret;
 }
 
-static unsigned
-resolve_process(struct userpass_st *up_s){
+// static unsigned
+// resolve_process(struct userpass_st *up_s){
     
-}
+// }
 
 ////////////////////////////////////////
 // CONNECTING
@@ -1488,19 +1485,19 @@ socksv5_done(struct selector_key *key)
 // SOCKS5 ORIGIN HANDLERS
 ////////////////////////////////////////////////////////////////////////////////
 
-static void socks5_origin_read(struct selector_key *key) {
-    // TODO implement
-    printf("ORIGIN READ: UNIMPLEMENTED\n");
-}
-static void socks5_origin_write(struct selector_key *key) {
-    // TODO implement
-    printf("ORIGIN WRITE: UNIMPLEMENTED\n");
-}
-static void socks5_origin_close(struct selector_key *key) {
-    // TODO implement
-    printf("ORIGIN CLOSE: UNIMPLEMENTED\n");
-}
-static void socks5_origin_block(struct selector_key *key) {
-    // TODO implement
-    printf("ORIGIN BLOCK: UNIMPLEMENTED\n");
-}
+// static void socks5_origin_read(struct selector_key *key) {
+//     // TODO implement
+//     printf("ORIGIN READ: UNIMPLEMENTED\n");
+// }
+// static void socks5_origin_write(struct selector_key *key) {
+//     // TODO implement
+//     printf("ORIGIN WRITE: UNIMPLEMENTED\n");
+// }
+// static void socks5_origin_close(struct selector_key *key) {
+//     // TODO implement
+//     printf("ORIGIN CLOSE: UNIMPLEMENTED\n");
+// }
+// static void socks5_origin_block(struct selector_key *key) {
+//     // TODO implement
+//     printf("ORIGIN BLOCK: UNIMPLEMENTED\n");
+// }
