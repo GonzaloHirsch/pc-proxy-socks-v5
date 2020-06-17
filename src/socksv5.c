@@ -90,15 +90,20 @@ int main()
         exit(EXIT_FAILURE);
     }
 
+    // Struct for the streams configuration
+    struct sctp_initmsg initmsg;
+    memset(&initmsg, 0, sizeof(initmsg));
+    initmsg.sinit_num_ostreams = 1;
+    initmsg.sinit_max_instreams = 1;
+    initmsg.sinit_max_attempts = 4;
+
     // Setting the master socket to allow multiple connections, not required, just good habit
     // This setsockopt gives an error when used, if not used, the client still works
-    /*
-    if (setsockopt(management_socket, IPPROTO_SCTP, SCTP_INITMSG, (char *)&opt, sizeof(opt)) < 0)
+    if (setsockopt(management_socket, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(initmsg)) < 0)
     {
         perror("ERROR: Failure setting setting management socket\n");
         exit(EXIT_FAILURE);
     }
-    */
 
     // Binding the socket to localhost
     if (bind(management_socket, (struct sockaddr *)&management_address, sizeof(management_address)) < 0)
