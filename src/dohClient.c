@@ -167,14 +167,14 @@ ret = parse_dns_resp(http_parser.body, domain);
 */
 
 
-char * request_generate(char * domain, int *length){
+char * request_generate(char * domain, int *length, int qtype){
 
 int request_length = 0;
 
 int dns_length;
 size_t dns_encoded_length;
 
-uint8_t * dns_request = generate_dns_req(domain, &dns_length);    //gets the dns request wirh the host name 
+uint8_t * dns_request = generate_dns_req(domain, &dns_length, qtype);    //gets the dns request wirh the host name 
                                                                 //returns the request and the size of the request
 
 char * encoded_dns_request = base64_encode((char *)dns_request, dns_length,&dns_encoded_length);

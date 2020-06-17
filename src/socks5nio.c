@@ -850,7 +850,7 @@ resolve_write(struct selector_key *key)
     int final_buffer_size = 0;
 
     // Generate the DNS request
-    char * http_request = request_generate(s->origin_info.resolve_addr, &final_buffer_size);
+    char * http_request = request_generate(s->origin_info.resolve_addr, &final_buffer_size, T_A); //request ipv4
 
     // Validate that we were able to connect and the request is valid.
     if(r_s->doh_fd > 0 && http_request != NULL){

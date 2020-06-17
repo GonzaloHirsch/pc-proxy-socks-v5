@@ -5,7 +5,7 @@ void host_dns_format(uint8_t * dns, char * host);
 uint8_t * ReadName(unsigned char* reader,uint8_t * buffer,int* count);
 
 
-uint8_t * generate_dns_req(char * host, int * final_size){
+uint8_t * generate_dns_req(char * host, int * final_size, int qtype){
 
     int length = 0;
 
@@ -50,7 +50,7 @@ uint8_t * generate_dns_req(char * host, int * final_size){
 
     qinfo =(struct QUESTION*)&buf[sizeof(struct DNS_HEADER) + (strlen((const char*)qname) + 1)]; //fill it
  
-    qinfo->qtype = htons(T_A); //type of the query , A , MX , CNAME , NS etc
+    qinfo->qtype = htons(qtype); //type of the query , A , MX , CNAME , NS etc
     qinfo->qclass = htons(IN); //internet
 
 

@@ -83,7 +83,7 @@ struct DNS_HEADER
 
 
 
-uint8_t * generate_dns_req(char * host, int * final_size);
+uint8_t * generate_dns_req(char * host, int * final_size, int qtype);
 
 void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * errored);
 

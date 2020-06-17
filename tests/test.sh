@@ -23,6 +23,6 @@ fi
 
 OUTPUT_FILE_PATH=$(echo $3 | sed 's:/*$::')
 for i in $(seq 1 $2); do
-	curl -x socks5://localhost:1080 $url > "$OUTPUT_FILE_PATH/download$i.pdf" &
+	curl -x socks5://localhost:1080 $url curl -x socks5://ribas:gato@localhost:1080 www.campus.itba.edu.ar > "$OUTPUT_FILE_PATH/download$i.pdf" &
 done
 fi

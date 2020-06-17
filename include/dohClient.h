@@ -22,7 +22,7 @@
 
 #define REQ_MAX_SIZE 65536
 
-char * request_generate(char * domain, int * length);
+char * request_generate(char * domain, int * length, int qtype);
 uint8_t * get_host_by_name(char * domain);
 
 void parse_to_crlf(uint8_t * response, size_t *size);
