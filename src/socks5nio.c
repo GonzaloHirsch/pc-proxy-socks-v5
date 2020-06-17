@@ -806,7 +806,7 @@ resolve_read(struct selector_key *key)
         buffer_write_adv(b, n);
 
         // Parse JUST the http message and check if done correctly
-        // http_message_state http_state = http_consume_message(r_s->rb, &r_s->parser, &errored);
+        http_message_state http_state = http_consume_message(r_s->rb, &r_s->parser, &errored);
         if(http_done_parsing_message(&r_s->parser, &errored) && !errored){
           
             // Parse the dns response and save the info in the origin_info
