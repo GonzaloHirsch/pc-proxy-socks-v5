@@ -9,12 +9,11 @@ uint8_t * generate_dns_req(char * host, int * final_size){
 
     int length = 0;
 
-    uint8_t buf[65536] ,*qname, *qname2;
+    uint8_t buf[65536] ,*qname;
 
 
     struct DNS_HEADER *dns = NULL;
     struct QUESTION *qinfo = NULL;
-     struct QUESTION *qinfo2 = NULL;
 
 
     dns = (struct DNS_HEADER *)&buf; //overlaps header into the buffer
@@ -118,11 +117,7 @@ uint8_t * generate_dns_req(char * host, int * final_size){
 void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * errored){
     int stop, i, j;
     struct DNS_HEADER *dns = NULL;
-    char * reader, *reader2, * ret;
-
-    struct sockaddr_in a;
-
-   
+    unsigned char * reader;   
 
     dns = (struct DNS_HEADER*) to_parse;
     reader = &to_parse[sizeof(struct DNS_HEADER) + ((strlen((const char*) domain)+ 2) + sizeof(struct QUESTION)) ]; //domain + 2 becuse host_dns_format adds a '.' and also a '\0' also * 2 because there are 2 queries
@@ -134,7 +129,7 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
 
     for(i=0;i<ntohs(dns->ans_count);i++)
     {
-        answers[i].name=ReadName(reader,to_parse,&stop);
+        answers[i].name=ReadName((unsigned char *) reader,to_parse,&stop);
         reader = reader + stop;
  
         answers[i].resource = (struct R_DATA*)(reader);
@@ -155,7 +150,7 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
         }
         else
         {
-            answers[i].rdata = ReadName(reader,to_parse,&stop);
+            answers[i].rdata = ReadName((unsigned char *) reader,to_parse,&stop);
             reader = reader + stop;
         }
     }

@@ -145,10 +145,10 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
                 *p->cursor = '\0';
                 // Save new header
                 p->headers[p->headers_num] = malloc(sizeof(http_header));
-                p->headers[p->headers_num]->type = malloc(strlen(p->header_name)+1);
-                p->headers[p->headers_num]->value = malloc(strlen(p->header_value)+1);
-                strcpy(p->headers[p->headers_num]->type, p->header_name);
-                strcpy(p->headers[p->headers_num]->value, p->header_value);
+                p->headers[p->headers_num]->type = malloc(strlen((const char*) p->header_name)+1);
+                p->headers[p->headers_num]->value = malloc(strlen((const char*) p->header_value)+1);
+                strcpy(p->headers[p->headers_num]->type, (const char*) p->header_name);
+                strcpy(p->headers[p->headers_num]->value, (const char*) p->header_value);
                 p->headers_num++;
 
                 p->state = HTTP_I1;
@@ -205,6 +205,8 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
         case HTTP_ERR_INV_BODY:
             
             break;
+        case HTTP_ERR_INV_MSG:
+            break;
     }
     return p->state;
 }
@@ -241,7 +243,10 @@ const char * http_error_string(const http_message_parser p) {
             return "Invalid Header Value";
         case HTTP_ERR_INV_BODY:
             return "Invalid Header Body";
+        default:
+            break;
     }
+    return "Not an error";
 }
 
 int get_numeric_header_value(http_message_parser p, const char * header_name) {
@@ -263,7 +268,7 @@ int get_number_of_headers(http_message_parser p) {
     return p->headers_num;
 }
 
-const char * get_body(http_message_parser p) {
+const uint8_t * get_body(http_message_parser p) {
     return p->body;
 }
 
