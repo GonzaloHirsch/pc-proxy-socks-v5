@@ -40,7 +40,7 @@ enum socks_5_addr_state socks_5_addr_read_next_byte(socks_5_addr_parser p, const
 enum socks_5_addr_state socks_5_addr_consume_message(buffer * b, socks_5_addr_parser p, bool *errored);
 int socks_5_addr_done_parsing(socks_5_addr_parser p, bool * errored);
 
-const char * get_socks_5_address(socks_5_addr_parser p);
+const uint8_t * get_socks_5_address(socks_5_addr_parser p);
 const int get_socks_5_type(socks_5_addr_parser p);
 
 // Free all socks_5_addr_parser-Related memory

@@ -151,6 +151,12 @@ int main()
         exit(EXIT_FAILURE);
     }
 
+    // Create user-pass table for authentication
+    if(create_up_table() == -1){
+        perror("Error creating user pass table\n");
+        abort();
+    }
+
     // Create socket handler for the master socket
     fd_handler *masterSocketHandler = malloc(sizeof(fd_handler));
     masterSocketHandler->handle_read = socksv5_passive_accept;

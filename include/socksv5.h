@@ -9,6 +9,7 @@
 #include "stateMachine.h"
 #include "socks5nio.h"
 #include "sctpnio.h"
+#include "authentication.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

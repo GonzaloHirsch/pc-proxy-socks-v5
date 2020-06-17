@@ -10,8 +10,7 @@ int main(int argc, char *argv[]) {
 
   char *servIP = "127.0.0.1";     // First arg: server IP address (dotted quad)
 
-  // char * reqT = argv[1];
-  char * reqT = "ip4";
+  char * reqT = argv[1];
   // Third arg (optional): server port (numeric).  7 is well-known echo port
   in_port_t servPort =  1080;
 
@@ -74,12 +73,12 @@ int main(int argc, char *argv[]) {
   //------------------USSERPASS_READ--------------------------
 
   uint8_t up[] = {
-      0x01, 0x05, 0x32,0x32,0x32,0x32,0x32, 0x01, 0x32
+      0x01, 0x01, 0x32, 0x01, 0x32
   };
 
   // Send the string to the server
   printf("Sending userpass\n");
-  numBytes = send(sock, up, 9, 0);
+  numBytes = send(sock, up, 5, 0);
   if (numBytes < 0){
     DieWithSystemMessage("send() failed"); 
   }
@@ -119,9 +118,9 @@ int main(int argc, char *argv[]) {
   uint8_t req6[22] = {0x05, 0x01, 0x00, 0x04,
    0x04, 0x02, 0x01, 0x01, 0x14, 0x12, 0x11, 0x11, 0x24, 0x22, 0x21, 0x21, 0x34, 0x32, 0x31, 0x31, 
    0x77, 0x77};
-
-  uint8_t reqdom[11] = {0x05, 0x01, 0x00, 0x03,
-  0x04, 0x01, 0x02, 0x03, 0x04,  
+//www.google.com
+  uint8_t reqdom[] = {0x05, 0x01, 0x00, 0x03,0x0e,
+  0x77, 0x77, 0x77, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x63, 0x6f, 0x6d,
   0x77, 0x77};
 
 
@@ -138,7 +137,7 @@ int main(int argc, char *argv[]) {
     numBytes = send(sock, req6, 22, 0);
   }
   else if(!strcmp("dom", reqT)){
-    numBytes = send(sock, reqdom, 11, 0);
+    numBytes = send(sock, reqdom, 21, 0);
   }
   else{
     DieWithSystemMessage("invalid req"); 
