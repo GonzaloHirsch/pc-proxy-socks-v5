@@ -204,7 +204,7 @@ hello_read_close(const unsigned state, struct selector_key *key)
 }
 
 static unsigned
-hello_process(const struct hello_st *d);
+hello_process(struct hello_st *d);
 
 /** lee todos los bytes del mensaje de tipo `hello' y inicia su proceso */
 static unsigned
@@ -248,7 +248,7 @@ hello_read(struct selector_key *key)
 
 /** Process the hello message and check if its valid. */
 static unsigned
-hello_process(const struct hello_st *d)
+hello_process(struct hello_st *d)
 {
     unsigned ret = HELLO_WRITE;
     uint8_t *methods = d->parser.auth;
@@ -258,14 +258,14 @@ hello_process(const struct hello_st *d)
 
     for (int i = 0; i < methods_c; i++)
     {    
-        if (methods[i] == SOCKS_HELLO_NOAUTHENTICATION_REQUIRED){
-            m = SOCKS_HELLO_NOAUTHENTICATION_REQUIRED;
-            break;  // Priority to no auth required
-        }
-        else if (methods[i] == SOCKS_HELLO_USERPASS){
+        if(methods[i] == SOCKS_HELLO_USERPASS){
             m = SOCKS_HELLO_USERPASS;
+            break;
         }
     }
+
+    // Save the method.
+    d->method = m;
 
     // Save the version and the selected method in the write buffer of hello_st
     if (-1 == hello_marshall(d->wb, m))
@@ -331,10 +331,7 @@ hello_write(struct selector_key *key)
     }
 
     // Check if there is an acceptable method, if not --> Error
-    if(auth == SOCKS_HELLO_NOAUTHENTICATION_REQUIRED){
-        ret = REQUEST_READ;
-    }
-    else if(auth == SOCKS_HELLO_USERPASS){
+    if(auth == SOCKS_HELLO_USERPASS){
          ret = USERPASS_READ;
     }
    else{
