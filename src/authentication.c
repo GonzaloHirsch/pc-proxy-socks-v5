@@ -112,35 +112,69 @@ void list_user_admin(uint8_t **users, uint8_t *count)
     }
 }
 
-bool create_user(uint8_t *username, uint8_t *pass, auth_level level)
+bool create_user(uint8_t *username, uint8_t *pass, auth_level level, bool canOverride)
 {
     uint8_t *uid, *pw;
+    int i = 0;
+    bool exists = false;
 
-    uid = malloc(1 + strlen((const char *)username));
-    if (uid == NULL)
-        return false;
+    while (i < user_pass_c && !exists)
+    {
+        if (user_pass_table[i].level == level)
+        {
+            // The user already exists
+            if (strcmp((const char *)user_pass_table[i].user, (const char *)username) == 0)
+            {
+                exists = true;
+                // If the user can be overrided with a new password, set the new password
+                if (!canOverride)
+                {
+                    return false;
+                }
 
-    pw = malloc(1 + strlen((const char *)pass));
-    if (pw == NULL)
-        return false;
+                // Reallocating the memory to fit the new password
+                user_pass_table[i].password = realloc(user_pass_table[i].password, 1 + strlen((const char *)pass));
+                if (user_pass_table[i].password == NULL)
+                {
+                    return false;
+                }
 
-    strcpy((char *)uid, (const char *)username);
-    strcpy((char *)pw, (const char *)pass);
+                // Putting the new password
+                strcpy((char *)user_pass_table[i].password, (const char *)pass);
+                return true;
+            }
+        }
+        i++;
+    }
 
-    user_pass_table[user_pass_c].user = uid;
-    user_pass_table[user_pass_c].password = pw;
-    user_pass_table[user_pass_c].level = level;
-    user_pass_c++;
+    if (!exists)
+    {
+        uid = malloc(1 + strlen((const char *)username));
+        if (uid == NULL)
+            return false;
+
+        pw = malloc(1 + strlen((const char *)pass));
+        if (pw == NULL)
+            return false;
+
+        strcpy((char *)uid, (const char *)username);
+        strcpy((char *)pw, (const char *)pass);
+
+        user_pass_table[user_pass_c].user = uid;
+        user_pass_table[user_pass_c].password = pw;
+        user_pass_table[user_pass_c].level = level;
+        user_pass_c++;
+    }
 
     return true;
 }
 
 bool create_user_proxy(uint8_t *username, uint8_t *pass)
 {
-    return create_user(username, pass, USER_AUTH_LEVEL);
+    return create_user(username, pass, USER_AUTH_LEVEL, true);
 }
 
 bool create_user_admin(uint8_t *username, uint8_t *pass)
 {
-    return create_user(username, pass, ADMIN_AUTH_LEVEL);
+    return create_user(username, pass, ADMIN_AUTH_LEVEL, false);
 }
