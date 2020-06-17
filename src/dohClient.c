@@ -197,6 +197,8 @@ request_length += get_first_part_size;
 
 memcpy(ptr, encoded_dns_request, dns_encoded_length);
 
+free(encoded_dns_request);
+
 ptr += dns_encoded_length;
 request_length += dns_encoded_length;
 

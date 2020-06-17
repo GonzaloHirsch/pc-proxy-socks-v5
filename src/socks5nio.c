@@ -793,7 +793,7 @@ resolve_read(struct selector_key *key)
         buffer_write_adv(b, n);
 
         // Parse JUST the http message and check if done correctly
-        http_message_state http_state = http_consume_message(r_s->rb, &r_s->parser, &errored);
+        http_consume_message(r_s->rb, &r_s->parser, &errored);
         if(http_done_parsing_message(&r_s->parser, &errored) && !errored){
           
             // Parse the dns response and save the info in the origin_info
@@ -845,7 +845,7 @@ resolve_write(struct selector_key *key)
     int final_buffer_size = 0;
 
     // Generate the DNS request
-    char * http_request = request_generate(s->origin_info.resolve_addr, &final_buffer_size, T_A); //request ipv4
+    char * http_request = request_generate((char *)s->origin_info.resolve_addr, &final_buffer_size, T_A); //request ipv4
 
     // Validate that we were able to connect and the request is valid.
     if(r_s->doh_fd > 0 && http_request != NULL){
@@ -866,6 +866,8 @@ resolve_write(struct selector_key *key)
     else{
         ret = ERROR;
     }
+
+    free(http_request); //it is for no use from now on
 
     return ret;
 }
