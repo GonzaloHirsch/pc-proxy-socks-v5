@@ -35,6 +35,7 @@ static struct socks5 *socks5_new(const int client)
     sockState->stm.current = &client_statbl[0]; // The first state is the HELLO_READ state
     sockState->stm.max_state = ERROR;
     sockState->stm.states = client_statbl;
+    sockState->stm.initial = HELLO_READ;
     stm_init(&(sockState->stm));
 
     // Write Buffer for the socket(Initialized)
@@ -123,17 +124,6 @@ static const struct fd_handler socks5_handler = {
     .handle_block = socksv5_block,
 };
 
-static void socks5_origin_read(struct selector_key *key);
-static void socks5_origin_write(struct selector_key *key);
-static void socks5_origin_close(struct selector_key *key);
-static void socks5_origin_block(struct selector_key *key);
-static const struct fd_handler socks5_origin_handler = {
-    .handle_read = socks5_origin_read,
-    .handle_write = socks5_origin_write,
-    .handle_close = socks5_origin_close,
-    .handle_block = socks5_origin_block,
-};
-
 /** Intenta aceptar la nueva conexión entrante*/
 void socksv5_passive_accept(struct selector_key *key)
 {
@@ -204,7 +194,7 @@ hello_read_close(const unsigned state, struct selector_key *key)
 }
 
 static unsigned
-hello_process(const struct hello_st *d);
+hello_process(struct hello_st *d);
 
 /** lee todos los bytes del mensaje de tipo `hello' y inicia su proceso */
 static unsigned
@@ -248,7 +238,7 @@ hello_read(struct selector_key *key)
 
 /** Process the hello message and check if its valid. */
 static unsigned
-hello_process(const struct hello_st *d)
+hello_process(struct hello_st *d)
 {
     unsigned ret = HELLO_WRITE;
     uint8_t *methods = d->parser.auth;
@@ -257,10 +247,15 @@ hello_process(const struct hello_st *d)
 
 
     for (int i = 0; i < methods_c; i++)
-    {
-        if (methods[i] == SOCKS_HELLO_USERPASS)
+    {    
+        if(methods[i] == SOCKS_HELLO_USERPASS){
             m = SOCKS_HELLO_USERPASS;
+            break;
+        }
     }
+
+    // Save the method.
+    d->method = m;
 
     // Save the version and the selected method in the write buffer of hello_st
     if (-1 == hello_marshall(d->wb, m))
@@ -301,9 +296,10 @@ hello_write(struct selector_key *key)
 
     struct hello_st *d = &ATTACHMENT(key)->client.hello;
     ssize_t n;
-    unsigned ret = USERPASS_READ;
+    unsigned ret = ERROR;
     size_t nr;
     uint8_t *buffer_read = buffer_read_ptr(d->wb, &nr);
+    uint8_t auth = ATTACHMENT(key)->auth;
 
     // Get the data from the write buffer
     uint8_t data[] = {buffer_read[0], buffer_read[1]};
@@ -325,10 +321,12 @@ hello_write(struct selector_key *key)
     }
 
     // Check if there is an acceptable method, if not --> Error
-    if (data[1] == SOCKS_HELLO_NO_ACCEPTABLE_METHODS)
-    {
-        ret = ERROR;
+    if(auth == SOCKS_HELLO_USERPASS){
+         ret = USERPASS_READ;
     }
+   else{
+       ret = ERROR;
+   }
 
     return ret;
 }
@@ -406,10 +404,9 @@ userpass_read(struct selector_key *key)
 static unsigned
 userpass_process(struct userpass_st *up_s, bool * auth_valid){
     unsigned ret = USERPASS_WRITE;
-    uint8_t * uid = up_s->parser.uid, * uid_stored;
-    uint8_t * pw = up_s->parser.pw, * pw_stored;
+    uint8_t * uid = up_s->parser.uid;
+    uint8_t * pw = up_s->parser.pw;
     uint8_t uid_l = up_s->parser.uidLen;
-    uint8_t pw_l = up_s->parser.pwLen;
 
     *auth_valid = validate_user_proxy(uid, pw);
     
@@ -712,15 +709,13 @@ resolve_init(const unsigned state, struct selector_key *key)
     struct sockaddr_in serv_addr;
     selector_status st = SELECTOR_SUCCESS;
 
-    char * final_buffer = NULL;
-    char * servIP = "127.0.0.1";
+    // char * final_buffer = NULL;
+    // char * servIP = "127.0.0.1";
 
     in_port_t servPort = DOH_PORT;
     memset(&serv_addr, 0, sizeof(serv_addr)); // Zero out structure
     serv_addr.sin_family = AF_INET;          // IPv4 address family
     serv_addr.sin_port = htons(servPort);    // Server port
-
-    int portno  = DOH_PORT;
 
     r_s->doh_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(r_s->doh_fd <= 0){
@@ -764,8 +759,8 @@ resolve_close(const unsigned state, struct selector_key *key)
 
 }
 
-static unsigned
-resolve_process(struct userpass_st *up_s);
+// static unsigned
+// resolve_process(struct userpass_st *up_s);
 
 /** State when receiving the doh response */
 static unsigned
@@ -780,7 +775,7 @@ resolve_read(struct selector_key *key)
     unsigned ret = RESOLVE;
     int errored = 0;
     uint8_t *ptr;
-    ssize_t n;
+    size_t n;
     size_t count;
 
     ptr = buffer_write_ptr(b, &count);
@@ -802,7 +797,7 @@ resolve_read(struct selector_key *key)
         if(http_done_parsing_message(&r_s->parser, &errored) && !errored){
           
             // Parse the dns response and save the info in the origin_info
-            parse_dns_resp(r_s->parser.body, s->origin_info.resolve_addr, s, &errored);
+            parse_dns_resp(r_s->parser.body, (char *) s->origin_info.resolve_addr, s, &errored);
 
             if(s->origin_info.ipv4_c == 0 && s->origin_info.ipv6_c == 0){
                 perror("Not valid domain name");
@@ -875,10 +870,10 @@ resolve_write(struct selector_key *key)
     return ret;
 }
 
-static unsigned
-resolve_process(struct userpass_st *up_s){
+// static unsigned
+// resolve_process(struct userpass_st *up_s){
     
-}
+// }
 
 ////////////////////////////////////////
 // CONNECTING
@@ -945,99 +940,19 @@ static void determine_connect_error(int error)
     }
 }
 
-static int try_connection(int *connect_ret, connecting_st *d, socks5_origin_info *s5oi, AddrType addrType)
-{
-    int origin_fd = socket(AF_INET, SOCK_STREAM, 0);
-    selector_fd_set_nio(origin_fd);
-    struct sockaddr_in *sin = (struct sockaddr_in *)&s5oi->origin_addr;
-    d->first_working_ip_index = 0;
-    do
-    {
-        // Setting up in socket address
-        sin->sin_family = AF_INET;
-        memcpy((void *)&sin->sin_addr, s5oi->ipv4_addrs[0], (addrType == IPv4) ? IP_V4_ADDR_SIZE : IP_V6_ADDR_SIZE); // Address
-        memcpy((void *)&sin->sin_port, s5oi->port, 2);                                                               // Port
-        s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
-        *connect_ret = connect(origin_fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
-        if (errno == EINPROGRESS)
-            return origin_fd;
-        if (*connect_ret < 0)
-            d->first_working_ip_index++;
-    } while (*connect_ret < 0 && d->first_working_ip_index < ((addrType == IPv4) ? s5oi->ipv4_c : s5oi->ipv6_c));
-    if (d->first_working_ip_index >= s5oi->ipv4_c)
-        d->first_working_ip_index = 0;
-    return origin_fd;
-}
-
-void connecting_init(const unsigned state, struct selector_key *key)
-{
-
-    printf("Connecting Init\n");
-
-}
-
-static unsigned connecting_write(struct selector_key *key)
-{
-    // write connection response to client
-
-
+//                  ver---status-----------------rsv--
+// struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
+// struct socks5 *s = ATTACHMENT(key);
+// struct socks5_origin_info *s5oi = &s->origin_info;
+// response_size =  1b + 1b + 1b + 1b  + variable + 2b
+// response fields: VER  ST   RSV  TYPE  ADDR       PRT
+static int connecting_send_conn_response (struct selector_key * key) {
     struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
     struct socks5 *s = ATTACHMENT(key);
     struct socks5_origin_info *s5oi = &s->origin_info;
-    int connect_ret = -1;
-    selector_status st = SELECTOR_SUCCESS;
-
-    if (key->fd == s->client_fd) {
-        // regular case, try to connect to any of the ips provided
-        s->origin_fd = try_connection(&connect_ret, d, s5oi, s5oi->ip_selec);
-    } else if (key->fd == s->origin_fd) {
-        // this should be entered only when EINPROGRESS is obtained
-        // next thing up is to check if connection went well or wrong
-        connect_ret = connect(key->fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
-        switch (errno) {
-            case EISCONN:
-                // Connection successful
-                // one should reset interests for client_fd (which were set to OP_NOOP)
-                // and go to COPY state
-                selector_set_interest(key->s, s->client_fd, OP_READ | OP_WRITE);
-                break;
-            default:
-                return ERROR;
-        } 
-    }
-
-    if (connect_ret < 0)
-    {
-        // If the error is connection in progress, one needs to register the fd to be able to respond to origin
-        if (errno == EINPROGRESS){
-            printf("I'm waiting connection\n");
-            st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
-            selector_set_interest(key->s, s->client_fd, OP_NOOP);
-            if (st != SELECTOR_SUCCESS){
-                printf("Error registering FD to wait for connection\n");
-                s->origin_fd = -1;
-            }
-        } else {
-            s->origin_fd = -1;
-            fprintf(stderr, "Could not connect\n");
-            determine_connect_error(errno);
-        }
-    }
-    else {
-        printf("Connected to origin (fd = %d)\n", s->origin_fd);
-        st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_NOOP, ATTACHMENT(key));
-        if (st == SELECTOR_SUCCESS)
-            printf("Successfully registered origin fd in selector\n");
-    }
-    d->rb = &(ATTACHMENT(key)->read_buffer);
-
-    //                  ver---status-----------------rsv--
-    printf("Writing back to client (fd = %d)\n", key->fd);
-    // struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
-    // struct socks5 *s = ATTACHMENT(key);
-    // struct socks5_origin_info *s5oi = &s->origin_info;
-    // response_size =  1b + 1b + 1b + 1b  + variable + 2b
-    // response fields: VER  ST   RSV  TYPE  ADDR       PRT
+    
+    printf("Writing back to client (fd = %d)\n", s->client_fd);
+    
     int response_size = 6;
     uint8_t *response = malloc(response_size);
     response[0] = 0x05; // VERSION
@@ -1066,8 +981,139 @@ static unsigned connecting_write(struct selector_key *key)
     // PORT
     response[response_size - 2] = s5oi->port[0];
     response[response_size - 1] = s5oi->port[1];
-    send(key->fd, response, response_size, 0);
+    send(s->client_fd, response, response_size, 0);
     free(response);
+    return COPY;
+}
+
+static int try_connection(int *connect_ret, connecting_st *d, socks5_origin_info *s5oi, AddrType addrType)
+{
+    int origin_fd = socket(AF_INET, SOCK_STREAM, 0);
+    selector_fd_set_nio(origin_fd);
+    struct sockaddr_in *sin = (struct sockaddr_in *)&s5oi->origin_addr;
+    do
+    {
+        // Setting up in socket address
+        sin->sin_family = AF_INET;
+        memcpy((void *)&sin->sin_addr, (addrType == IPv4) ? s5oi->ipv4_addrs[d->first_working_ip_index] : s5oi->ipv6_addrs[d->first_working_ip_index], (addrType == IPv4) ? IP_V4_ADDR_SIZE : IP_V6_ADDR_SIZE); // Address
+        memcpy((void *)&sin->sin_port, s5oi->port, 2);                                                               // Port
+        s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
+        *connect_ret = connect(origin_fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
+        if (errno == EINPROGRESS || errno == EISCONN || errno == EALREADY)
+            return origin_fd;
+        if (*connect_ret < 0)
+            d->first_working_ip_index++;
+    } while (*connect_ret < 0 && d->first_working_ip_index < ((addrType == IPv4) ? s5oi->ipv4_c : s5oi->ipv6_c));
+    if (d->first_working_ip_index >= s5oi->ipv4_c)
+        d->first_working_ip_index = -1;
+    return origin_fd;
+}
+
+void connecting_init(const unsigned state, struct selector_key *key)
+{
+    printf("Connecting Init\n");
+    struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
+    struct socks5 *s = ATTACHMENT(key);
+    struct socks5_origin_info *s5oi = &s->origin_info;
+    int connect_ret = -1;
+    selector_status st = SELECTOR_SUCCESS;
+    d->rb = &(ATTACHMENT(key)->read_buffer);
+    d->first_working_ip_index = 0;
+    s->origin_fd = try_connection(&connect_ret, d, s5oi, s5oi->ip_selec);
+
+    if (connect_ret == -1)
+    {
+        // If the error is connection in progress, one needs to register the fd to be able to respond to origin
+        switch (errno) {
+            case EINPROGRESS:
+                printf("I'm waiting connection\n");
+                st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
+                st = selector_set_interest(key->s, s->client_fd, OP_NOOP);
+                if (st != SELECTOR_SUCCESS){
+                    printf("Error registering FD to wait for connection\n");
+                    s->origin_fd = -1;
+                    return;
+                }
+                break;
+            // case EALREADY:
+            // case EISCONN:
+            //     // Go on
+            //     printf("EALREADY or EISCONN\n");
+            //     break;
+            default:
+                s->origin_fd = -1;
+                fprintf(stderr, "Could not connect\n");
+                determine_connect_error(errno);
+        }
+    }
+    if (connect_ret > 0) {
+        printf("Connected to origin (fd = %d)\n", s->origin_fd);
+        st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
+        if (st == SELECTOR_SUCCESS)
+            printf("Successfully registered origin fd in selector\n");
+    }
+
+}
+
+static unsigned connecting_check_origin_connected(struct selector_key * key) {
+    int connect_ret = connect(key->fd, (struct sockaddr *)&ATTACHMENT(key)->origin_info.origin_addr, ATTACHMENT(key)->origin_info.origin_addr_len);
+    if (connect_ret < 0) {
+        switch (errno) {
+            case EINPROGRESS:
+                printf("\t %d CONNECTING?\n", ATTACHMENT(key)->origin_fd);
+                return CONNECTING;
+            case EISCONN:
+            case EALREADY:
+                // Connection successful
+                // one should reset interests for client_fd (which were set to OP_NOOP)
+                // and go to COPY state
+                selector_set_interest(key->s, ATTACHMENT(key)->client_fd, OP_READ | OP_WRITE);
+                // Go on
+                break;
+            default:
+                ATTACHMENT(key)->origin_fd = -1;
+                fprintf(stderr, "Could not connect\n");
+                determine_connect_error(errno);
+                return ERROR;
+        }
+    }
+    else {
+        selector_set_interest(key->s, ATTACHMENT(key)->client_fd, OP_READ | OP_WRITE);
+    }
+    return connecting_send_conn_response(key);
+}
+
+static unsigned connecting_read(struct selector_key * key) {
+    printf("Reading\n");
+    if (key->fd == ATTACHMENT(key)->origin_fd) {
+        return connecting_check_origin_connected(key);
+    }
+    else {
+        printf("WARNING: connecting reading but with client_fd\n");
+        sleep(1);
+    }
+    return COPY;
+}
+
+static unsigned connecting_write(struct selector_key *key)
+{
+    // write connection response to client
+    printf("on connecting write\n");
+    // struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
+    struct socks5 *s = ATTACHMENT(key);
+    // struct socks5_origin_info *s5oi = &s->origin_info;
+    // int connect_ret = -1;
+    // selector_status st = SELECTOR_SUCCESS;
+
+    if (key->fd == s->client_fd) {
+        // shouldn't happen
+        printf("Writing from client\n");
+        return connecting_send_conn_response(key);
+    } else if (key->fd == s->origin_fd) {
+        // this should be entered only when EINPROGRESS is obtained
+        // next thing up is to check if connection went well or wrong
+        return connecting_check_origin_connected(key);
+    }
     return COPY;
 }
 
@@ -1266,6 +1312,31 @@ copy_write(struct selector_key *key)
     return ret;
 }
 
+// ERROR
+
+static void
+error_init(const unsigned state, struct selector_key *key) {
+    printf("error init\n");
+    selector_unregister_fd(key->s, key->fd);
+    close(key->fd);
+}
+
+static unsigned
+error_read(struct selector_key *key) {
+    printf("error read\n");
+    selector_unregister_fd(key->s, key->fd);
+    close(key->fd);
+    return ERROR;
+}
+
+static unsigned
+error_write(struct selector_key *key) {
+    printf("error write\n");
+    selector_unregister_fd(key->s, key->fd);
+    close(key->fd);
+    return ERROR;
+}
+
 //------------------------STATES DEFINITION--------------------------------------
 
 /** definición de handlers para cada estado */
@@ -1309,7 +1380,7 @@ static const struct state_definition client_statbl[] = {
     {
         .state = CONNECTING,
         .on_arrival = connecting_init,
-        // .on_read_ready = connecting_read,
+        .on_read_ready = connecting_read,
         .on_write_ready = connecting_write,
         .on_departure = connecting_close,
     },
@@ -1323,6 +1394,9 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state = ERROR,
+        .on_arrival = error_init,
+        .on_write_ready = error_write,
+        .on_read_ready = error_read
         // No now, no need to define any handlers, all in sockv5_done
     }};
 
@@ -1397,23 +1471,3 @@ socksv5_done(struct selector_key *key)
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// SOCKS5 ORIGIN HANDLERS
-////////////////////////////////////////////////////////////////////////////////
-
-static void socks5_origin_read(struct selector_key *key) {
-    // TODO implement
-    printf("ORIGIN READ: UNIMPLEMENTED\n");
-}
-static void socks5_origin_write(struct selector_key *key) {
-    // TODO implement
-    printf("ORIGIN WRITE: UNIMPLEMENTED\n");
-}
-static void socks5_origin_close(struct selector_key *key) {
-    // TODO implement
-    printf("ORIGIN CLOSE: UNIMPLEMENTED\n");
-}
-static void socks5_origin_block(struct selector_key *key) {
-    // TODO implement
-    printf("ORIGIN BLOCK: UNIMPLEMENTED\n");
-}

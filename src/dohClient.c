@@ -14,7 +14,7 @@ static char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
 
 
 
-static int mod_table[] = {0, 2, 1};
+// static int mod_table[] = {0, 2, 1};
 
 
 char *base64_encode(const unsigned char *data,
@@ -177,7 +177,7 @@ size_t dns_encoded_length;
 uint8_t * dns_request = generate_dns_req(domain, &dns_length, qtype);    //gets the dns request wirh the host name 
                                                                 //returns the request and the size of the request
 
-char * encoded_dns_request = base64_encode((char *)dns_request, dns_length,&dns_encoded_length);
+char * encoded_dns_request = base64_encode((const unsigned char *)dns_request, dns_length,&dns_encoded_length);
 
 
 char sendline[BUFFERSIZE_DOH];
