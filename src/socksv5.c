@@ -217,5 +217,8 @@ int main()
 
     // TODO: FREE ALL RESOURCES
 
+    // Freeing the metrics struct
+    destroy_metrics();
+
     return 0;
 }
