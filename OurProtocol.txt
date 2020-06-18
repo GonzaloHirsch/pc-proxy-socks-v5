@@ -15,6 +15,15 @@ Este protoclo corre sobre SCTP, y especifíca la autenticación y negociación d
 
 En todo momento que aparezca un cuadro con un número, hace referencia a la longitud del campo dentro de la request. Los valores posibles dentro de cada campo son especificados debajo del cuadro, y los valores se mostraran en formato de octetos con el valor X’hh’.
 
+Posibles estados del campo Status y sus significados:
+Status:
+    0x00 -> Exito, sin error
+    0x01 -> Error general del servidor
+    0x02 -> Campo TYPE inválido
+    0x03 -> Campo CMD inválido
+    0x04 -> Datos enviados inválidos
+    0x05 -> Datos numéricos enviados inválidos
+
 2 - Autenticación - Usuario y Contraseña
 
 La autenticación del usuario está dada siguiendo el RFC-1929 sobre autenticación.
@@ -44,7 +53,7 @@ El servidor verifica la contraseña y devuelve un mensaje con el siguiente conte
 
 Campos:
             VER -> Version de la negociación, X’01’
-            STATUS -> X’00’ para EXITO, cualquier valor distinto de X’00’ indica error, y debe cerrar la conexión
+            STATUS -> Campo Status definido en la introducción
 
 3 - Procedimiento para el uso
 
@@ -82,6 +91,7 @@ Y la respuesta del servidor sigue el siguiente formato:
 Campos:
             TYPE -> Tipo de uso, X’01’ (USUARIOS)
             CMD -> Comando a realizar, X’01’ (LISTAR)
+            STATUS -> Campo Status definido en la introducción
             ULEN -> Cantidad de usuarios a devolver
             DATA -> Nombres de los usuarios, separados por coma (",")
 
@@ -113,11 +123,7 @@ Y la respuesta del servidor sigue el siguiente formato:
 Campos:
             TYPE -> Tipo de uso, X’01’ (USUARIOS)
             CMD -> Comando a realizar, X’02’ (CREAR)
-            STATUS -> Estado de la creacion:
-                - EXITO -> X’00’
-                - ERROR GENERICO -> X’01’
-                - ERROR USUARIO REPETIDO -> X’02’
-                - ERROR LIMITE DE USUARIOS -> X’03’
+            STATUS -> Campo Status definido en la introducción
             VER -> Version de la negociación, X’01’
 
 3.2 - Obtención de métricas
@@ -145,9 +151,7 @@ Y la respuesta del servidor sigue el siguiente formato:
 Campos:
             TYPE -> Tipo de uso, X’02’ (METRICAS)
             CMD -> Comando a realizar, X’01’ (LISTAR)
-            STATUS -> Estado de la creacion:
-                - EXITO -> X’00’
-                - ERROR GENERICO -> X’01’
+            STATUS -> Campo Status definido en la introducción
             MLEN -> Cantidad de metricas a devolver
             TBYTES -> Cantidad de bytes transferidos historicamente (Big Endian)
             HCONN -> Cantidad de conexiones historicas (Big Endian)
@@ -180,9 +184,7 @@ Y la respuesta del servidor sigue el siguiente formato:
 Campos:
             TYPE -> Tipo de uso, X’03’ (CONFIGURACION)
             CMD -> Comando a realizar, X’01’ (LISTAR)
-            STATUS -> Estado de la creacion:
-                - EXITO -> X’00’
-                - ERROR GENERICO -> X’01’
+            STATUS -> Campo Status definido en la introducción
             CLEN -> Cantidad de configuraciones a devolver
             S5BSIZE -> Tamaño del buffer para el proxy socks5 (BigEndian)
             SBSIZE -> Tamaño del buffer de la conexión SCTP (BigEndian)
@@ -222,9 +224,7 @@ Y la respuesta del servidor sigue el siguiente formato:
 Campos:
             TYPE -> Tipo de uso, X’03’ (CONFIGURACION)
             CMD -> Comando a realizar, X’03’ (EDITAR)
-            STATUS -> Estado de la creacion:
-                - EXITO -> X’00’
-                - ERROR GENERICO -> X’01’
+            STATUS -> Campo Status definido en la introducción
             CONF -> Numero de configuración a editar
                 - S5BSIZE -> Tamaño del buffer para el proxy socks5, 0x01
                 - SBSIZE -> Tamaño del buffer de la conexión SCTP, 0x02

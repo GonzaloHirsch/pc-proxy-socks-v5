@@ -104,8 +104,8 @@ void list_user_admin(uint8_t **users, uint8_t *count)
         {
             // Getting the username + password
             uid_stored = user_pass_table[i].user;
-            users[*count] = malloc(strlen(uid_stored) + 1);
-            memcpy(users[*count], uid_stored, strlen(uid_stored) + 1);
+            users[*count] = malloc(strlen((const char *)uid_stored) + 1);
+            memcpy(users[*count], uid_stored, strlen((const char *)uid_stored) + 1);
             (*count)++;
         }
         i++;

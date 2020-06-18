@@ -904,7 +904,7 @@ resolve_write(struct selector_key *key)
     s->origin_info.ipv4_c = s->origin_info.ipv6_c = 0;
 
     unsigned ret = RESOLVE;
-    ssize_t n, m;
+    ssize_t n;
     int final_buffer_size = 0, final_buffer_size2 = 0;
 
     // If connecting in progress, check if connection done.
@@ -941,13 +941,13 @@ resolve_write(struct selector_key *key)
     char * http_request = request_generate((char *)s->origin_info.resolve_addr, &final_buffer_size, T_A); //request ipv4
     char * http_request2 = request_generate((char *)s->origin_info.resolve_addr, &final_buffer_size2, T_AAAA); //request ipv6
 
-    char * final_http = malloc(final_buffer_size + final_buffer_size2);
+    //char * final_http = malloc(final_buffer_size + final_buffer_size2);
 
     // Validate that we were able to connect and the request is valid.
     if(r_s->doh_fd > 0 && http_request != NULL){
         // Send the doh request to the nginx server
         n = send(r_s->doh_fd, http_request,final_buffer_size, MSG_DONTWAIT);
-        m = send(r_s->doh_fd, http_request2,final_buffer_size2, MSG_DONTWAIT);
+        send(r_s->doh_fd, http_request2,final_buffer_size2, MSG_DONTWAIT);
         if(n > 0){
             // Set the interests for the selector
             if (SELECTOR_SUCCESS != selector_set_interest(key->s, r_s->doh_fd, OP_READ))

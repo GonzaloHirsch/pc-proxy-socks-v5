@@ -215,12 +215,9 @@ sctp_write(struct selector_key *key)
     // Obtain the sctp struct from the selector key
     struct sctp *d = ATTACHMENT(key);
 
-    // Result, next state to move in the process
-    unsigned ret = SCTP_REQUEST;
-
     ssize_t n;
     size_t nr;
-    uint8_t *ptr = buffer_read_ptr(&d->buffer_write, &nr);
+    buffer_read_ptr(&d->buffer_write, &nr);
 
     switch (d->info.type)
     {
@@ -230,7 +227,7 @@ sctp_write(struct selector_key *key)
         case CMD_LIST:
             if (d->state == SCTP_ERROR)
             {
-                uint8_t user_list_error_data[] = {d->info.type, d->info.cmd, 0x01, 0, 0}; // VERSION 1, ERROR 1
+                uint8_t user_list_error_data[] = {d->info.type, d->info.cmd, d->error, 0, 0};
                 n = sctp_sendmsg(key->fd, (void *)user_list_error_data, N(user_list_error_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
             }
             else
@@ -238,29 +235,23 @@ sctp_write(struct selector_key *key)
                 // Getting the representation for the users
                 uint8_t *users = prepare_list_users(d->datagram.user_list.users, d->datagram.user_list.user_count);
                 // Adding the info to the buffer
-                uint8_t *user_list_data = calloc(4 + strlen(users), sizeof(uint8_t));
+                uint8_t *user_list_data = calloc(4 + strlen((const char *)users), sizeof(uint8_t));
                 user_list_data[0] = d->info.type;
                 user_list_data[1] = d->info.cmd;
-                user_list_data[2] = 0x00;
+                user_list_data[2] = d->error;
                 user_list_data[3] = d->datagram.user_list.user_count;
-                memcpy(&user_list_data[4], users, strlen(users));
-                n = sctp_sendmsg(key->fd, (void *)user_list_data, 4 + strlen(users), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+                memcpy(&user_list_data[4], users, strlen((const char *)users));
+                n = sctp_sendmsg(key->fd, (void *)user_list_data, 4 + strlen((const char *)users), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
             }
             break;
         case CMD_CREATE:
-            if (d->state == SCTP_ERROR)
-            {
-                uint8_t user_create_error_data[] = {d->info.type, d->info.cmd, 0x01, SCTP_VERSION}; // VERSION 1, ERROR 1
-                n = sctp_sendmsg(key->fd, (void *)user_create_error_data, N(user_create_error_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
-            }
-            else
-            {
-                uint8_t user_create_success_data[] = {d->info.type, d->info.cmd, 0x00, SCTP_VERSION}; // VERSION 1, ERROR 0
-                n = sctp_sendmsg(key->fd, (void *)user_create_success_data, N(user_create_success_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
-            }
+        {
+            uint8_t user_create_data[] = {d->info.type, d->info.cmd, d->error, SCTP_VERSION};
+            n = sctp_sendmsg(key->fd, (void *)user_create_data, N(user_create_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
             break;
-        default: // CMD not allowed
-            ret = SCTP_ERROR;
+        }
+        default:
+            // CMD not allowed
             break;
         }
         break;
@@ -268,31 +259,19 @@ sctp_write(struct selector_key *key)
         switch (d->info.cmd)
         {
         case CMD_LIST:
-            if (d->state == SCTP_ERROR)
-            {
-                d->datagram.configs_list.configs_data[2] = 0x01; // Error byte
-                n = sctp_sendmsg(key->fd, (void *)d->datagram.configs_list.configs_data, d->datagram.configs_list.configs_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
-            }
-            else
-            {
-                n = sctp_sendmsg(key->fd, (void *)d->datagram.configs_list.configs_data, d->datagram.configs_list.configs_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
-            }
+        {
+            d->datagram.configs_list.configs_data[2] = d->error;
+            n = sctp_sendmsg(key->fd, (void *)d->datagram.configs_list.configs_data, d->datagram.configs_list.configs_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
             break;
+        }
         case CMD_EDIT:
-            if (d->state == SCTP_ERROR)
-            {
-                uint8_t config_edit_error_data[4] = {d->info.type, d->info.cmd, 0x01, d->datagram.config_edit.config_type};
-                n = sctp_sendmsg(key->fd, (void *)config_edit_error_data, N(config_edit_error_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
-            }
-            else
-            {
-                uint8_t config_edit_data[4] = {d->info.type, d->info.cmd, 0x00, d->datagram.config_edit.config_type};
-                n = sctp_sendmsg(key->fd, (void *)config_edit_data, N(config_edit_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
-            }
+        {
+            uint8_t config_data[4] = {d->info.type, d->info.cmd, d->error, d->datagram.config_edit.config_type};
+            n = sctp_sendmsg(key->fd, (void *)config_data, N(config_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
             break;
-        // CMD not allowed
+        }
         default:
-            ret = SCTP_ERROR;
+            // CMD not allowed
             break;
         }
         break;
@@ -300,19 +279,13 @@ sctp_write(struct selector_key *key)
         switch (d->info.cmd)
         {
         case CMD_LIST:
-            if (d->state == SCTP_ERROR)
-            {
-                d->datagram.metrics_list.metrics_data[2] = 0x01; // Error byte
-                n = sctp_sendmsg(key->fd, (void *)d->datagram.metrics_list.metrics_data, d->datagram.metrics_list.metrics_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
-            }
-            else
-            {
-                n = sctp_sendmsg(key->fd, (void *)d->datagram.metrics_list.metrics_data, d->datagram.metrics_list.metrics_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
-            }
+        {
+            d->datagram.metrics_list.metrics_data[2] = d->error;
+            n = sctp_sendmsg(key->fd, (void *)d->datagram.metrics_list.metrics_data, d->datagram.metrics_list.metrics_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
             break;
-            // CMD not allowed
+        }
         default:
-            ret = SCTP_ERROR;
+            // CMD not allowed
             break;
         }
         break;
@@ -321,19 +294,13 @@ sctp_write(struct selector_key *key)
         switch (d->info.cmd)
         {
         case CMD_NOCMD:
-            if (d->state == SCTP_ERROR)
-            {
-                uint8_t login_error_data[] = {SCTP_VERSION, 0x01}; // VERSION 1, ERROR 1
-                n = sctp_sendmsg(key->fd, (void *)login_error_data, N(login_error_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
-            }
-            else
-            {
-                uint8_t login_success_data[] = {SCTP_VERSION, 0x00}; // VERSION 1, ERROR 0
-                n = sctp_sendmsg(key->fd, (void *)login_success_data, N(login_success_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
-            }
+        {
+            uint8_t login_data[] = {SCTP_VERSION, d->error};
+            n = sctp_sendmsg(key->fd, (void *)login_data, N(login_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
             break;
+        }
         default:
-            ret = SCTP_ERROR;
+            // CMD not allowed
             break;
         }
         break;
@@ -456,8 +423,6 @@ static unsigned handle_normal_request(struct selector_key *key)
     struct sctp *d = ATTACHMENT(key);
     // Getting the buffer to read the data
     buffer *b = &d->buffer_read;
-    // Boolean for parser error and auth validity
-    bool error = false, auth_valid = false;
     // Variable for the return value of the request
     unsigned ret = SCTP_RESPONSE;
     // Values that determine the request type parser
@@ -589,7 +554,6 @@ static unsigned handle_login_request(struct selector_key *key)
             uint8_t *uid = d->paser.up_request.uid;
             uint8_t *pw = d->paser.up_request.pw;
             uint8_t uid_l = d->paser.up_request.uidLen;
-            uint8_t pw_l = d->paser.up_request.pwLen;
 
             // Validating the login request
             auth_valid = validate_user_admin(uid, pw);
@@ -604,6 +568,8 @@ static unsigned handle_login_request(struct selector_key *key)
             }
             else
             {
+                // Setting error for invalid data sent
+                d->error = SCTP_ERROR_INVALID_DATA;
                 ret = SCTP_ERROR;
             }
 
@@ -627,6 +593,8 @@ static unsigned handle_list_users(struct selector_key *key)
     list_user_admin(users, &count);
     if (users == NULL)
     {
+        // Setting general error
+        ATTACHMENT(key)->error = SCTP_ERROR_GENERAL_ERROR;
         return SCTP_ERROR;
     }
 
@@ -657,6 +625,7 @@ static unsigned handle_user_create(struct selector_key *key, buffer *b)
         selector_status ss = selector_set_interest(key->s, key->fd, OP_WRITE);
         if (ss != SELECTOR_SUCCESS)
         {
+            selector_unregister_fd(key->s, d->client_fd);
             ret = SCTP_ERROR;
         }
         else
@@ -671,7 +640,11 @@ static unsigned handle_user_create(struct selector_key *key, buffer *b)
             // Validating the login request
             error = !create_user_admin(d->datagram.user.user, d->datagram.user.pass);
 
-            ret = !error ? SCTP_RESPONSE : SCTP_ERROR;
+            if (error)
+            {
+                d->error = SCTP_ERROR_INVALID_DATA;
+                ret = SCTP_ERROR;
+            }
         }
     }
 
@@ -746,6 +719,7 @@ static unsigned handle_config_edit(struct selector_key *key, buffer *b)
     }
     else
     {
+        d->error = SCTP_ERROR_INVALID_TYPE;
         return SCTP_ERROR;
     }
 
@@ -796,6 +770,7 @@ static unsigned handle_config_edit(struct selector_key *key, buffer *b)
 
     if (!parseOk)
     {
+        d->error = SCTP_ERROR_INVALID_VALUE;
         return SCTP_ERROR;
     }
 
@@ -809,27 +784,26 @@ static unsigned handle_config_edit(struct selector_key *key, buffer *b)
 static uint8_t *prepare_list_users(uint8_t **users, int count)
 {
     int i = 0;
-    int previousLength = 0;
     uint8_t *value = NULL;
     for (i = 0; i < count; i++)
     {
         if (i == 0)
         {
-            value = realloc(value, strlen(users[i]));
+            value = realloc(value, strlen((const char *)users[i]));
             if (value == NULL)
             {
                 return NULL;
             }
-            sprintf(value, "%s", users[i]);
+            sprintf((char *)value, "%s", (const char *)users[i]);
         }
         else
         {
-            value = realloc(value, strlen(users[i]) + 1 + strlen(value));
+            value = realloc(value, strlen((const char *)users[i]) + 1 + strlen((const char *)value));
             if (value == NULL)
             {
                 return NULL;
             }
-            sprintf(value, "%s,%s", value, users[i]);
+            sprintf((char *)value, "%s,%s", value, (const char *)users[i]);
         }
     }
     return value;

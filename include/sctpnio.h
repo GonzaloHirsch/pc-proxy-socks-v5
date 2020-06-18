@@ -40,6 +40,16 @@ typedef enum SCTP_STATES
     SCTP_ERROR
 } SCTP_STATES;
 
+/** Different errors the server can return */
+typedef enum SCTP_ERROR_CODES {
+    SCTP_ERROR_NO_ERROR = 0x00,
+    SCTP_ERROR_GENERAL_ERROR = 0x01,
+    SCTP_ERROR_INVALID_TYPE = 0x02,
+    SCTP_ERROR_INVALID_CMD = 0x03,
+    SCTP_ERROR_INVALID_DATA = 0x04,
+    SCTP_ERROR_INVALID_VALUE = 0x05
+} SCTP_ERROR_CODES;
+
 /** Enum for the different types of areas to be used */
 typedef enum TYPE
 {
@@ -49,6 +59,7 @@ typedef enum TYPE
     TYPE_CONFIG = 0x03
 } TYPE;
 
+/** Enum for the different configurations to be edited */
 typedef enum CONFIGS {
     CONF_SOCKS5_BUFF = 0x01,
     CONF_SCTP_BUFF = 0x02,
@@ -117,6 +128,9 @@ typedef struct sctp
 {
     /** State of the sctp request */
     SCTP_STATES state;
+
+    /** Variable for the current error of the connection */
+    SCTP_ERROR_CODES error;
 
     /** Client information */
     struct sockaddr_storage client_addr;
