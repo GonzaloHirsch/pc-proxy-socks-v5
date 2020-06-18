@@ -88,6 +88,8 @@ uint8_t * generate_dns_req(char * host, int * final_size, int qtype){
 
 }
 
+
+
 //if it is www.google.com it converts to 3www6google3com
 
  void host_dns_format(uint8_t * dns, char * host){ //we need this later to parse
@@ -110,6 +112,7 @@ uint8_t * generate_dns_req(char * host, int * final_size, int qtype){
             lock++; 
         }
     }
+    //free(host_name);
     *dns++='\0';
 }
 
@@ -135,7 +138,7 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
         answers[i].resource = (struct R_DATA*)(reader);
         reader = reader + sizeof(struct R_DATA);
  
-        if(ntohs(answers[i].resource->type) == T_A) //if its an ipv4 address
+        if(ntohs(answers[i].resource->type) == T_A || ntohs(answers[i].resource->type) == T_AAAA) //if its an ipv4 address
         {
             answers[i].rdata = (uint8_t *)malloc(ntohs(answers[i].resource->data_len));
  
@@ -148,6 +151,7 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
  
             reader = reader + ntohs(answers[i].resource->data_len);
         }
+         
         else
         {
             answers[i].rdata = ReadName((unsigned char *) reader,to_parse,&stop);
@@ -164,6 +168,7 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
             uint8_t *p;
             p=  answers[i].rdata;
             memcpy(s->origin_info.ipv4_addrs[s->origin_info.ipv4_c++], p, IP_V4_ADDR_SIZE);
+            //free(answers[i].rdata);
 
         }   
          if( ntohs(answers[i].resource->type) == T_AAAA) //IPv6 address
@@ -171,6 +176,7 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
             uint8_t *p;
             p= answers[i].rdata;
             memcpy(s->origin_info.ipv6_addrs[s->origin_info.ipv6_c++], p, IP_V6_ADDR_SIZE);
+            //free(answers[i].rdata);
 
         }   
         

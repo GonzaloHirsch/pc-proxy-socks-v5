@@ -166,6 +166,10 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
             else if (p->cursor - p->body < p->body_len) {
                 *p->cursor = b;
                 p->cursor++;
+                if(p->cursor - p->body == p->body_len){
+                    //*p->cursor='\0';
+                    p->state = HTTP_F;
+                }
             }
             else {
                 // ERROR with lengths
