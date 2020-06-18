@@ -49,6 +49,13 @@ typedef enum TYPE
     TYPE_CONFIG = 0x03
 } TYPE;
 
+typedef enum CONFIGS {
+    CONF_SOCKS5_BUFF = 0x01,
+    CONF_SCTP_BUFF = 0x02,
+    CONF_DOH_BUFF = 0x03,
+    CONF_TIMEOUT = 0x04
+} CONFIGS;
+
 /** Enum for the different types of actions to be performed */
 typedef enum CMD
 {
@@ -95,6 +102,16 @@ typedef struct sctp_configs_list_message
     uint8_t * configs_data;
 } sctp_configs_list_message;
 
+/** Struct to hold information about an edit configs request */
+typedef struct sctp_configs_edit_message
+{
+    CONFIGS config_type;
+    union {
+        uint8_t val8;
+        uint16_t val16;
+    } value;
+} sctp_configs_edit_message;
+
 /** Struct to represent the state of a SCTP connection and the related information */
 typedef struct sctp
 {
@@ -115,6 +132,7 @@ typedef struct sctp
         sctp_user_list_message user_list;
         sctp_metrics_list_message metrics_list;
         sctp_configs_list_message configs_list;
+        sctp_configs_edit_message config_edit;
     } datagram;
 
     /** Union to represent the parser the sctp connection is using in that moment */

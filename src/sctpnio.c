@@ -26,9 +26,14 @@ static unsigned handle_list_users(struct selector_key *key);
 static unsigned handle_list_configs(struct selector_key *key);
 static unsigned handle_user_create(struct selector_key *key, buffer *b);
 static unsigned handle_list_metrics(struct selector_key *key);
+static unsigned handle_config_edit(struct selector_key *key, buffer *b);
 
 // Response preparers
 static uint8_t *prepare_list_users(uint8_t **users, int count);
+
+// Helpers
+static bool get_8_bit_integer_from_buffer(buffer *b, uint8_t *n);
+static bool get_16_bit_integer_from_buffer(buffer *b, uint16_t *n);
 
 // Selector event handler
 static const struct fd_handler sctp_handler = {
@@ -109,9 +114,11 @@ static struct sctp *sctp_new(const int client)
     }
 
     // Write Buffer for the socket(Initialized)
-    buffer_init(&(sctpState->buffer_write), SCTP_BUFFERSIZE + 1, malloc(SCTP_BUFFERSIZE + 1));
+    buffer_init(&(sctpState->buffer_write), options->sctp_buffer_size + 1, malloc(options->sctp_buffer_size + 1));
     // Read Buffer for the socket(Initialized)
-    buffer_init(&(sctpState->buffer_read), SCTP_BUFFERSIZE + 1, malloc(SCTP_BUFFERSIZE + 1));
+    buffer_init(&(sctpState->buffer_read), options->sctp_buffer_size + 1 + 1, malloc(options->sctp_buffer_size + 1));
+
+    printf("I'm new, my bs is %u\n", options->sctp_buffer_size + 1);
 
     // Intialize the client_fd
     sctpState->client_fd = client;
@@ -272,6 +279,16 @@ sctp_write(struct selector_key *key)
             }
             break;
         case CMD_EDIT:
+            if (d->state == SCTP_ERROR)
+            {
+                uint8_t config_edit_error_data[4] = {d->info.type, d->info.cmd, 0x01, d->datagram.config_edit.config_type};
+                n = sctp_sendmsg(key->fd, (void *)config_edit_error_data, N(config_edit_error_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            }
+            else
+            {
+                uint8_t config_edit_data[4] = {d->info.type, d->info.cmd, 0x00, d->datagram.config_edit.config_type};
+                n = sctp_sendmsg(key->fd, (void *)config_edit_data, N(config_edit_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            }
             break;
         // CMD not allowed
         default:
@@ -502,6 +519,7 @@ static unsigned handle_normal_request(struct selector_key *key)
             ret = handle_list_configs(key);
             break;
         case CMD_EDIT:
+            ret = handle_config_edit(key, b);
             break;
         // CMD not allowed
         default:
@@ -713,6 +731,77 @@ static unsigned handle_list_configs(struct selector_key *key)
     return SCTP_RESPONSE;
 }
 
+static unsigned handle_config_edit(struct selector_key *key, buffer *b)
+{
+    // Getting the sctp struct
+    struct sctp *d = ATTACHMENT(key);
+
+    // Variable for the config type
+    uint8_t config_type;
+
+    // Reading the request TYPE
+    if (buffer_can_read(b))
+    {
+        config_type = *b->read;
+    }
+    else
+    {
+        return SCTP_ERROR;
+    }
+
+    // Advancing the buffer
+    buffer_read_adv(b, 1);
+
+    bool parseOk = false;
+
+    // In the switch extract the number and set it in the cofig
+    switch (config_type)
+    {
+    case CONF_SOCKS5_BUFF:
+        d->datagram.config_edit.config_type = CONF_SOCKS5_BUFF;
+        parseOk = get_16_bit_integer_from_buffer(b, &d->datagram.config_edit.value.val16);
+        if (parseOk)
+        {
+            options->socks5_buffer_size = d->datagram.config_edit.value.val16;
+        }
+        break;
+    case CONF_SCTP_BUFF:
+        d->datagram.config_edit.config_type = CONF_SCTP_BUFF;
+        parseOk = get_16_bit_integer_from_buffer(b, &d->datagram.config_edit.value.val16);
+        if (parseOk)
+        {
+            printf("My new val is %u\n", d->datagram.config_edit.value.val16);
+            options->sctp_buffer_size = d->datagram.config_edit.value.val16;
+        }
+        break;
+    case CONF_DOH_BUFF:
+        d->datagram.config_edit.config_type = CONF_DOH_BUFF;
+        parseOk = get_16_bit_integer_from_buffer(b, &d->datagram.config_edit.value.val16);
+        if (parseOk)
+        {
+            options->doh.buffer_size = d->datagram.config_edit.value.val16;
+        }
+        break;
+    case CONF_TIMEOUT:
+        d->datagram.config_edit.config_type = CONF_TIMEOUT;
+        parseOk = get_8_bit_integer_from_buffer(b, &d->datagram.config_edit.value.val8);
+        if (parseOk)
+        {
+            options->timeout = d->datagram.config_edit.value.val8;
+        }
+        break;
+    default:
+        return SCTP_ERROR;
+    }
+
+    if (!parseOk)
+    {
+        return SCTP_ERROR;
+    }
+
+    return SCTP_RESPONSE;
+}
+
 ///////////////////////////////////////////////////////////////////
 // RESPONSE PREPARERS
 ///////////////////////////////////////////////////////////////////
@@ -744,4 +833,61 @@ static uint8_t *prepare_list_users(uint8_t **users, int count)
         }
     }
     return value;
+}
+
+///////////////////////////////////////////////////////////////////
+// HELPERS
+///////////////////////////////////////////////////////////////////
+
+static bool get_16_bit_integer_from_buffer(buffer *b, uint16_t *n)
+{
+    uint8_t num[2];
+
+    // Reading the request TYPE
+    if (buffer_can_read(b))
+    {
+        num[0] = *b->read;
+    }
+    else
+    {
+        return false;
+    }
+
+    // Advancing the buffer
+    buffer_read_adv(b, 1);
+
+    // Reading the request TYPE
+    if (buffer_can_read(b))
+    {
+        num[1] = *b->read;
+    }
+    else
+    {
+        return false;
+    }
+
+    // Advancing the buffer
+    buffer_read_adv(b, 1);
+
+    *n = ntoh16(num);
+
+    return true;
+}
+
+static bool get_8_bit_integer_from_buffer(buffer *b, uint8_t *n)
+{
+    // Reading the request TYPE
+    if (buffer_can_read(b))
+    {
+        *n = *b->read;
+    }
+    else
+    {
+        return false;
+    }
+
+    // Advancing the buffer
+    buffer_read_adv(b, 1);
+
+    return true;
 }

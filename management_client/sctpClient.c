@@ -1,9 +1,12 @@
 #include "sctpClient.h"
 
 #define DIVIDER printf("\n\n-------------------------------------------------------\n\n");
+#define SUBDIVIDER printf("\n\n---------------------------\n\n");
 
 static int serverSocket, recv_flags = 0;
 struct sctp_sndrcvinfo sndrcvinfo;
+
+static void send_edit_config(Configs conf, uint8_t *data, ssize_t data_len);
 
 static void print_option_title(int option)
 {
@@ -23,6 +26,8 @@ static void print_option_title(int option)
         break;
     case OPT_SHOW_CONFIGS:
         printf("Option %d - Mostrar Configuraciones\n\n", option);
+    case OPT_EDIT_CONFIG:
+        printf("Option %d - Editar Configuración\n\n", option);
         break;
     default:
         break;
@@ -47,22 +52,21 @@ static int show_options()
            "2 - Listar usuarios\n"
            "3 - Crear usuario\n"
            "4 - Mostrar métricas\n"
-           "5 - Mostrar configuraciones\n");
+           "5 - Mostrar configuraciones\n"
+           "6 - Editar Configuración\n");
 
-    uint8_t buff[MAX_OPT_SIZE];
+    printf("Elegir un número de comando para interactuar: ");
     int i;
+    int result = scanf("%d", &i);
 
-    printf("Elegir un número de opción: ");
-
-    // Getting the option chosen
-    if (fgets(buff, sizeof(buff), stdin) != NULL)
+    if (result == EOF)
     {
-        i = atoi(buff);
+
+        return -1;
     }
-    else
+    else if (result == 0)
     {
-        // If an error happens during the parsing of the option, put the INT_MAX value to force a reselection
-        i = -1;
+        return -1;
     }
 
     return i;
@@ -137,6 +141,11 @@ static int try_log_in(uint8_t *username, uint8_t *password)
 static void handle_undefined_command()
 {
     printf("Opción desconocida, por favor elija otra");
+}
+
+static void handle_invalid_value()
+{
+    printf("Valor inválido, por favor ingrese otro");
 }
 
 static void handle_exit()
@@ -248,7 +257,6 @@ static void handle_show_configs()
     if (configs_list_buffer[0] != 0x03)
     {
         perror("Tipo diferente al esperado");
-        return;
     }
 
     if (configs_list_buffer[1] != 0x01)
@@ -283,6 +291,226 @@ static void handle_create_user()
 
 static void handle_list_users()
 {
+}
+
+static int show_config_options()
+{
+    printf("Posibles configuraciones para editar:\n"
+           "1 - Tamaño de buffer de proxy\n"
+           "2 - Tamaño de buffer de management\n"
+           "3 - Tamaño de buffer de DoH\n"
+           "4 - Timeout\n"
+           "100 - Volver para Atrás\n");
+
+    printf("Elegir un número de configuración: ");
+    int i;
+    int result = scanf("%d", &i);
+
+    if (result == EOF)
+    {
+        return -1;
+    }
+    else if (result == 0)
+    {
+        return -1;
+    }
+
+    return i;
+}
+
+static bool get_16_bit_number(uint16_t *n)
+{
+    printf("Nuevo valor para configuración (0 - 65535): ");
+
+    int i;
+    int result = scanf("%d", &i);
+
+    if (result == EOF)
+    {
+        return false;
+    }
+    else if (result == 0)
+    {
+        return false;
+    }
+
+    *n = i;
+
+    return true;
+}
+
+static bool get_8_bit_number(uint8_t *n)
+{
+    printf("Nuevo valor para configuración (0 - 255): ");
+
+    int i;
+    int result = scanf("%d", &i);
+
+    if (result == EOF)
+    {
+        return false;
+    }
+    else if (result == 0)
+    {
+        return false;
+    }
+
+    *n = i;
+
+    return true;
+}
+
+static void handle_edit_config()
+{
+    int option;
+    bool end = false;
+    bool parseOk = false;
+    union {
+        uint8_t val8;
+        uint16_t val16;
+    } val;
+    union {
+        uint8_t data16[5];
+        uint8_t data8[4];
+    } data;
+
+    while (!end)
+    {
+        option = show_config_options();
+
+        SUBDIVIDER
+
+        switch (option)
+        {
+        case CONF_DOH_BUFF:
+            printf("Option %d - Tamaño de Buffer de DoH\n\n", option);
+            parseOk = get_16_bit_number(&val.val16);
+            if (!parseOk)
+            {
+                handle_invalid_value();
+            }
+            else
+            {
+                hton16(data.data16 + 3, val.val16);
+                send_edit_config(option, data.data16, 5);
+                end = true;
+            }
+            break;
+        case CONF_SCTP_BUFF:
+            printf("Option %d - Tamaño de Buffer de SCTP\n\n", option);
+            parseOk = get_16_bit_number(&val.val16);
+            if (!parseOk)
+            {
+                handle_invalid_value();
+            }
+            else
+            {
+                hton16(data.data16 + 3, val.val16);
+                send_edit_config(option, data.data16, 5);
+                end = true;
+            }
+            break;
+        case CONF_SOCKS5_BUFF:
+            printf("Option %d - Tamaño de Buffer de Proxy\n\n", option);
+            parseOk = get_16_bit_number(&val.val16);
+            if (!parseOk)
+            {
+                handle_invalid_value();
+            }
+            else
+            {
+                hton16(data.data16 + 3, val.val16);
+                send_edit_config(option, data.data16, 5);
+                end = true;
+            }
+            break;
+        case CONF_TIMEOUT:
+            printf("Option %d - Timeout\n\n", option);
+            parseOk = get_8_bit_number(&val.val8);
+            if (!parseOk)
+            {
+                handle_invalid_value();
+            }
+            else
+            {
+                data.data8[3] = val.val8;
+                send_edit_config(option, data.data8, 4);
+                end = true;
+            }
+            break;
+        case CONF_EXIT:
+            end = true;
+            break;
+        default:
+            handle_undefined_command();
+            break;
+        }
+
+        SUBDIVIDER
+    }
+}
+
+static void send_edit_config(Configs conf, uint8_t *data, ssize_t data_len)
+{
+    // -------------------------------- CONFIGS EDIT REQUEST --------------------------------
+    data[0] = 0x03;
+    data[1] = 0x03;
+    data[2] = conf;
+
+    // Sending login request
+    int ret = sctp_sendmsg(serverSocket, (void *)data, data_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+    if (ret < 0)
+    {
+        printf("Error enviando request para editar configuracion\n");
+        close(serverSocket);
+        exit(0);
+    }
+
+    // -------------------------------- CONFIGS LIST RESPONSE --------------------------------
+
+    uint8_t configs_edit_buffer[2048];
+    size_t configs_edit_count = N(configs_edit_buffer);
+
+    // Receiving login response
+    ret = sctp_recvmsg(serverSocket, configs_edit_buffer, configs_edit_count, NULL, 0, &sndrcvinfo, &recv_flags);
+    if (ret <= 0)
+    {
+        printf("Error recibiendo respuesta para editar configuracion\n");
+        close(serverSocket);
+        exit(0);
+    }
+    else if (ret != 4)
+    {
+        printf("Tamaño desconocido de respuesta\n");
+        close(serverSocket);
+        exit(0);
+    }
+
+    if (configs_edit_buffer[0] != 0x03)
+    {
+        perror("Tipo diferente al esperado");
+        return;
+    }
+
+    if (configs_edit_buffer[1] != 0x03)
+    {
+        perror("Comando diferente al esperado");
+        return;
+    }
+
+    if (configs_edit_buffer[2] != 0x00)
+    {
+        perror("Status de error");
+        return;
+    }
+
+    if (configs_edit_buffer[3] != conf)
+    {
+        perror("Configuración inesperada");
+        return;
+    }
+
+    printf("Configuración actualizada con éxito");
 }
 
 int main(int argc, char *argv[])
@@ -335,7 +563,7 @@ int main(int argc, char *argv[])
         // Nothing
     }
 
-    // -------------------------------- USER CREATE REQUEST --------------------------------
+    // -------------------------------- INTERACTIVE OPTIONS --------------------------------
 
     int option;
     bool end = false;
@@ -365,6 +593,8 @@ int main(int argc, char *argv[])
             break;
         case OPT_CREATE_USER:
             handle_create_user();
+        case OPT_EDIT_CONFIG:
+            handle_edit_config();
             break;
         default:
             handle_undefined_command();

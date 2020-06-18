@@ -191,19 +191,25 @@ Campos:
 
 Para poder editar la configuración de alguna métrica se utiliza la siguiente request:
 
-            +------+-------+--------+--------+---------+
-            | TYPE |  CMD  |  CONF  |  CLEN  |  VALUE  |
-            +------+-------+--------+--------+---------+
-            |   1  |   1   |    1   |    1   | 1 a 255 |
-            +------+-------+--------+--------+---------+
+            +------+-------+--------+-----------+
+            | TYPE |  CMD  |  CONF  |   VALUE   |
+            +------+-------+--------+-----------+
+            |   1  |   1   |    1   | Variable  |
+            +------+-------+--------+-----------+
 
 Campos:
             TYPE -> Tipo de uso, X’03’ (CONFIGURACION)
             CMD -> Comando a realizar, X’03’ (EDITAR)
             CONF -> Numero de configuración a editar
-                - LISTAR LAS CONFIGS QUE PERMITIMOS -> TODO
-            CLEN -> Longitud de la nueva configuracion
-            VALUE -> Valor de la nueva configuración
+                - S5BSIZE -> Tamaño del buffer para el proxy socks5, 0x01
+                - SBSIZE -> Tamaño del buffer de la conexión SCTP, 0x02
+                - DBSIZE -> Tamaño del buffer de DoH, 0x03
+                - TOUT -> Tiempo de timeout, 0x04
+            VALUE -> Valor de la nueva configuración, tamaño depende del campo
+                - S5BSIZE -> 2 bytes (BigEndian) - Unidad: Bytes
+                - SBSIZE -> 2 bytes (BigEndian) - Unidad: Bytes
+                - DBSIZE -> 2 bytes (BigEndian) - Unidad: Bytes
+                - TOUT -> 1 byte (BigEndian) - Unidad: Segundos
 
 Y la respuesta del servidor sigue el siguiente formato:
 
@@ -220,7 +226,10 @@ Campos:
                 - EXITO -> X’00’
                 - ERROR GENERICO -> X’01’
             CONF -> Numero de configuración a editar
-                - LISTAR LAS CONFIGS QUE PERMITIMOS -> TODO
+                - S5BSIZE -> Tamaño del buffer para el proxy socks5, 0x01
+                - SBSIZE -> Tamaño del buffer de la conexión SCTP, 0x02
+                - DBSIZE -> Tamaño del buffer de DoH, 0x03
+                - TOUT -> Tiempo de timeout, 0x04
 
 4 - Información de los Autores
 
