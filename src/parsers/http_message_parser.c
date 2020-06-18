@@ -163,10 +163,6 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
                 *p->cursor = b;
                 p->cursor++;
             }
-            else if(p->cursor - p->body == p->body_len){
-                //*p->cursor='\0';
-                p->state = HTTP_F;
-            }
             else if (p->cursor - p->body < p->body_len) {
                 *p->cursor = b;
                 p->cursor++;
@@ -261,7 +257,7 @@ int get_numeric_header_value(http_message_parser p, const char * header_name) {
     char * pointer;
     for (int i = 0; i < p->headers_num; i++) {
         if (i_strcmp(p->headers[i]->type, header_name) == 0) {
-            return (int) strtol(p->headers[i]->value, &pointer, 10) - 1;
+            return (int) strtol(p->headers[i]->value, &pointer, 10);
         } 
     }
 
