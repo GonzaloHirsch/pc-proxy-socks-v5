@@ -23,7 +23,9 @@ static void sctp_close(struct selector_key *key);
 
 // TYPE + CMD handlers
 static unsigned handle_list_users(struct selector_key *key);
+static unsigned handle_list_configs(struct selector_key *key);
 static unsigned handle_user_create(struct selector_key *key, buffer *b);
+static unsigned handle_list_metrics(struct selector_key *key);
 
 // Response preparers
 static uint8_t *prepare_list_users(uint8_t **users, int count);
@@ -211,7 +213,6 @@ sctp_write(struct selector_key *key)
 
     ssize_t n;
     size_t nr;
-    metrics m;
     uint8_t *ptr = buffer_read_ptr(&d->buffer_write, &nr);
 
     switch (d->info.type)
@@ -260,6 +261,15 @@ sctp_write(struct selector_key *key)
         switch (d->info.cmd)
         {
         case CMD_LIST:
+            if (d->state == SCTP_ERROR)
+            {
+                d->datagram.configs_list.configs_data[2] = 0x01; // Error byte
+                n = sctp_sendmsg(key->fd, (void *)d->datagram.configs_list.configs_data, d->datagram.configs_list.configs_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            }
+            else
+            {
+                n = sctp_sendmsg(key->fd, (void *)d->datagram.configs_list.configs_data, d->datagram.configs_list.configs_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            }
             break;
         case CMD_EDIT:
             break;
@@ -273,29 +283,14 @@ sctp_write(struct selector_key *key)
         switch (d->info.cmd)
         {
         case CMD_LIST:
-            // Getting the metrics
-            m = get_metrics();
             if (d->state == SCTP_ERROR)
             {
-                uint8_t metrics_list_error_data[20] = {0};
-                metrics_list_error_data[0] = d->info.type;
-                metrics_list_error_data[1] = d->info.cmd;
-                metrics_list_error_data[2] = 0x01;
-                metrics_list_error_data[3] = m->metrics_count;
-                n = sctp_sendmsg(key->fd, (void *)metrics_list_error_data, N(metrics_list_error_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+                d->datagram.metrics_list.metrics_data[2] = 0x01; // Error byte
+                n = sctp_sendmsg(key->fd, (void *)d->datagram.metrics_list.metrics_data, d->datagram.metrics_list.metrics_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
             }
             else
             {
-                // Adding the info to the buffer
-                uint8_t metrics_list_data[20];
-                metrics_list_data[0] = d->info.type;
-                metrics_list_data[1] = d->info.cmd;
-                metrics_list_data[2] = 0x00;
-                metrics_list_data[3] = m->metrics_count;
-                hton64(metrics_list_data + 4, m->transfered_bytes);
-                hton32(metrics_list_data + 4 + 8, m->historic_connections);
-                hton32(metrics_list_data + 4 + 8 + 4, m->current_connections);
-                n = sctp_sendmsg(key->fd, (void *)metrics_list_data, N(metrics_list_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+                n = sctp_sendmsg(key->fd, (void *)d->datagram.metrics_list.metrics_data, d->datagram.metrics_list.metrics_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
             }
             break;
             // CMD not allowed
@@ -504,6 +499,7 @@ static unsigned handle_normal_request(struct selector_key *key)
         switch (cmd)
         {
         case CMD_LIST:
+            ret = handle_list_configs(key);
             break;
         case CMD_EDIT:
             break;
@@ -517,6 +513,7 @@ static unsigned handle_normal_request(struct selector_key *key)
         switch (cmd)
         {
         case CMD_LIST:
+            ret = handle_list_metrics(key);
             break;
             // CMD not allowed
         default:
@@ -555,6 +552,8 @@ static unsigned handle_login_request(struct selector_key *key)
 
     // Initializing the u+p parser
     up_req_parser_init(&d->paser.up_request);
+
+    printf("Logging user");
 
     // Parsing the information
     const enum up_req_state st = up_consume_message(b, &d->paser.up_request, &error);
@@ -662,6 +661,56 @@ static unsigned handle_user_create(struct selector_key *key, buffer *b)
     free_up_req_parser(&d->paser.up_request);
 
     return ret;
+}
+
+static unsigned handle_list_metrics(struct selector_key *key)
+{
+    // Getting the sctp struct
+    struct sctp *d = ATTACHMENT(key);
+
+    // Getting the metrics
+    metrics m = get_metrics();
+
+    uint8_t data[20] = {0};
+    data[0] = d->info.type;
+    data[1] = d->info.cmd;
+    data[2] = 0x00;
+    data[3] = m->metrics_count;
+    hton64(data + 4, m->transfered_bytes);
+    hton32(data + 4 + 8, m->historic_connections);
+    hton32(data + 4 + 8 + 4, m->current_connections);
+
+    // Allocating and copying
+    d->datagram.metrics_list.metrics_data = malloc(N(data));
+    memcpy(d->datagram.metrics_list.metrics_data, data, N(data));
+
+    d->datagram.metrics_list.metrics_len = N(data);
+
+    return SCTP_RESPONSE;
+}
+
+static unsigned handle_list_configs(struct selector_key *key)
+{
+    // Getting the sctp struct
+    struct sctp *d = ATTACHMENT(key);
+
+    uint8_t data[11] = {0};
+    data[0] = d->info.type;
+    data[1] = d->info.cmd;
+    data[2] = 0x00; // Status
+    data[3] = 0x04; // Amount of configs to send
+    hton16(data + 4, options->socks5_buffer_size);
+    hton16(data + 4 + 2, options->sctp_buffer_size);
+    hton16(data + 4 + 4, options->doh.buffer_size);
+    data[10] = options->timeout;
+
+    // Allocating and copying
+    d->datagram.configs_list.configs_data = malloc(N(data));
+    memcpy(d->datagram.configs_list.configs_data, data, N(data));
+
+    d->datagram.configs_list.configs_len = N(data);
+
+    return SCTP_RESPONSE;
 }
 
 ///////////////////////////////////////////////////////////////////

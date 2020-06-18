@@ -171,11 +171,11 @@ Campos:
 
 Y la respuesta del servidor sigue el siguiente formato:
 
-            +------+-------+--------+--------+-----------+
-            | TYPE |  CMD  | STATUS |  CLEN  |    DATA   |
-            +------+-------+--------+--------+-----------+
-            |   1  |   1   |    1   |    1   |  Variable |
-            +------+-------+--------+--------+-----------+
+            +------+-------+--------+--------+-----------+-----------+-----------+-----------+
+            | TYPE |  CMD  | STATUS |  CLEN  |  S5BSIZE  |   SBSIZE  |   DBSIZE  |   TOUT    |
+            +------+-------+--------+--------+-----------+-----------+-----------+-----------+
+            |   1  |   1   |    1   |    1   |      2    |      2    |      2    |     1     |
+            +------+-------+--------+--------+-----------+-----------+-----------+-----------+
 
 Campos:
             TYPE -> Tipo de uso, X’03’ (CONFIGURACION)
@@ -184,7 +184,10 @@ Campos:
                 - EXITO -> X’00’
                 - ERROR GENERICO -> X’01’
             CLEN -> Cantidad de configuraciones a devolver
-            DATA -> Pares clave valor, siguiendo el formato "clave:valor", separadas por coma (",")
+            S5BSIZE -> Tamaño del buffer para el proxy socks5 (BigEndian)
+            SBSIZE -> Tamaño del buffer de la conexión SCTP (BigEndian)
+            DBSIZE -> Tamaño del buffer de DoH (BigEndian)
+            TOUT -> Tiempo de timeout (BigEndian)
 
 Para poder editar la configuración de alguna métrica se utiliza la siguiente request:
 

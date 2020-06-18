@@ -20,11 +20,12 @@ static void signal_handler(const int signal)
     finished = true;
 }
 
-int main()
+int main(const int argc, char * const*argv)
 {
-    printf("Starting server.\n");
+    // Parsing the command line arguments
+    parse_args(argc, argv);
 
-
+    printf("Starting server...\n");
 
     int opt = TRUE;
     int master_socket, management_socket;

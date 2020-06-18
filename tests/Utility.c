@@ -69,6 +69,8 @@ bool SockAddrsEqual(const struct sockaddr *addr1, const struct sockaddr *addr2) 
 }
 
 
+#include "io_utils/conversions.h"
+
 void hton64(uint8_t *b, uint64_t n)
 {
 
@@ -108,4 +110,16 @@ uint32_t ntoh32(uint8_t const *b)
            (uint32_t)b[1] << 16 |
            (uint32_t)b[2] << 8 |
            (uint32_t)b[3] << 0;
+}
+
+void hton16(uint8_t *b, uint16_t n)
+{
+    b[0] = n >> 8 & 0xFF;
+    b[1] = n >> 0 & 0xFF;
+}
+
+uint16_t ntoh16(uint8_t const *b)
+{
+    return (uint16_t)b[0] << 8 |
+           (uint16_t)b[1] << 0;
 }

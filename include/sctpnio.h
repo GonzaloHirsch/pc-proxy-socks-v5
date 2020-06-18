@@ -14,6 +14,7 @@
 #include "selector.h"
 #include "metrics.h"
 #include "authentication.h"
+#include "args.h"
 #include "io_utils/buffer.h"
 #include "io_utils/conversions.h"
 #include "parsers/up_req_parser.h"
@@ -73,12 +74,26 @@ typedef struct sctp_auth_message
     uint8_t *pass;
 } sctp_auth_message;
 
-/** Struct to hold information about a list user requet */
+/** Struct to hold information about a list user request */
 typedef struct sctp_user_list_message
 {
     uint8_t user_count;
     uint8_t **users;
 } sctp_user_list_message;
+
+/** Struct to hold information about a list metrics request */
+typedef struct sctp_metrics_list_message
+{
+    ssize_t metrics_len;
+    uint8_t * metrics_data;
+} sctp_metrics_list_message;
+
+/** Struct to hold information about a list configs request */
+typedef struct sctp_configs_list_message
+{
+    ssize_t configs_len;
+    uint8_t * configs_data;
+} sctp_configs_list_message;
 
 /** Struct to represent the state of a SCTP connection and the related information */
 typedef struct sctp
@@ -98,6 +113,8 @@ typedef struct sctp
     union {
         sctp_auth_message user;
         sctp_user_list_message user_list;
+        sctp_metrics_list_message metrics_list;
+        sctp_configs_list_message configs_list;
     } datagram;
 
     /** Union to represent the parser the sctp connection is using in that moment */
