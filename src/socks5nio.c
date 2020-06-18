@@ -826,8 +826,8 @@ resolve_read(struct selector_key *key)
     if(n > 0){
 
         //doh responds without terminating the body
-        ptr[n++] = '\n'; 
-        ptr[n++] = '\n';
+        //ptr[n++] = '\n'; 
+        //ptr[n++] = '\n';
 
         //it removes  \r from headers so that parser is consistent
         parse_to_crlf(ptr, &n); 
