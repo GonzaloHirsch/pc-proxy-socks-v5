@@ -89,7 +89,7 @@ int socks_5_addr_done_parsing(socks_5_addr_parser p, bool * errored) {
     return p->state >= SOCKS5ADDR_DONE;
 }
 
-const char * get_socks_5_address(socks_5_addr_parser p) {
+const uint8_t * get_socks_5_address(socks_5_addr_parser p) {
     return p->addr;
 }
 const int get_socks_5_type(socks_5_addr_parser p) {

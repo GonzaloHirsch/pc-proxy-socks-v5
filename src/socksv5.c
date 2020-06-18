@@ -1,4 +1,3 @@
-
 #include "socksv5.h"
 
 // -------------- INTERNAL FUNCTIONS-----------------------------------
@@ -21,12 +20,15 @@ static void signal_handler(const int signal)
     finished = true;
 }
 
-int main()
+int main(const int argc, char * const*argv)
 {
-    printf("Starting server.\n");
+    // Parsing the command line arguments
+    parse_args(argc, argv);
+
+    printf("Starting server...\n");
 
     int opt = TRUE;
-    int master_socket;
+    int master_socket, management_socket;
 
     // Selector for concurrent connexions
     fd_selector selector = NULL;
@@ -36,6 +38,12 @@ int main()
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
+
+    // Address for sctp socket binding
+    struct sockaddr_in management_address;
+    management_address.sin_family = AF_INET;
+    management_address.sin_addr.s_addr = INADDR_ANY;
+    management_address.sin_port = htons(SCTP_PORT);
 
     // ----------------- INITIALIZE THE MAIN SOCKET -----------------
 
@@ -73,7 +81,45 @@ int main()
 
     // ----------------- INITIALIZING THE SCTP SOCKET -----------------
 
-    // TODO: CREATE SCTP SOCKET HERE!
+    printf("Initializing management socket\n");
+
+    // Creating the server socket to listen
+    management_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+    if (management_socket <= 0)
+    {
+        printf("Management socket creation failed");
+        //log(FATAL, "socket failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Struct for the streams configuration
+    struct sctp_initmsg initmsg;
+    memset(&initmsg, 0, sizeof(initmsg));
+    initmsg.sinit_num_ostreams = 1;
+    initmsg.sinit_max_instreams = 1;
+    initmsg.sinit_max_attempts = 4;
+
+    // Setting the master socket to allow multiple connections, not required, just good habit
+    // This setsockopt gives an error when used, if not used, the client still works
+    if (setsockopt(management_socket, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(initmsg)) < 0)
+    {
+        perror("ERROR: Failure setting setting management socket\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Binding the socket to localhost
+    if (bind(management_socket, (struct sockaddr *)&management_address, sizeof(management_address)) < 0)
+    {
+        perror("ERROR: Failure binding management socket\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Checking if the socket is able to listen
+    if (listen(management_socket, MAX_PENDING_CONNECTIONS) < 0)
+    {
+        perror("ERROR: Failure listening management socket\n");
+        exit(EXIT_FAILURE);
+    }
 
     // ----------------- CREATING SIGNAL HANDLERS -----------------
 
@@ -107,6 +153,21 @@ int main()
         exit(EXIT_FAILURE);
     }
 
+    // Create user-pass table for authentication
+    if(create_up_table() == -1){
+        perror("Error creating user pass table\n");
+        abort();
+    }
+
+    // Create admin user-pass table for authentication
+    if(create_up_admin_table() == -1){
+        perror("Error creating admin user pass table\n");
+        abort();
+    }
+
+    // Initializing the metrics struct
+    init_metrics();
+
     // Create socket handler for the master socket
     fd_handler *masterSocketHandler = malloc(sizeof(fd_handler));
     masterSocketHandler->handle_read = socksv5_passive_accept;
@@ -115,25 +176,35 @@ int main()
     //TODO: define on close
     masterSocketHandler->handle_close = NULL;
 
-    // TODO: Create socket handler for the SCTP socket
+    // Create socket handler for the master socket
+    fd_handler *managementSocketHandler = malloc(sizeof(fd_handler));
+    managementSocketHandler->handle_read = sctp_passive_accept;
+    managementSocketHandler->handle_write = NULL;
+    managementSocketHandler->handle_block = NULL;
+    //TODO: define on close
+    managementSocketHandler->handle_close = NULL;
 
     // Register the master socket to the managed fds
-    selector_status ss_master = SELECTOR_SUCCESS;
-    ss_master = selector_register(selector, master_socket, masterSocketHandler, OP_READ, NULL);
+    selector_status ss_master = selector_register(selector, master_socket, masterSocketHandler, OP_READ, NULL);
     if (ss_master != SELECTOR_SUCCESS)
     {
         printf("Error in master socket: %s", selector_error(ss_master));
     }
 
-    // TODO: Register the SCTP socket to the managed fds
+    // Register the SCTP socket to the managed fds
+    selector_status ss_management = selector_register(selector, management_socket, managementSocketHandler, OP_READ, NULL);
+    if (ss_management != SELECTOR_SUCCESS)
+    {
+        printf("Error in management socket: %s", selector_error(ss_management));
+    }
 
     // Accept the incoming connection
-    printf("Waiting for connections on socket %d\n", master_socket);
+    printf("Waiting for connections on socket %d and management connections on socket %d\n", master_socket, management_socket);
 
     // Cycle until a signal is received as finished
     while (!finished)
     {
-        printf("Awaiting connection\n");
+        // printf("Awaiting connection\n");
         
         // Wait for activiy of one of the sockets:
         // -Master Socket --> New connection.
@@ -146,6 +217,9 @@ int main()
     }
 
     // TODO: FREE ALL RESOURCES
+
+    // Freeing the metrics struct
+    destroy_metrics();
 
     return 0;
 }

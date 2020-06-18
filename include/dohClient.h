@@ -16,13 +16,14 @@
 #include "dnsPacket.h"
 
 #define DOH_PORT 80
+#define DOH_ADDR "127.0.0.1"
 #define BUFFERSIZE_DOH 1024
 #define MAX_FDQN 256
 #define DATA_MAX_SIZE 65536
 
 #define REQ_MAX_SIZE 65536
 
-char * request_generate(char * domain, int * length);
+char * request_generate(char * domain, int * length, int qtype);
 uint8_t * get_host_by_name(char * domain);
 
 void parse_to_crlf(uint8_t * response, size_t *size);

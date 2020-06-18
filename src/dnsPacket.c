@@ -5,16 +5,15 @@ void host_dns_format(uint8_t * dns, char * host);
 uint8_t * ReadName(unsigned char* reader,uint8_t * buffer,int* count);
 
 
-uint8_t * generate_dns_req(char * host, int * final_size){
+uint8_t * generate_dns_req(char * host, int * final_size, int qtype){
 
     int length = 0;
 
-    uint8_t buf[65536] ,*qname, *qname2;
+    uint8_t buf[65536] ,*qname;
 
 
     struct DNS_HEADER *dns = NULL;
     struct QUESTION *qinfo = NULL;
-     struct QUESTION *qinfo2 = NULL;
 
 
     dns = (struct DNS_HEADER *)&buf; //overlaps header into the buffer
@@ -50,7 +49,7 @@ uint8_t * generate_dns_req(char * host, int * final_size){
 
     qinfo =(struct QUESTION*)&buf[sizeof(struct DNS_HEADER) + (strlen((const char*)qname) + 1)]; //fill it
  
-    qinfo->qtype = htons(T_A); //type of the query , A , MX , CNAME , NS etc
+    qinfo->qtype = htons(qtype); //type of the query , A , MX , CNAME , NS etc
     qinfo->qclass = htons(IN); //internet
 
 
@@ -89,6 +88,8 @@ uint8_t * generate_dns_req(char * host, int * final_size){
 
 }
 
+
+
 //if it is www.google.com it converts to 3www6google3com
 
  void host_dns_format(uint8_t * dns, char * host){ //we need this later to parse
@@ -111,6 +112,7 @@ uint8_t * generate_dns_req(char * host, int * final_size){
             lock++; 
         }
     }
+    //free(host_name);
     *dns++='\0';
 }
 
@@ -118,11 +120,7 @@ uint8_t * generate_dns_req(char * host, int * final_size){
 void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * errored){
     int stop, i, j;
     struct DNS_HEADER *dns = NULL;
-    char * reader, *reader2, * ret;
-
-    struct sockaddr_in a;
-
-   
+    unsigned char * reader;   
 
     dns = (struct DNS_HEADER*) to_parse;
     reader = &to_parse[sizeof(struct DNS_HEADER) + ((strlen((const char*) domain)+ 2) + sizeof(struct QUESTION)) ]; //domain + 2 becuse host_dns_format adds a '.' and also a '\0' also * 2 because there are 2 queries
@@ -134,13 +132,13 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
 
     for(i=0;i<ntohs(dns->ans_count);i++)
     {
-        answers[i].name=ReadName(reader,to_parse,&stop);
+        answers[i].name=ReadName((unsigned char *) reader,to_parse,&stop);
         reader = reader + stop;
  
         answers[i].resource = (struct R_DATA*)(reader);
         reader = reader + sizeof(struct R_DATA);
  
-        if(ntohs(answers[i].resource->type) == T_A) //if its an ipv4 address
+        if(ntohs(answers[i].resource->type) == T_A || ntohs(answers[i].resource->type) == T_AAAA) //if its an ipv4 address
         {
             answers[i].rdata = (uint8_t *)malloc(ntohs(answers[i].resource->data_len));
  
@@ -153,9 +151,10 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
  
             reader = reader + ntohs(answers[i].resource->data_len);
         }
+         
         else
         {
-            answers[i].rdata = ReadName(reader,to_parse,&stop);
+            answers[i].rdata = ReadName((unsigned char *) reader,to_parse,&stop);
             reader = reader + stop;
         }
     }
@@ -169,6 +168,7 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
             uint8_t *p;
             p=  answers[i].rdata;
             memcpy(s->origin_info.ipv4_addrs[s->origin_info.ipv4_c++], p, IP_V4_ADDR_SIZE);
+            //free(answers[i].rdata);
 
         }   
          if( ntohs(answers[i].resource->type) == T_AAAA) //IPv6 address
@@ -176,6 +176,7 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
             uint8_t *p;
             p= answers[i].rdata;
             memcpy(s->origin_info.ipv6_addrs[s->origin_info.ipv6_c++], p, IP_V6_ADDR_SIZE);
+            //free(answers[i].rdata);
 
         }   
         
