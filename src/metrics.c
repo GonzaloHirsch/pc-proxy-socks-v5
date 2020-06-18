@@ -7,7 +7,7 @@ static metrics m;
 */
 void init_metrics()
 {
-    m = malloc(sizeof(metrics));
+    m = malloc(sizeof(struct metric));
     memset(m, 0, sizeof(struct metric));
     m->metrics_count = 3;
 }
