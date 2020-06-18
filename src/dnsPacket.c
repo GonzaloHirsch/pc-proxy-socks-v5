@@ -112,7 +112,7 @@ uint8_t * generate_dns_req(char * host, int * final_size, int qtype){
             lock++; 
         }
     }
-    free(host_name);
+    //free(host_name);
     *dns++='\0';
 }
 
@@ -167,7 +167,7 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
             uint8_t *p;
             p=  answers[i].rdata;
             memcpy(s->origin_info.ipv4_addrs[s->origin_info.ipv4_c++], p, IP_V4_ADDR_SIZE);
-            free(answers[i].rdata);
+            //free(answers[i].rdata);
 
         }   
          if( ntohs(answers[i].resource->type) == T_AAAA) //IPv6 address
@@ -175,7 +175,7 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
             uint8_t *p;
             p= answers[i].rdata;
             memcpy(s->origin_info.ipv6_addrs[s->origin_info.ipv6_c++], p, IP_V6_ADDR_SIZE);
-            free(answers[i].rdata);
+            //free(answers[i].rdata);
 
         }   
         
