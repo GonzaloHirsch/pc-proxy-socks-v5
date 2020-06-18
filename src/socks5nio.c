@@ -729,10 +729,8 @@ resolve_init(const unsigned state, struct selector_key *key)
     r_s->rb = &(s->read_buffer);
     r_s->wb = &(s->write_buffer);
  
-
     //Init parsers
     http_message_parser_init(&r_s->parser);
-
 
     int connect_ret;
     selector_status st = SELECTOR_SUCCESS;
@@ -851,6 +849,8 @@ resolve_read(struct selector_key *key)
             s->origin_info.ip_selec = (s->origin_info.ipv4_c > 0) ? IPv4 : IPv6;
             ret = CONNECTING;
         }
+
+        http_message_parser_init(&r_s->parser);
                 
         http_consume_message(r_s->rb, &r_s->parser, &errored);
         if(http_done_parsing_message(&r_s->parser, &errored) && !errored){
