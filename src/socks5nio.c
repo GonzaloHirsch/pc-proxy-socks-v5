@@ -760,7 +760,6 @@ resolve_init(const unsigned state, struct selector_key *key)
     if (connect_ret >= 0 || (connect_ret == -1 && errno == EINPROGRESS)) {
        // Register the fd of the nginx server
         st = selector_register(key->s, r_s->doh_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
-        r_s->conn_state = CONN_INPROGRESS;
         if (st != SELECTOR_SUCCESS){
             printf("Error registering doh server\n");
             r_s->doh_fd = -1;
@@ -894,7 +893,7 @@ resolve_write(struct selector_key *key)
     int final_buffer_size = 0;
 
     // If connecting in progress, check if connection done.
-    if(r_s->conn_state == CONNECTING){
+    if(r_s->conn_state == CONN_INPROGRESS){
          r_s->conn_state = doh_check_connection(r_s);
     }
 
