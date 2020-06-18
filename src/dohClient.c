@@ -279,7 +279,7 @@ request_length += authority_size;
 //accept
 
 
-char * accept = "accept: application/dns-message\r\n\r\n";
+char * accept = "accept: application/dns-message\r\n";
 
 int accept_size = strlen(accept);
 
@@ -288,7 +288,18 @@ memcpy(ptr, accept, accept_size);
 ptr += accept_size;
 request_length += accept_size;
 
+char * connection = "Connection : keep-alive\r\n\r\n";
+
+int connection_length  = strlen(connection);
+
+memcpy(ptr, connection, connection_length);
+
+ptr += connection_length;
+request_length += connection_length;
+
+
 (*length) = request_length;
+
 
 
 //now the request is completed
