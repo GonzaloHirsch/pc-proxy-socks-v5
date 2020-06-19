@@ -500,7 +500,7 @@ send_reply_failure(struct selector_key * key)
     uint8_t reply_s = 7;
     uint8_t *reply = malloc(reply_s);
     reply[0] = 0x05;            // Version
-    reply[1] = s->reply_type;;  // Reply field
+    reply[1] = s->reply_type != NULL ? s->reply_type : REPLY_RESP_GENERAL_FAILURE;  // Reply field
     reply[2] = 0x00;            //Rsv
     reply[3] = 0x00;
     reply[4] = 0x00;
