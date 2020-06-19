@@ -1,7 +1,8 @@
 # Makefile
 .PHONY: all sctp_client clean
 
-CFLAGS=-Wall -g -fsanitize=address
+#CFLAGS=-Wall -g -fsanitize=address
+CFLAGS=-Wall -g
 # LDFLAGS=-lrt -pthread
 
 SOURCES=$(wildcard src/*.c)
@@ -19,3 +20,4 @@ clean:
 	rm -rf application slaveProcess view sctp_client socksClient
 
 # find . -type f -exec touch {} +
+# valgrind --leak-check=yes --track-origins=yes --trace-children=yes ./sctp_client

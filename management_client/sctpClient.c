@@ -4,9 +4,19 @@
 #define SUBDIVIDER printf("\n\n---------------------------\n\n");
 
 static int serverSocket, recv_flags = 0;
+static struct sctpClientArgs *clientOptions;
 struct sctp_sndrcvinfo sndrcvinfo;
 
-static void greeting(){
+static void die_with_message(char *msg)
+{
+    perror(msg);
+    free(clientOptions);
+    close(serverSocket);
+    exit(0);
+}
+
+static void greeting()
+{
     printf("\n\nBienvenido al cliente para nuestro servidor");
 }
 
@@ -66,7 +76,6 @@ static int show_options()
 
     if (result == EOF)
     {
-
         return -1;
     }
     else if (result == 0)
@@ -105,9 +114,7 @@ static int try_log_in(uint8_t *username, uint8_t *password)
     int ret = sctp_sendmsg(serverSocket, (void *)login_data, N(login_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
     if (ret < 0)
     {
-        printf("Error enviando login\n");
-        close(serverSocket);
-        exit(0);
+        die_with_message("Error enviando login");
     }
 
     // -------------------------------- LOGIN RESPONSE --------------------------------
@@ -119,15 +126,11 @@ static int try_log_in(uint8_t *username, uint8_t *password)
     ret = sctp_recvmsg(serverSocket, login_response_buffer, login_count, NULL, 0, &sndrcvinfo, &recv_flags);
     if (ret <= 0)
     {
-        printf("Error recibiendo información de login\n");
-        close(serverSocket);
-        exit(0);
+        die_with_message("Error recibiendo información de login");
     }
     else if (ret != 2)
     {
-        printf("Longitud inesperada\n");
-        close(serverSocket);
-        exit(0);
+        die_with_message("Longitud inesperada");
     }
 
     if (login_response_buffer[0] == 0x01 && login_response_buffer[1] == 0x00)
@@ -155,8 +158,9 @@ static void handle_invalid_value()
 
 static void handle_exit()
 {
-    printf("Cerrando conexión");
+    printf("Cerrando conexión...");
     close(serverSocket);
+    free(clientOptions);
 }
 
 static void handle_show_metrics()
@@ -169,9 +173,7 @@ static void handle_show_metrics()
     int ret = sctp_sendmsg(serverSocket, (void *)metrics_list, N(metrics_list), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
     if (ret < 0)
     {
-        printf("Error enviando request para mostrar metricas\n");
-        close(serverSocket);
-        exit(0);
+        die_with_message("Error enviando request para mostrar metricas");
     }
 
     // -------------------------------- METRICS LIST RESPONSE --------------------------------
@@ -183,15 +185,11 @@ static void handle_show_metrics()
     ret = sctp_recvmsg(serverSocket, metrics_list_buffer, metrics_list_count, NULL, 0, &sndrcvinfo, &recv_flags);
     if (ret <= 0)
     {
-        printf("Error recibiendo respuesta para mostrar metricas\n");
-        close(serverSocket);
-        exit(0);
+        die_with_message("Error recibiendo respuesta para mostrar metricas");
     }
     else if (ret != 20)
     {
-        printf("Tamaño desconocido de respuesta\n");
-        close(serverSocket);
-        exit(0);
+        die_with_message("Tamaño desconocido de respuesta");
     }
 
     if (metrics_list_buffer[0] != 0x02)
@@ -203,16 +201,19 @@ static void handle_show_metrics()
     if (metrics_list_buffer[1] != 0x01)
     {
         perror("Comando diferente al esperado");
+        return;
     }
 
     if (metrics_list_buffer[2] != 0x00)
     {
         perror("Status de error");
+        return;
     }
 
     if (metrics_list_buffer[3] != 0x03)
     {
         perror("Cantidad de metricas inesperada");
+        return;
     }
 
     uint64_t bytes = ntoh64(metrics_list_buffer + 4);
@@ -234,9 +235,7 @@ static void handle_show_configs()
     int ret = sctp_sendmsg(serverSocket, (void *)configs_list, N(configs_list), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
     if (ret < 0)
     {
-        printf("Error enviando request para mostrar configuraciones\n");
-        close(serverSocket);
-        exit(0);
+        die_with_message("Error enviando request para mostrar configuraciones");
     }
 
     // -------------------------------- CONFIGS LIST RESPONSE --------------------------------
@@ -248,35 +247,35 @@ static void handle_show_configs()
     ret = sctp_recvmsg(serverSocket, configs_list_buffer, configs_list_count, NULL, 0, &sndrcvinfo, &recv_flags);
     if (ret <= 0)
     {
-        printf("Error recibiendo respuesta para mostrar configuraciones\n");
-        close(serverSocket);
-        exit(0);
+        die_with_message("Error recibiendo respuesta para mostrar configuraciones");
     }
     else if (ret != 11)
     {
-        printf("Tamaño desconocido de respuesta\n");
-        close(serverSocket);
-        exit(0);
+        die_with_message("Tamaño desconocido de respuesta");
     }
 
     if (configs_list_buffer[0] != 0x03)
     {
         perror("Tipo diferente al esperado");
+        return;
     }
 
     if (configs_list_buffer[1] != 0x01)
     {
         perror("Comando diferente al esperado");
+        return;
     }
 
     if (configs_list_buffer[2] != 0x00)
     {
         perror("Status de error");
+        return;
     }
 
     if (configs_list_buffer[3] != 0x04)
     {
         perror("Cantidad de configuraciones inesperada");
+        return;
     }
 
     uint16_t socks5_buff_len = ntoh16(configs_list_buffer + 4);
@@ -340,9 +339,7 @@ static void handle_create_user()
     int ret = sctp_sendmsg(serverSocket, (void *)user_create_data, N(user_create_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
     if (ret < 0)
     {
-        perror("Creando usuario");
-        close(serverSocket);
-        exit(0);
+        die_with_message("Creando usuario");
     }
 
     // -------------------------------- USER CREATE RESPONSE --------------------------------
@@ -354,9 +351,7 @@ static void handle_create_user()
     ret = sctp_recvmsg(serverSocket, user_create_buffer, user_create_count, NULL, 0, &sndrcvinfo, &recv_flags);
     if (ret <= 0)
     {
-        perror("Recibiendo respuesta del servidor");
-        close(serverSocket);
-        exit(0);
+        die_with_message("Recibiendo respuesta del servidor");
     }
 
     // Checking TYPE byte
@@ -399,9 +394,7 @@ static void handle_list_users()
     int ret = sctp_sendmsg(serverSocket, (void *)user_list, N(user_list), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
     if (ret < 0)
     {
-        perror("Enviando pedido al servidor");
-        close(serverSocket);
-        exit(0);
+        die_with_message("Enviando pedido al servidor");
     }
 
     // -------------------------------- USER LIST RESPONSE --------------------------------
@@ -413,9 +406,7 @@ static void handle_list_users()
     ret = sctp_recvmsg(serverSocket, user_list_buffer, user_list_count, NULL, 0, &sndrcvinfo, &recv_flags);
     if (ret <= 0)
     {
-        perror("Recibiendo respuesta del servidor");
-        close(serverSocket);
-        exit(0);
+        die_with_message("Recibiendo respuesta del servidor");
     }
 
     // Checking TYPE byte
@@ -463,7 +454,14 @@ static void handle_list_users()
             users[processed_users] = malloc(sizeof(uint8_t) * (buff_index + 1));
             if (users[processed_users] == NULL)
             {
-                printf("THIS IS F EMPTY\n");
+                perror("Error allocating memory");
+                int j;
+                for (j = 0; j < processed_users; j++)
+                {
+                    free(users[j]);
+                }
+                free(users);
+                return;
             }
             // Copy the data from the buffer into the array of pointers into the pointer
             memcpy(users[processed_users], buff, buff_index);
@@ -484,7 +482,14 @@ static void handle_list_users()
     users[processed_users] = malloc(sizeof(uint8_t) * (buff_index + 1));
     if (users[processed_users] == NULL)
     {
-        printf("THIS IS F EMPTY\n");
+        perror("Error allocating memory");
+        int j;
+        for (j = 0; j < processed_users; j++)
+        {
+            free(users[j]);
+        }
+        free(users);
+        return;
     }
     // Copy the data from the buffer into the array of pointers into the pointer
     memcpy(users[processed_users], buff, buff_index);
@@ -497,9 +502,12 @@ static void handle_list_users()
     for (i = 0; i < expected_users; i++)
     {
         // Printing the user
-        if (i == expected_users - 1){
+        if (i == expected_users - 1)
+        {
             printf("%d - %s", i + 1, (const char *)users[i]);
-        } else {
+        }
+        else
+        {
             printf("%d - %s\n", i + 1, (const char *)users[i]);
         }
         // Freeing that user
@@ -681,9 +689,7 @@ static void send_edit_config(Configs conf, uint8_t *data, ssize_t data_len)
     int ret = sctp_sendmsg(serverSocket, (void *)data, data_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
     if (ret < 0)
     {
-        printf("Error enviando request para editar configuracion\n");
-        close(serverSocket);
-        exit(0);
+        die_with_message("Error enviando request para editar configuracion");
     }
 
     // -------------------------------- CONFIGS LIST RESPONSE --------------------------------
@@ -695,15 +701,11 @@ static void send_edit_config(Configs conf, uint8_t *data, ssize_t data_len)
     ret = sctp_recvmsg(serverSocket, configs_edit_buffer, configs_edit_count, NULL, 0, &sndrcvinfo, &recv_flags);
     if (ret <= 0)
     {
-        printf("Error recibiendo respuesta para editar configuracion\n");
-        close(serverSocket);
-        exit(0);
+        die_with_message("Error recibiendo respuesta para editar configuracion");
     }
     else if (ret != 4)
     {
-        printf("Tamaño desconocido de respuesta\n");
-        close(serverSocket);
-        exit(0);
+        die_with_message("Tamaño desconocido de respuesta");
     }
 
     if (configs_edit_buffer[0] != 0x03)
@@ -736,7 +738,7 @@ static void send_edit_config(Configs conf, uint8_t *data, ssize_t data_len)
 int main(int argc, char *argv[])
 {
     // Args for the client
-    struct sctpClientArgs *clientOptions = malloc(sizeof(struct sctpClientArgs));
+    clientOptions = malloc(sizeof(struct sctpClientArgs));
 
     /* Parsing options - setting up proxy */
     parse_args(argc, argv, clientOptions);
@@ -750,6 +752,7 @@ int main(int argc, char *argv[])
     {
         printf("Error creating the socket\n");
         perror("socket()");
+        free(clientOptions);
         exit(1);
     }
 
@@ -765,9 +768,8 @@ int main(int argc, char *argv[])
     if (ret == -1)
     {
         printf("Connection failed\n");
-        perror("connect()");
-        close(serverSocket);
-        exit(1);
+        free(clientOptions);
+        die_with_message("connect()");
     }
 
     greeting();
