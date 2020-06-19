@@ -500,7 +500,7 @@ send_reply_failure(struct selector_key * key)
     uint8_t reply_s = 7;
     uint8_t *reply = malloc(reply_s);
     reply[0] = 0x05;            // Version
-    reply[1] = s->reply_type != NULL ? s->reply_type : REPLY_RESP_GENERAL_FAILURE;  // Reply field
+    reply[1] = s->reply_type != -1 ? s->reply_type : REPLY_RESP_GENERAL_FAILURE;  // Reply field
     reply[2] = 0x00;            //Rsv
     reply[3] = 0x00;
     reply[4] = 0x00;
@@ -938,7 +938,11 @@ resolve_read(struct selector_key *key)
             ret = ERROR;
         }
     }
-    else if(n < 0){
+    // If connection was closed --> We are done and need to check if we collected a ip
+    else if(n == 0){
+       r_s->resp_state = RES_RESP_DONE;
+    }
+    else{
         s->reply_type = REPLY_RESP_HOST_UNREACHABLE;
         ret = ERROR;
     }
