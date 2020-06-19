@@ -739,8 +739,8 @@ resolve_init(const unsigned state, struct selector_key *key)
     in_port_t servPort = DOH_PORT;
     memset(&r_s->serv_addr, 0, sizeof(r_s->serv_addr));              // Zero out structure
     r_s->serv_addr.sin_family = AF_INET;                             // IPv4 address family
-    r_s->serv_addr.sin_addr.s_addr = inet_addr(DOH_ADDR);            // Address
-    r_s->serv_addr.sin_port = htons(servPort);                       // Server port
+    r_s->serv_addr.sin_addr.s_addr = inet_addr(options ->doh.ip);            // Address
+    r_s->serv_addr.sin_port = htons(options -> doh.port);                       // Server port
 
 
     // Creating the fd for the ipv4 doh connection
@@ -936,7 +936,7 @@ resolve_write(struct selector_key *key)
     s->origin_info.ipv4_c = s->origin_info.ipv6_c = 0;
 
     unsigned ret = RESOLVE;
-    ssize_t n, m;
+    ssize_t n;
     int final_buffer_size = 0, final_buffer_size2 = 0;
 
     // If connecting in progress, check if connection done.
@@ -973,7 +973,7 @@ resolve_write(struct selector_key *key)
     char * http_request = request_generate((char *)s->origin_info.resolve_addr, &final_buffer_size, T_A); //request ipv4
     char * http_request2 = request_generate((char *)s->origin_info.resolve_addr, &final_buffer_size2, T_AAAA); //request ipv6
 
-    char * final_http = malloc(final_buffer_size + final_buffer_size2);
+    //char * final_http = malloc(final_buffer_size + final_buffer_size2);
 
     // Validate that we were able to connect and the request is valid.
     if(r_s->doh_fd > 0 && http_request != NULL){

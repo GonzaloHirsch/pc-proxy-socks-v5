@@ -1,1 +1,0 @@
-gcc -g dohClient.c dnsPacket.c parsers/http_message_parser.c io_utils/buffer.c io_utils/strings.c -I../include/

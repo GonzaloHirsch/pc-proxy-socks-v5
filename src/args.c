@@ -1,10 +1,3 @@
-#include <stdio.h>     /* for printf */
-#include <stdlib.h>    /* for exit */
-#include <limits.h>    /* LONG_MIN et al */
-#include <string.h>    /* memset */
-#include <errno.h>
-#include <getopt.h>
-
 #include "args.h"
 
 static unsigned short
@@ -68,23 +61,32 @@ usage(const char *progname) {
     exit(1);
 }
 
+// Variable for the options
+socks5args options;
+
 void 
-parse_args(const int argc, char **argv, struct socks5args *args) {
-    memset(args, 0, sizeof(*args)); // sobre todo para setear en null los punteros de users
+parse_args(const int argc, char * const*argv) {
+    options = malloc(sizeof(*options));
+    memset(options, 0, sizeof(*options)); // sobre todo para setear en null los punteros de users
 
-    args->socks_addr = "0.0.0.0";
-    args->socks_port = 1080;
+    options->socks_addr = "0.0.0.0";
+    options->socks_port = 1080;
 
-    args->mng_addr   = "127.0.0.1";
-    args->mng_port   = 8080;
+    options->mng_addr   = "127.0.0.1";
+    options->mng_port   = 8080;
 
-    args->disectors_enabled = true;
+    options->disectors_enabled = true;
 
-    args->doh.host = "localhost";
-    args->doh.ip   = "127.0.0.1";
-    args->doh.port = 8053;
-    args->doh.path = "/getnsrecord";
-    args->doh.query = "?dns=";
+    options->socks5_buffer_size = 4096;
+    options->sctp_buffer_size = 1024;
+    options->timeout = 10;
+
+    options->doh.host = "localhost";
+    options->doh.ip   = "127.0.0.1";
+    options->doh.port = 8053;
+    options->doh.path = "/getnsrecord";
+    options->doh.query = "?dns=";
+    options->doh.buffer_size = 1024;
 
     int c;
     int nusers = 0;
@@ -109,26 +111,26 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
                 usage(argv[0]);
                 break;
             case 'l':
-                args->socks_addr = optarg;
+                options->socks_addr = optarg;
                 break;
             case 'L':
-                args->mng_addr = optarg;
+                options->mng_addr = optarg;
                 break;
             case 'N':
-                args->disectors_enabled = false;
+                options->disectors_enabled = false;
                 break;
             case 'p':
-                args->socks_port = port(optarg);
+                options->socks_port = port(optarg);
                 break;
             case 'P':
-                args->mng_port   = port(optarg);
+                options->mng_port   = port(optarg);
                 break;
             case 'u':
                 if(nusers >= MAX_USERS) {
                     fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS);
                     exit(1);
                 } else {
-                    user(optarg, args->users + nusers);
+                    user(optarg, options->users + nusers);
                     nusers++;
                 }
                 break;
@@ -137,19 +139,19 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
                 exit(0);
                 break;
             case 0xD001:
-                args->doh.ip = optarg;
+                options->doh.ip = optarg;
                 break;
             case 0xD002:
-                args->doh.port = port(optarg);
+                options->doh.port = port(optarg);
                 break;
             case 0xD003:
-                args->doh.host = optarg;
+                options->doh.host = optarg;
                 break;
             case 0xD004:
-                args->doh.path = optarg;
+                options->doh.path = optarg;
                 break;
             case 0xD005:
-                args->doh.query = optarg;
+                options->doh.query = optarg;
                 break;
             default:
                 fprintf(stderr, "unknown argument %d.\n", c);
