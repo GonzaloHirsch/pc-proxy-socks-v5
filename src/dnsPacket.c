@@ -223,10 +223,10 @@ uint8_t * ReadName(unsigned char* reader,uint8_t * buffer,int* count)
         }
     }
 
-    char * terminate = '\0';
+    char terminate = '\0';
     char * dot = ".";
  
-    memcpy(name + p, terminate, 1);
+    memcpy(name + p, &terminate, 1);
     //name[p]='\0'; //string complete
     if(jumped==1)
     {
@@ -245,7 +245,7 @@ uint8_t * ReadName(unsigned char* reader,uint8_t * buffer,int* count)
         memcpy(name + i, dot, 1);
         //name[i]='.';
     }
-    memcpy(name + i - 1, terminate, 1);//remove the last dot
+    memcpy(name + i - 1, &terminate, 1);//remove the last dot
     //name[i-1]='\0'; 
     return name;
 }
