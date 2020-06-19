@@ -993,13 +993,21 @@ static int connecting_send_conn_response (struct selector_key * key) {
 static int try_connection(int origin_fd, int *connect_ret, connecting_st *d, socks5_origin_info *s5oi, AddrType addrType)
 {
     
-    struct sockaddr_in *sin = (struct sockaddr_in *)&s5oi->origin_addr;
+    struct sockaddr_storage *sin = (struct sockaddr_storage *)&s5oi->origin_addr;
     do
     {
         // Setting up in socket address
-        sin->sin_family = AF_INET;
-        memcpy((void *)&sin->sin_addr, (addrType == IPv4) ? s5oi->ipv4_addrs[d->first_working_ip_index] : s5oi->ipv6_addrs[d->first_working_ip_index], (addrType == IPv4) ? IP_V4_ADDR_SIZE : IP_V6_ADDR_SIZE); // Address
-        memcpy((void *)&sin->sin_port, s5oi->port, 2);                                                               // Port
+        
+        if (addrType == IPv4) {
+            sin->ss_family = AF_INET;
+            memcpy((void *)&(((struct sockaddr_in*)sin)->sin_addr), s5oi->ipv4_addrs[d->first_working_ip_index], IP_V4_ADDR_SIZE); // Address
+            memcpy((void *)&(((struct sockaddr_in*)sin)->sin_port), s5oi->port, 2);
+        }
+        else if (addrType == IPv6) {
+            sin->ss_family = AF_INET6;
+            memcpy((void *)&(((struct sockaddr_in6*)sin)->sin6_addr), s5oi->ipv6_addrs[d->first_working_ip_index], IP_V6_ADDR_SIZE); // Address
+            memcpy((void *)&(((struct sockaddr_in6*)sin)->sin6_port), s5oi->port, 2); // Port
+        }
         s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
         *connect_ret = connect(origin_fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
         if (errno == EINPROGRESS || errno == EISCONN || errno == EALREADY)
