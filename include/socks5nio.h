@@ -206,6 +206,12 @@ typedef enum ConnectionState {
     CONN_SUCCESS
 }ConnectionState;
 
+typedef enum ResolveResponseState {
+    RES_RESP_IPV4,
+    RES_RESP_IPV6,
+    RES_RESP_DONE,
+}ResolveResponseState;
+
 /** Used by the HELLO_READ and HELLO_WRITE states */
 typedef struct hello_st
 {
@@ -249,6 +255,8 @@ typedef struct resolve_st
     struct http_message_parser parser;
     struct sockaddr_in serv_addr;
     unsigned int conn_state;
+    unsigned int resp_state;
+    
 } resolve_st;
 
 /** Used by the COPY state */

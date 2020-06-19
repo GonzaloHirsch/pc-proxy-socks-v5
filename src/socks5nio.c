@@ -797,6 +797,9 @@ resolve_close(const unsigned state, struct selector_key *key)
     buffer_reset(&s->write_buffer);
     buffer_reset(&s->read_buffer);
 
+    // Unregister the doh_fd.
+    selector_unregister_fd(key->s, s->orig.resolve.doh_fd);
+
     /** TODO: Free the http buffer */
 
 }
@@ -834,63 +837,90 @@ resolve_read(struct selector_key *key)
         // Advancing the buffer
         buffer_write_adv(b, n);
 
-        // Parse JUST the http message and check if done correctly
-        http_consume_message(r_s->rb, &r_s->parser, &errored);
-        if(http_done_parsing_message(&r_s->parser, &errored) && !errored){
-          
-            // Parse the dns response and save the info in the origin_info
-            parse_dns_resp(r_s->parser.body, (char *) s->origin_info.resolve_addr, s, &errored);
+        // We are going to receive the responses in order.
+        switch (r_s->resp_state)
+        {
+        // In case we havent start parsing or we are parsing the ipv4 response
+        case RES_RESP_IPV4:
+            // Consume the message
+            http_consume_message(r_s->rb, &r_s->parser, &errored);
 
-            if(s->origin_info.ipv4_c == 0 && s->origin_info.ipv6_c == 0){
-                perror("Not valid domain name");
-                errored = 1;
-            }
-            // TODO remove (testing purposes)
-            s->origin_info.ip_selec = (s->origin_info.ipv4_c > 0) ? IPv4 : IPv6;
-            ret = CONNECTING;
-        }
-
-        http_message_parser_init(&r_s->parser);
+            //If we done parsing the first response
+            if(http_done_parsing_message(&r_s->parser, &errored)){
                 
-        http_consume_message(r_s->rb, &r_s->parser, &errored);
-        if(http_done_parsing_message(&r_s->parser, &errored) && !errored){
-          
-            // Parse the dns response and save the info in the origin_info
-            parse_dns_resp(r_s->parser.body, (char *) s->origin_info.resolve_addr, s, &errored);
+                // If the http message is correct --> parse the dns response
+                if(!errored){
+                    // Parse the dns response and save the info in the origin_info
+                    parse_dns_resp(r_s->parser.body, (char *) s->origin_info.resolve_addr, s, &errored);
+                }
+                else{
+                    /** TODO: See if we can santize the rest of the http message 
+                     * to leave it ready for the next parsing */
+                }
 
-            if(s->origin_info.ipv4_c == 0 && s->origin_info.ipv6_c == 0){
-                perror("Not valid domain name");
-                errored = 1;
+                // Reset the parser for the ipv6 response
+                http_message_parser_init(&r_s->parser);
+                
+                r_s->resp_state = RES_RESP_IPV6;
+                //Notice: Dont break so we fall into Ipv6 state to check if there is something to read.
             }
-            // TODO remove (testing purposes)
+            else{
+                // Break, still need to finish parsing the first response.
+                break;
+            }
+        
+        case RES_RESP_IPV6:
+        
+            // Consume the message
+            http_consume_message(r_s->rb, &r_s->parser, &errored);
+
+            //If we done parsing the first response
+            if(http_done_parsing_message(&r_s->parser, &errored)){
+                
+                // If the http message is correct --> parse the dns response
+                if(!errored){
+                    // Parse the dns response and save the info in the origin_info
+                    parse_dns_resp(r_s->parser.body, (char *) s->origin_info.resolve_addr, s, &errored);
+                }
+                else{
+                    
+                }
+                r_s->resp_state = RES_RESP_DONE;
+            }
+            else{
+                // Still needs to parse the second response
+            }
+
+            break;
+        case RES_RESP_DONE:
+            // Shouldnt happen, just in case
+            break;
+        default:
+            return ERROR;
+        }
+    }
+
+    // If already recevied both responses.
+    if(r_s->resp_state == RES_RESP_DONE){
+
+        // If at least one ip was recevied correctly
+        if(s->origin_info.ipv4_c > 0 || s->origin_info.ipv6_c > 0){
+
+            //Saving the ip preferred and the state
             s->origin_info.ip_selec = (s->origin_info.ipv4_c > 0) ? IPv4 : IPv6;
             ret = CONNECTING;
+
+            // Setting the CLIENT fd for WRITE --> REQUEST WILL need to write
+            if (SELECTOR_SUCCESS != selector_set_interest(key->s, s->client_fd, OP_WRITE)){
+                ret = ERROR;
+            }
         }
-
-    }
-    else{
-        printf("DOH recv failed\n");
-        ret = ERROR;
-    }
-
-    // If we are done with parsing and no errors happended -> set to write to clientfd
-    if(!errored && ret == CONNECTING){
-        // Setting the CLIENT fd for WRITE --> REQUEST WILL need to write
-        if (SELECTOR_SUCCESS != selector_set_interest(key->s, s->client_fd, OP_WRITE)){
+        else {
             ret = ERROR;
-        }
+        }    
     }
 
-    // If we are leaving the resolve state --> unregister the doh fd
-    if(errored || ret == CONNECTING){
-        // Unregister the dns server fd.
-        if(SELECTOR_SUCCESS != selector_unregister_fd(key->s, r_s->doh_fd)){
-            ret = ERROR;
-        }
-    }
-
-
-    return errored ? ERROR : ret;
+    return ret;
 
 }
 
@@ -937,7 +967,7 @@ resolve_write(struct selector_key *key)
         break;
     }
 
-    // Generate the DNS request
+    // Generate the DNS requests: First the ipv4 then th
     char * http_request = request_generate((char *)s->origin_info.resolve_addr, &final_buffer_size, T_A); //request ipv4
     char * http_request2 = request_generate((char *)s->origin_info.resolve_addr, &final_buffer_size2, T_AAAA); //request ipv6
 
@@ -948,7 +978,10 @@ resolve_write(struct selector_key *key)
         // Send the doh request to the nginx server
         n = send(r_s->doh_fd, http_request,final_buffer_size, MSG_DONTWAIT);
         m = send(r_s->doh_fd, http_request2,final_buffer_size2, MSG_DONTWAIT);
-        if(n > 0){
+        if(n > 0 && m > 0){
+            // Establish the resolve response state.
+            r_s->resp_state = RES_RESP_IPV4;
+
             // Set the interests for the selector
             if (SELECTOR_SUCCESS != selector_set_interest(key->s, r_s->doh_fd, OP_READ))
             {
@@ -964,7 +997,9 @@ resolve_write(struct selector_key *key)
         ret = ERROR;
     }
 
-    free(http_request); //it is for no use from now on
+    // Free the http_request message
+    free(http_request); 
+    free(http_request2);
 
     return ret;
 }
