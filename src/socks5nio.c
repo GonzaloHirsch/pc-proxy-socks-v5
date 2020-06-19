@@ -690,6 +690,34 @@ request_process(struct selector_key *key, struct request_st *d)
 // RESOLVE
 ////////////////////////////////////////
 
+static void determine_connect_error(int error);
+
+
+static unsigned int
+doh_check_connection(struct resolve_st *r_s)
+{   
+    int connect_ret;
+
+    connect_ret = connect(r_s->doh_fd, (struct sockaddr *) &r_s->serv_addr, sizeof(r_s->serv_addr));
+    if (connect_ret < 0) {
+        switch (errno) {
+            case EINPROGRESS:
+            case EALREADY:
+               return CONN_INPROGRESS;
+            case EISCONN:
+                return CONN_SUCCESS;
+                break;
+            default:
+                determine_connect_error(errno);
+                return CONN_FAILURE;        
+        }
+    }
+    else {
+        // Shouldnt happen
+        return CONN_SUCCESS;
+    }
+}
+
 static void
 resolve_init(const unsigned state, struct selector_key *key)
 {   
@@ -700,50 +728,64 @@ resolve_init(const unsigned state, struct selector_key *key)
     // Saving the buffers
     r_s->rb = &(s->read_buffer);
     r_s->wb = &(s->write_buffer);
-
-    //Init the parser
+ 
+    //Init parsers
     http_message_parser_init(&r_s->parser);
 
-    /** TODO: MOVE TO WRITE*/
-    // Create the socket for the nginx server that will serve as dns.
-    struct sockaddr_in serv_addr;
+    int connect_ret;
     selector_status st = SELECTOR_SUCCESS;
 
-    // char * final_buffer = NULL;
-    // char * servIP = "127.0.0.1";
-
+    // Structure to connect to the dns server
     in_port_t servPort = DOH_PORT;
-    memset(&serv_addr, 0, sizeof(serv_addr)); // Zero out structure
-    serv_addr.sin_family = AF_INET;          // IPv4 address family
-    serv_addr.sin_port = htons(servPort);    // Server port
+    memset(&r_s->serv_addr, 0, sizeof(r_s->serv_addr));              // Zero out structure
+    r_s->serv_addr.sin_family = AF_INET;                             // IPv4 address family
+    r_s->serv_addr.sin_addr.s_addr = inet_addr(options ->doh.ip);            // Address
+    r_s->serv_addr.sin_port = htons(options -> doh.port);                       // Server port
 
+
+    // Creating the fd for the ipv4 doh connection
     r_s->doh_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(r_s->doh_fd <= 0){
-        perror("ERROR openning socket");
+        printf("ERROR openning socket for ipv4\n");
         r_s->doh_fd = -1;
     }
-    
-    // Connect to nginx server
-    if (connect(r_s->doh_fd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0){
-        perror("ERROR connecting");
+    // Set as non blocking
+    selector_fd_set_nio(r_s->doh_fd);
+    // Trying connection
+    connect_ret = connect(r_s->doh_fd, (struct sockaddr *) &r_s->serv_addr, sizeof(r_s->serv_addr));
+
+    // If we were able to connect or we are still connecting
+    if (connect_ret >= 0 || (connect_ret == -1 && errno == EINPROGRESS)) {
+       // Register the fd of the nginx server
+        st = selector_register(key->s, r_s->doh_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
+        if (st != SELECTOR_SUCCESS){
+            printf("Error registering doh server\n");
+            r_s->doh_fd = -1;
+        }
+        // Unregistering client interests
+        st = selector_set_interest(key->s, s->client_fd, OP_NOOP);
+        if(st != SELECTOR_SUCCESS){
+            printf("Failure setting interest for client\n");
+            /** TODO: handle error */
+        }
+        // Determine if we already connected or in progress
+        if(connect_ret >= 0){
+            r_s->conn_state = CONN_SUCCESS;
+        }
+        else{
+            r_s->conn_state = CONN_INPROGRESS;
+        }
+    }
+    else{
         r_s->doh_fd = -1;
+        fprintf(stderr, "Could not connect to doh server\n");
+        determine_connect_error(errno);
+        r_s->conn_state = CONN_FAILURE;
     }
 
-    // Register the fd of the nginx server
-    st = selector_register(key->s, r_s->doh_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
-    if (st != SELECTOR_SUCCESS){
-        printf("Error registering doh server\n");
-        r_s->doh_fd = -1;
-    }
-
-    /** TODO: MOVE TO WRITE! */
-
-    // Removing interest from client fd(We dont need to read or write in resolve state)
-    if (SELECTOR_SUCCESS != selector_set_interest(key->s, s->client_fd, OP_NOOP)){
-        printf("Could not set interest of %d for %d\n", OP_NOOP, s->client_fd);
-        /** Todo see what we have to do! */
-    }
 }
+
+
 
 static void
 resolve_close(const unsigned state, struct selector_key *key)
@@ -755,7 +797,13 @@ resolve_close(const unsigned state, struct selector_key *key)
     buffer_reset(&s->write_buffer);
     buffer_reset(&s->read_buffer);
 
-    /** TODO: Free the http buffer */
+    // Unregister the doh_fd.
+    selector_unregister_fd(key->s, s->orig.resolve.doh_fd);
+
+    // Free http parser
+    free_http_message_parser(&s->orig.resolve.parser);
+
+    
 
 }
 
@@ -769,7 +817,6 @@ resolve_read(struct selector_key *key)
     
     struct socks5 * s = ATTACHMENT(key);
     struct resolve_st *r_s = &s->orig.resolve;
-    s->origin_info.ipv4_c = s->origin_info.ipv6_c = 0;
 
     buffer *b = r_s->rb;
     unsigned ret = RESOLVE;
@@ -784,54 +831,98 @@ resolve_read(struct selector_key *key)
     if(n > 0){
 
         //doh responds without terminating the body
-        ptr[n++] = '\n'; 
-        ptr[n++] = '\n';
+        //ptr[n++] = '\n'; 
+        //ptr[n++] = '\n';
 
         //it removes  \r from headers so that parser is consistent
         parse_to_crlf(ptr, &n); 
         // Advancing the buffer
         buffer_write_adv(b, n);
 
-        // Parse JUST the http message and check if done correctly
-        http_consume_message(r_s->rb, &r_s->parser, &errored);
-        if(http_done_parsing_message(&r_s->parser, &errored) && !errored){
-          
-            // Parse the dns response and save the info in the origin_info
-            parse_dns_resp(r_s->parser.body, (char *) s->origin_info.resolve_addr, s, &errored);
+        // We are going to receive the responses in order.
+        switch (r_s->resp_state)
+        {
+        // In case we havent start parsing or we are parsing the ipv4 response
+        case RES_RESP_IPV4:
+            // Consume the message
+            http_consume_message(r_s->rb, &r_s->parser, &errored);
 
-            if(s->origin_info.ipv4_c == 0 && s->origin_info.ipv6_c == 0){
-                perror("Not valid domain name");
-                errored = 1;
+            //If we done parsing the first response
+            if(http_done_parsing_message(&r_s->parser, &errored)){
+                
+                // If the http message is correct --> parse the dns response
+                if(!errored){
+                    // Parse the dns response and save the info in the origin_info
+                    parse_dns_resp(r_s->parser.body, (char *) s->origin_info.resolve_addr, s, &errored);
+                }
+                else{
+                    /** TODO: See if we can santize the rest of the http message 
+                     * to leave it ready for the next parsing */
+                }
+
+                // Reset the parser for the ipv6 response
+                http_message_parser_init(&r_s->parser);
+                
+                r_s->resp_state = RES_RESP_IPV6;
+                //Notice: Dont break so we fall into Ipv6 state to check if there is something to read.
             }
-            // TODO remove (testing purposes)
+            else{
+                // Break, still need to finish parsing the first response.
+                break;
+            }
+        
+        case RES_RESP_IPV6:
+
+            // Consume the message
+            http_consume_message(r_s->rb, &r_s->parser, &errored);
+
+            //If we done parsing the first response
+            if(http_done_parsing_message(&r_s->parser, &errored)){
+                
+                // If the http message is correct --> parse the dns response
+                if(!errored){
+                    // Parse the dns response and save the info in the origin_info
+                    parse_dns_resp(r_s->parser.body, (char *) s->origin_info.resolve_addr, s, &errored);
+                }
+                else{
+                    
+                }
+                r_s->resp_state = RES_RESP_DONE;
+            }
+            else{
+                // Still needs to parse the second response
+            }
+
+            break;
+        case RES_RESP_DONE:
+            // Shouldnt happen, just in case
+            break;
+        default:
+            return ERROR;
+        }
+    }
+
+    // If already recevied both responses.
+    if(r_s->resp_state == RES_RESP_DONE){
+
+        // If at least one ip was recevied correctly
+        if(s->origin_info.ipv4_c > 0 || s->origin_info.ipv6_c > 0){
+
+            //Saving the ip preferred and the state
             s->origin_info.ip_selec = (s->origin_info.ipv4_c > 0) ? IPv4 : IPv6;
             ret = CONNECTING;
+
+            // Setting the CLIENT fd for WRITE --> REQUEST WILL need to write
+            if (SELECTOR_SUCCESS != selector_set_interest(key->s, s->client_fd, OP_WRITE)){
+                ret = ERROR;
+            }
         }
-
-    }
-    else{
-        printf("DOH recv failed\n");
-        ret = ERROR;
-    }
-
-    // If we are done with parsing and no errors happended -> set to write to clientfd
-    if(!errored && ret == CONNECTING){
-        // Setting the CLIENT fd for WRITE --> REQUEST WILL need to write
-        if (SELECTOR_SUCCESS != selector_set_interest(key->s, s->client_fd, OP_WRITE)){
+        else {
             ret = ERROR;
-        }
+        }    
     }
 
-    // If we are leaving the resolve state --> unregister the doh fd
-    if(errored || ret == CONNECTING){
-        // Unregister the dns server fd.
-        if(SELECTOR_SUCCESS != selector_unregister_fd(key->s, r_s->doh_fd)){
-            ret = ERROR;
-        }
-    }
-
-
-    return errored ? ERROR : ret;
+    return ret;
 
 }
 
@@ -841,19 +932,59 @@ resolve_write(struct selector_key *key)
 {
     struct socks5 * s = ATTACHMENT(key);
     struct resolve_st *r_s = &s->orig.resolve;
+    //Establish no ips(in case fo error)
+    s->origin_info.ipv4_c = s->origin_info.ipv6_c = 0;
 
     unsigned ret = RESOLVE;
-    ssize_t n;
-    int final_buffer_size = 0;
+    ssize_t n, m;
+    int final_buffer_size = 0, final_buffer_size2 = 0;
 
-    // Generate the DNS request
+    // If connecting in progress, check if connection done.
+    if(r_s->conn_state == CONN_INPROGRESS){
+         r_s->conn_state = doh_check_connection(r_s);
+    }
+
+    switch (r_s->conn_state)
+    {
+    // If still in progress try back later.
+    case CONN_INPROGRESS:
+        return RESOLVE;
+        break;
+    case CONN_FAILURE:
+        //Check if we need to unregister the fd
+        if(key->fd == r_s->doh_fd){
+             // Unregister the dns server fd.
+            if(SELECTOR_SUCCESS != selector_unregister_fd(key->s, r_s->doh_fd)){
+                ret = ERROR;
+            }
+        }
+        // Setting the CLIENT fd for WRITE --> REQUEST WILL need to write
+        if (SELECTOR_SUCCESS != selector_set_interest(key->s, s->client_fd, OP_WRITE)){
+            ret = ERROR;
+        }
+        /** TODO: Assign response to client that we failed to resolve */
+        return ERROR;
+    //Else the connection has been established :)
+    default:
+        break;
+    }
+
+    // Generate the DNS requests: First the ipv4 then th
     char * http_request = request_generate((char *)s->origin_info.resolve_addr, &final_buffer_size, T_A); //request ipv4
+    char * http_request2 = request_generate((char *)s->origin_info.resolve_addr, &final_buffer_size2, T_AAAA); //request ipv6
+
+    //char * final_http = malloc(final_buffer_size + final_buffer_size2);
 
     // Validate that we were able to connect and the request is valid.
     if(r_s->doh_fd > 0 && http_request != NULL){
         // Send the doh request to the nginx server
         n = send(r_s->doh_fd, http_request,final_buffer_size, MSG_DONTWAIT);
-        if(n > 0){
+        m = send(r_s->doh_fd, http_request2,final_buffer_size2, MSG_DONTWAIT);
+        if(n > 0 && m > 0){
+            // Establish the resolve response state.
+            r_s->resp_state = RES_RESP_IPV4;
+            s->origin_info.ipv4_c = s->origin_info.ipv6_c = 0;
+
             // Set the interests for the selector
             if (SELECTOR_SUCCESS != selector_set_interest(key->s, r_s->doh_fd, OP_READ))
             {
@@ -869,7 +1000,9 @@ resolve_write(struct selector_key *key)
         ret = ERROR;
     }
 
-    free(http_request); //it is for no use from now on
+    // Free the http_request message
+    free(http_request); 
+    free(http_request2);
 
     return ret;
 }
@@ -1339,31 +1472,6 @@ copy_write(struct selector_key *key)
     return ret;
 }
 
-// ERROR
-
-static void
-error_init(const unsigned state, struct selector_key *key) {
-    printf("error init\n");
-    selector_unregister_fd(key->s, key->fd);
-    close(key->fd);
-}
-
-static unsigned
-error_read(struct selector_key *key) {
-    printf("error read\n");
-    selector_unregister_fd(key->s, key->fd);
-    close(key->fd);
-    return ERROR;
-}
-
-static unsigned
-error_write(struct selector_key *key) {
-    printf("error write\n");
-    selector_unregister_fd(key->s, key->fd);
-    close(key->fd);
-    return ERROR;
-}
-
 //------------------------STATES DEFINITION--------------------------------------
 
 /** definición de handlers para cada estado */
@@ -1421,9 +1529,6 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state = ERROR,
-        .on_arrival = error_init,
-        .on_write_ready = error_write,
-        .on_read_ready = error_read
         // No now, no need to define any handlers, all in sockv5_done
     }};
 

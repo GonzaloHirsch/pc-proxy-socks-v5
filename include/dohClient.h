@@ -16,6 +16,7 @@
 #include "dnsPacket.h"
 
 #define DOH_PORT 80
+#define DOH_ADDR "127.0.0.1"
 #define BUFFERSIZE_DOH 1024
 #define MAX_FDQN 256
 #define DATA_MAX_SIZE 65536

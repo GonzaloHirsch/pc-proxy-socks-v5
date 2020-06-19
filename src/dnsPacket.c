@@ -138,9 +138,9 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
         answers[i].resource = (struct R_DATA*)(reader);
         reader = reader + sizeof(struct R_DATA);
  
-        if(ntohs(answers[i].resource->type) == T_A) //if its an ipv4 address
+        if(ntohs(answers[i].resource->type) == T_A || ntohs(answers[i].resource->type) == T_AAAA) //if its an ipv4 address
         {
-            answers[i].rdata = (uint8_t *)malloc(ntohs(answers[i].resource->data_len));
+            answers[i].rdata = (uint8_t *)malloc(1+ntohs(answers[i].resource->data_len));
  
             for(j=0 ; j<ntohs(answers[i].resource->data_len) ; j++)
             {
@@ -151,11 +151,7 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
  
             reader = reader + ntohs(answers[i].resource->data_len);
         }
-        else
-        {
-            answers[i].rdata = ReadName((unsigned char *) reader,to_parse,&stop);
-            reader = reader + stop;
-        }
+         
     }
 
 
@@ -167,17 +163,25 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
             uint8_t *p;
             p=  answers[i].rdata;
             memcpy(s->origin_info.ipv4_addrs[s->origin_info.ipv4_c++], p, IP_V4_ADDR_SIZE);
-            //free(answers[i].rdata);
+            free(answers[i].rdata);
+            free(answers[i].name);
 
         }   
-         if( ntohs(answers[i].resource->type) == T_AAAA) //IPv6 address
+        else if( ntohs(answers[i].resource->type) == T_AAAA) //IPv6 address
         {
             uint8_t *p;
             p= answers[i].rdata;
             memcpy(s->origin_info.ipv6_addrs[s->origin_info.ipv6_c++], p, IP_V6_ADDR_SIZE);
-            //free(answers[i].rdata);
+            free(answers[i].rdata);
+            free(answers[i].name);
 
         }   
+        else
+        {
+            free(answers[i].name);
+        }
+        
+\
         
     }
 }
@@ -185,10 +189,11 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
 
 uint8_t * ReadName(unsigned char* reader,uint8_t * buffer,int* count)
 {
-    uint8_t *name;
+    uint8_t * name;
     unsigned int p=0,jumped=0,offset;
     int i , j;
  
+
     *count = 1;
     name = (uint8_t *)malloc(256);
  
@@ -205,7 +210,9 @@ uint8_t * ReadName(unsigned char* reader,uint8_t * buffer,int* count)
         }
         else
         {
-            name[p++]=*reader;
+            memcpy(name + p, reader, 1);
+            p++;
+            //name[p++]=*reader;
         }
  
         reader = reader+1;
@@ -215,8 +222,12 @@ uint8_t * ReadName(unsigned char* reader,uint8_t * buffer,int* count)
             *count = *count + 1; //if we havent jumped to another location then we can count up
         }
     }
+
+    char terminate = '\0';
+    char * dot = ".";
  
-    name[p]='\0'; //string complete
+    memcpy(name + p, &terminate, 1);
+    //name[p]='\0'; //string complete
     if(jumped==1)
     {
         *count = *count + 1; //number of steps we actually moved forward in the packet
@@ -231,8 +242,10 @@ uint8_t * ReadName(unsigned char* reader,uint8_t * buffer,int* count)
             name[i]=name[i+1];
             i=i+1;
         }
-        name[i]='.';
+        memcpy(name + i, dot, 1);
+        //name[i]='.';
     }
-    name[i-1]='\0'; //remove the last dot
+    memcpy(name + i - 1, &terminate, 1);//remove the last dot
+    //name[i-1]='\0'; 
     return name;
 }

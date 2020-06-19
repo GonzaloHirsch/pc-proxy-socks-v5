@@ -23,6 +23,7 @@
 #include "selector.h"
 #include "stateMachine.h"
 #include "authentication.h"
+#include "args.h"
 
 
 #define N(x) (sizeof(x) / sizeof((x)[0]))
@@ -200,6 +201,18 @@ typedef enum ConnectionResponse {
     CONN_RESP_ADDR_TYPE_NOT_SUPPORTED
 }ConnectionResponse;
 
+typedef enum ConnectionState {
+    CONN_INPROGRESS, 
+    CONN_FAILURE,
+    CONN_SUCCESS
+}ConnectionState;
+
+typedef enum ResolveResponseState {
+    RES_RESP_IPV4,
+    RES_RESP_IPV6,
+    RES_RESP_DONE,
+}ResolveResponseState;
+
 /** Used by the HELLO_READ and HELLO_WRITE states */
 typedef struct hello_st
 {
@@ -241,6 +254,10 @@ typedef struct resolve_st
     /** File descriptor of the doh server */
     int doh_fd;
     struct http_message_parser parser;
+    struct sockaddr_in serv_addr;
+    unsigned int conn_state;
+    unsigned int resp_state;
+    
 } resolve_st;
 
 /** Used by the COPY state */
