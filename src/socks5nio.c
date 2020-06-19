@@ -814,7 +814,6 @@ resolve_read(struct selector_key *key)
     
     struct socks5 * s = ATTACHMENT(key);
     struct resolve_st *r_s = &s->orig.resolve;
-    s->origin_info.ipv4_c = s->origin_info.ipv6_c = 0;
 
     buffer *b = r_s->rb;
     unsigned ret = RESOLVE;
@@ -870,7 +869,7 @@ resolve_read(struct selector_key *key)
             }
         
         case RES_RESP_IPV6:
-        
+
             // Consume the message
             http_consume_message(r_s->rb, &r_s->parser, &errored);
 
@@ -981,6 +980,7 @@ resolve_write(struct selector_key *key)
         if(n > 0 && m > 0){
             // Establish the resolve response state.
             r_s->resp_state = RES_RESP_IPV4;
+            s->origin_info.ipv4_c = s->origin_info.ipv6_c = 0;
 
             // Set the interests for the selector
             if (SELECTOR_SUCCESS != selector_set_interest(key->s, r_s->doh_fd, OP_READ))
