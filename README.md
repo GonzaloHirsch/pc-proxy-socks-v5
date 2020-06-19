@@ -2,6 +2,11 @@
 
 ## Compilación
 
+Primeramente se debe tener:
+
+export DOH='--doh-port 80 --doh-path /dns-query --doh-host doh'
+sudo apt-get install libsctp-dev
+
 Para compilar el programa simplemente se puede ejecutar:
 
 ```

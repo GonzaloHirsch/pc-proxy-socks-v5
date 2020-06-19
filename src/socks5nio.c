@@ -936,7 +936,7 @@ resolve_write(struct selector_key *key)
     s->origin_info.ipv4_c = s->origin_info.ipv6_c = 0;
 
     unsigned ret = RESOLVE;
-    ssize_t n;
+    ssize_t n, m;
     int final_buffer_size = 0, final_buffer_size2 = 0;
 
     // If connecting in progress, check if connection done.

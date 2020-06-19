@@ -1,7 +1,7 @@
 # Makefile
 .PHONY: all sctp_client clean
 
-CFLAGS=-Wall -g -fsanitize=address
+CFLAGS=-Wall -g #-fsanitize=address
 # LDFLAGS=-lrt -pthread
 
 
