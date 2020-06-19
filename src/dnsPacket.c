@@ -140,7 +140,7 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
  
         if(ntohs(answers[i].resource->type) == T_A || ntohs(answers[i].resource->type) == T_AAAA) //if its an ipv4 address
         {
-            answers[i].rdata = (uint8_t *)malloc(ntohs(answers[i].resource->data_len));
+            answers[i].rdata = (uint8_t *)malloc(1+ntohs(answers[i].resource->data_len));
  
             for(j=0 ; j<ntohs(answers[i].resource->data_len) ; j++)
             {
