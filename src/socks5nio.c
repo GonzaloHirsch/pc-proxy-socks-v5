@@ -739,8 +739,8 @@ resolve_init(const unsigned state, struct selector_key *key)
     in_port_t servPort = DOH_PORT;
     memset(&r_s->serv_addr, 0, sizeof(r_s->serv_addr));              // Zero out structure
     r_s->serv_addr.sin_family = AF_INET;                             // IPv4 address family
-    r_s->serv_addr.sin_addr.s_addr = inet_addr(DOH_ADDR);            // Address
-    r_s->serv_addr.sin_port = htons(servPort);                       // Server port
+    r_s->serv_addr.sin_addr.s_addr = inet_addr(options ->doh.ip);            // Address
+    r_s->serv_addr.sin_port = htons(options -> doh.port);                       // Server port
 
 
     // Creating the fd for the ipv4 doh connection
