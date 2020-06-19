@@ -1125,7 +1125,7 @@ static int connecting_send_conn_response (struct selector_key * key) {
     response[0] = 0x05; // VERSION
     //  STATUS
     if (s->origin_fd < 0)
-        response[1] = REPLY_RESP_GENERAL_FAILURE;
+        response[1] = REPLY_RESP_REFUSED_BY_DEST_HOST;
     else
         response[1] = REPLY_RESP_SUCCESS;
     response[2] = 0x00; //RSV
@@ -1248,6 +1248,7 @@ static unsigned connecting_check_origin_connected(struct selector_key * key) {
                 if (d->first_working_ip_index >= ((s->origin_info.ip_selec == IPv4) ?  s->origin_info.ipv4_c : s->origin_info.ipv6_c)) {
                     fprintf(stderr, "Could not connect after failure\n");
                     determine_connect_error(errno);
+                    s->reply_type=REPLY_RESP_REFUSED_BY_DEST_HOST;
                     return ERROR;
                 }
                 else {
@@ -1269,6 +1270,7 @@ static unsigned connecting_check_origin_connected(struct selector_key * key) {
                                 s->origin_fd = -1;
                                 fprintf(stderr, "Could not connect\n");
                                 determine_connect_error(errno);
+                                s->reply_type=REPLY_RESP_REFUSED_BY_DEST_HOST;
                                 return ERROR;
                         }
                     }

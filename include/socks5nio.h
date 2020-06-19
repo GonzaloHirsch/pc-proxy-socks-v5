@@ -358,7 +358,7 @@ typedef struct socks5
     uint8_t * username;    
 
     /** Reply type */
-    uint8_t reply_type;
+    int reply_type;
 
     /** Information about the origin server */
     struct socks5_origin_info origin_info;
