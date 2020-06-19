@@ -92,7 +92,7 @@ bool validate_user_proxy(uint8_t *uid, uint8_t *pw)
     return validate_up(uid, pw, USER_AUTH_LEVEL);
 }
 
-void list_user_admin(uint8_t **users, uint8_t *count)
+void list_user_admin(uint8_t **users, uint8_t *count, int * size)
 {
     uint8_t *uid_stored;
     *count = 0;
@@ -102,10 +102,11 @@ void list_user_admin(uint8_t **users, uint8_t *count)
     {
         if (user_pass_table[i].level == ADMIN_AUTH_LEVEL)
         {
-            // Getting the username + password
+            // Getting the username with the finishing 
             uid_stored = user_pass_table[i].user;
             users[*count] = malloc(strlen((const char *)uid_stored) + 1);
             memcpy(users[*count], uid_stored, strlen((const char *)uid_stored) + 1);
+            (*size) += strlen((const char *)uid_stored);
             (*count)++;
         }
         i++;

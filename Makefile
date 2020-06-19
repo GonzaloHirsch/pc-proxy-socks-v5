@@ -4,7 +4,6 @@
 CFLAGS=-Wall -g -fsanitize=address
 # LDFLAGS=-lrt -pthread
 
-
 SOURCES=$(wildcard src/*.c)
 SOURCES2=$(wildcard src/**/*.c)
 INCLUDE=include

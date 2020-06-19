@@ -10,8 +10,6 @@ static const unsigned max_pool = 50;
 static unsigned pool_size = 0;
 /** Actual pool of objects */
 static struct sctp *pool = 0;
-/** Selector key for the SIGPIPE handler */
-static struct selector_key *current_key;
 
 // Handler function declarations
 static unsigned handle_request(struct selector_key *key);
@@ -29,7 +27,7 @@ static unsigned handle_list_metrics(struct selector_key *key);
 static unsigned handle_config_edit(struct selector_key *key, buffer *b);
 
 // Response preparers
-static uint8_t *prepare_list_users(uint8_t **users, int count);
+static uint8_t *prepare_list_users(uint8_t **users, int count, int len);
 
 // Helpers
 static bool get_8_bit_integer_from_buffer(buffer *b, uint8_t *n);
@@ -118,7 +116,10 @@ static struct sctp *sctp_new(const int client)
     // Read Buffer for the socket(Initialized)
     buffer_init(&(sctpState->buffer_read), options->sctp_buffer_size + 1 + 1, malloc(options->sctp_buffer_size + 1));
 
-    printf("I'm new, my bs is %u\n", options->sctp_buffer_size + 1);
+    // Setting initial values to avoid errors
+    sctpState->is_logged = 0;
+    sctpState->state = SCTP_REQUEST;
+    sctpState->error = SCTP_ERROR_NO_ERROR;
 
     // Intialize the client_fd
     sctpState->client_fd = client;
@@ -198,14 +199,9 @@ sctp_read(struct selector_key *key)
     struct sctp *d = ATTACHMENT(key);
 
     // Result, next state to move in the process
-    unsigned ret = SCTP_RESPONSE;
+    unsigned ret = handle_request(key);
 
-    // Setting the current key for the SIGPIPE handler
-    current_key = key;
-
-    // If the request returns not the appropiate state, the fd is unregistered
-    ret = handle_request(key);
-
+    // Saving the state
     d->state = ret;
 }
 
@@ -227,21 +223,22 @@ sctp_write(struct selector_key *key)
         case CMD_LIST:
             if (d->state == SCTP_ERROR)
             {
-                uint8_t user_list_error_data[] = {d->info.type, d->info.cmd, d->error, 0, 0};
+                uint8_t user_list_error_data[] = {d->info.type, d->info.cmd, d->error, 0};
                 n = sctp_sendmsg(key->fd, (void *)user_list_error_data, N(user_list_error_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
             }
             else
             {
+                int packet_len = d->datagram.user_list.users_len + d->datagram.user_list.user_count - 1;
                 // Getting the representation for the users
-                uint8_t *users = prepare_list_users(d->datagram.user_list.users, d->datagram.user_list.user_count);
+                uint8_t *users = prepare_list_users(d->datagram.user_list.users, d->datagram.user_list.user_count, d->datagram.user_list.users_len);
                 // Adding the info to the buffer
-                uint8_t *user_list_data = calloc(4 + strlen((const char *)users), sizeof(uint8_t));
+                uint8_t *user_list_data = calloc(4 + packet_len, sizeof(uint8_t));
                 user_list_data[0] = d->info.type;
                 user_list_data[1] = d->info.cmd;
                 user_list_data[2] = d->error;
                 user_list_data[3] = d->datagram.user_list.user_count;
-                memcpy(&user_list_data[4], users, strlen((const char *)users));
-                n = sctp_sendmsg(key->fd, (void *)user_list_data, 4 + strlen((const char *)users), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+                memcpy(&user_list_data[4], users, packet_len);
+                n = sctp_sendmsg(key->fd, (void *)user_list_data, 4 + packet_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
             }
             break;
         case CMD_CREATE:
@@ -404,7 +401,6 @@ static unsigned handle_request(struct selector_key *key)
     buffer_write_adv(b, length);
 
     // If user is logged, parse a request
-
     if (d->is_logged)
     {
         ret = handle_normal_request(key);
@@ -486,8 +482,7 @@ static unsigned handle_normal_request(struct selector_key *key)
         case CMD_EDIT:
             ret = handle_config_edit(key, b);
             break;
-        // CMD not allowed
-        default:
+        default: // CMD not allowed
             ret = SCTP_ERROR;
             break;
         }
@@ -498,14 +493,12 @@ static unsigned handle_normal_request(struct selector_key *key)
         case CMD_LIST:
             ret = handle_list_metrics(key);
             break;
-            // CMD not allowed
-        default:
+        default: // CMD not allowed
             ret = SCTP_ERROR;
             break;
         }
         break;
-    // TYPE not allowed
-    case TYPE_NOTYPE:
+    case TYPE_NOTYPE: // TYPE not allowed
         ret = SCTP_ERROR;
         break;
     }
@@ -536,7 +529,7 @@ static unsigned handle_login_request(struct selector_key *key)
     // Initializing the u+p parser
     up_req_parser_init(&d->paser.up_request);
 
-    printf("Logging user");
+    printf("Logging user\n");
 
     // Parsing the information
     const enum up_req_state st = up_consume_message(b, &d->paser.up_request, &error);
@@ -589,8 +582,9 @@ static unsigned handle_list_users(struct selector_key *key)
 {
     // Getting all the users
     uint8_t count = 0;
+    int size = 0;
     uint8_t *users[MAX_USER_PASS];
-    list_user_admin(users, &count);
+    list_user_admin(users, &count, &size);
     if (users == NULL)
     {
         // Setting general error
@@ -601,6 +595,7 @@ static unsigned handle_list_users(struct selector_key *key)
     // Adding the list and the count to the requets data
     ATTACHMENT(key)->datagram.user_list.users = users;
     ATTACHMENT(key)->datagram.user_list.user_count = count;
+    ATTACHMENT(key)->datagram.user_list.users_len = size;
 
     return SCTP_RESPONSE;
 }
@@ -781,29 +776,28 @@ static unsigned handle_config_edit(struct selector_key *key, buffer *b)
 // RESPONSE PREPARERS
 ///////////////////////////////////////////////////////////////////
 
-static uint8_t *prepare_list_users(uint8_t **users, int count)
+static uint8_t *prepare_list_users(uint8_t **users, int count, int len)
 {
-    int i = 0;
-    uint8_t *value = NULL;
+    int i = 0, previous_len = 0;
+    uint8_t *value = malloc(len + count - 1); // Allocating for all users + the sepparator between them
+    printf("Total user len is %d\n", len);
+    if (value == NULL)
+    {
+        return NULL;
+    }
+
     for (i = 0; i < count; i++)
     {
         if (i == 0)
         {
-            value = realloc(value, strlen((const char *)users[i]));
-            if (value == NULL)
-            {
-                return NULL;
-            }
-            sprintf((char *)value, "%s", (const char *)users[i]);
+            memcpy(value, users[i], strlen((const char *)users[i]));
+            previous_len = strlen((const char *)users[i]);
         }
         else
         {
-            value = realloc(value, strlen((const char *)users[i]) + 1 + strlen((const char *)value));
-            if (value == NULL)
-            {
-                return NULL;
-            }
-            sprintf((char *)value, "%s,%s", value, (const char *)users[i]);
+            value[previous_len] = 0x00;
+            memcpy(value + previous_len + 1, (const char *)users[i], strlen((const char *)users[i]));
+            previous_len += 1 + strlen((const char *)users[i]);
         }
     }
     return value;
