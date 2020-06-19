@@ -800,7 +800,10 @@ resolve_close(const unsigned state, struct selector_key *key)
     // Unregister the doh_fd.
     selector_unregister_fd(key->s, s->orig.resolve.doh_fd);
 
-    /** TODO: Free the http buffer */
+    // Free http parser
+    free_http_message_parser(&s->orig.resolve.parser);
+
+    
 
 }
 

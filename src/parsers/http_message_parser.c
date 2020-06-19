@@ -9,6 +9,7 @@ void http_message_parser_init(http_message_parser hmp) {
     // TODO augment struct and manage initialization if necessary
     memset(hmp, 0, sizeof(struct http_message_parser));
     hmp->cursor = hmp->version;
+    hmp->body = NULL;
 }
 
 enum http_message_state http_message_read_next_byte(http_message_parser p, const uint8_t b) {
@@ -156,10 +157,10 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
             }
             break;
         case HTTP_B:
-            if (b == CLRF) {
-                p->state = HTTP_I2;
-            }
-            else if(p ->body_len < -1){
+            //if (b == CLRF) {
+            //    p->state = HTTP_I2;
+            //}
+            if(p ->body_len < -1){
                 *p->cursor = b;
                 p->cursor++;
             }
@@ -171,6 +172,10 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
                     p->state = HTTP_F;
                 }
             }
+            else if(p->cursor - p->body == p->body_len){
+                    //*p->cursor='\0';
+                    p->state = HTTP_F;
+                }
             else {
                 // ERROR with lengths
                 p->state = HTTP_ERR_INV_BODY;
@@ -284,8 +289,9 @@ void free_http_message_parser(http_message_parser p) {
         free(p->headers[i]->value);
         free(p->headers[i]); 
     }
-    free(p->body);
-    // free(p);
+    if(p->body != NULL){
+        free(p->body);
+    }
 }
 
 
