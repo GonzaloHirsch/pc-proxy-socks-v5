@@ -24,6 +24,7 @@ request_close(const unsigned state, struct selector_key *key)
 
     // All temporal for testing... -----> DELTE SHORTLY
 
+/*
     if (s->origin_info.ip_selec == IPv4)
     {
         printf("    IPv4: ");
@@ -53,7 +54,7 @@ request_close(const unsigned state, struct selector_key *key)
         printf("\n");
     }
     printf("    port: %d%d\n", s->origin_info.port[0], s->origin_info.port[1]);
-
+*/
 
 }
 

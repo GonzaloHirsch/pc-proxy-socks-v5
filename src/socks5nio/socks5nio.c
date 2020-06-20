@@ -18,9 +18,9 @@ static const struct state_definition client_statbl[];
     Pool for the reusing of instances
 */
 /** Max amount of items in pool */
-static const unsigned max_pool = 50;
+//static const unsigned max_pool = 50;
 /** Actual pool size */
-static unsigned pool_size = 0;
+//static unsigned pool_size = 0;
 /** Actual pool of objects */
 static struct socks5 *pool = 0;
 
@@ -56,6 +56,8 @@ static struct socks5 *socks5_new(const int client)
     sockState->origin_fd = -1;
 
     sockState->reply_type = -1;
+    sockState->references = 1;
+    sockState->origin_resolution = NULL;
 
     return sockState;
 }
@@ -69,6 +71,10 @@ socks5_destroy_(struct socks5 *s)
         //freeaddrinfo(s->origin_resolution);
         s->origin_resolution = 0;
     }
+    // Liberating the buffers
+    free(s->read_buffer.data);
+    free(s->write_buffer.data);
+    // Liberating the struct
     free(s);
 }
 
@@ -76,6 +82,7 @@ socks5_destroy_(struct socks5 *s)
  * destruye un  `struct socks5', tiene en cuenta las referencias
  * y el pool de objetos.
  */
+/*
 static void
 socks5_destroy(struct socks5 *s)
 {
@@ -104,6 +111,7 @@ socks5_destroy(struct socks5 *s)
         s->references -= 1;
     }
 }
+*/
 
 void socksv5_pool_destroy(void)
 {
@@ -159,7 +167,7 @@ fail:
     {
         close(client);
     }
-    socks5_destroy(state);
+    socks5_destroy_(state);
 }
 
 //------------------------------STATE FUNCTION HANDLERS--------------------------------
@@ -275,7 +283,8 @@ socksv5_close(struct selector_key *key)
     // Removing the current connection from the metrics
     remove_current_connections(1);
 
-    socks5_destroy(ATTACHMENT(key));
+    // Calling the destroy_ method because the object pool is not implemented
+    socks5_destroy_(ATTACHMENT(key));
 }
 
 void
