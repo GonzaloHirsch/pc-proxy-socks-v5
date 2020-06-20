@@ -41,6 +41,9 @@ userpass_read(struct selector_key *key)
     n = recv(key->fd, ptr, count, 0);
     if (n > 0)
     {
+        // Metrics
+        add_transfered_bytes(n);
+        
         buffer_write_adv(up_s->rb, n);
         // Parse the inofmration
         const enum up_req_state st = up_consume_message(up_s->rb, &up_s->parser, &error);
@@ -131,6 +134,9 @@ userpass_write(struct selector_key *key)
     n = send(key->fd, data, 2, 0);
     if (n > 0)
     {
+        // Metrics
+        add_transfered_bytes(n);
+
         // Setting the fd to read.
         if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_READ))
         {

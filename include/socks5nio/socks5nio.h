@@ -23,6 +23,7 @@
 #include "selector.h"
 #include "stateMachine.h"
 #include "authentication.h"
+#include "metrics.h"
 #include "args.h"
 
 #define N(x) (sizeof(x) / sizeof((x)[0]))

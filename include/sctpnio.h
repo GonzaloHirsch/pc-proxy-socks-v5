@@ -37,7 +37,8 @@ typedef enum SCTP_STATES
 {
     SCTP_REQUEST,
     SCTP_RESPONSE,
-    SCTP_ERROR
+    SCTP_ERROR,
+    SCTP_FATAL_ERROR
 } SCTP_STATES;
 
 /** Different errors the server can return */
@@ -96,7 +97,7 @@ typedef struct sctp_auth_message
 typedef struct sctp_user_list_message
 {
     uint8_t user_count;
-    uint8_t **users;
+    uint8_t *users[MAX_USER_PASS];
     int users_len;
 } sctp_user_list_message;
 

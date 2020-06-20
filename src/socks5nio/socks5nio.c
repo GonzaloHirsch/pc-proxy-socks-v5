@@ -150,6 +150,9 @@ void socksv5_passive_accept(struct selector_key *key)
     {
         goto fail;
     }
+    // If everything is ok, add the metrics for the current/historic connections
+    add_current_connections(1);
+    add_historic_connections(1);
     return;
 fail:
     if (client != -1)
@@ -269,6 +272,9 @@ socksv5_block(struct selector_key *key)
 void
 socksv5_close(struct selector_key *key)
 {
+    // Removing the current connection from the metrics
+    remove_current_connections(1);
+
     socks5_destroy(ATTACHMENT(key));
 }
 

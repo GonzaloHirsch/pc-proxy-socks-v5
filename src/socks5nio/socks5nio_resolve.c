@@ -142,6 +142,9 @@ resolve_read(struct selector_key *key)
     
     n = recv(r_s->doh_fd, ptr, count, MSG_DONTWAIT);
     if(n > 0){
+        // Metrics
+        add_transfered_bytes(n);
+
         // Advancing the buffer
         buffer_write_adv(b, n);
 
@@ -289,6 +292,9 @@ resolve_write(struct selector_key *key)
         n = send(r_s->doh_fd, http_request,final_buffer_size, MSG_DONTWAIT);
         m = send(r_s->doh_fd, http_request2,final_buffer_size2, MSG_DONTWAIT);
         if(n > 0 && m > 0){
+            // Metrics
+            add_transfered_bytes(n);
+            add_transfered_bytes(m);
             // Establish the resolve response state.
             r_s->resp_state = RES_RESP_IPV4;
             s->origin_info.ipv4_c = s->origin_info.ipv6_c = 0;

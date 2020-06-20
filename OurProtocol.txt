@@ -7,7 +7,8 @@ Protocolo Propio sobre SCTP
         3.1 - Alta, baja y modificacion de usuarios
         3.2 - Obtención de métricas
         3.3 - Configuración remota
-    4 - Información de los Autores
+    4 - Errores
+    5 - Información de los Autores
 
 1 - Introducción
 
@@ -231,7 +232,23 @@ Campos:
                 - DBSIZE -> Tamaño del buffer de DoH, 0x03
                 - TOUT -> Tiempo de timeout, 0x04
 
-4 - Información de los Autores
+4 - Errores
+
+En caso de que haya un error de protocolo al enviar una request, teniendo un par TYPE + CMD inválido, el servidor responderá de la siguiente manera y luego cierra la conexión.
+
+            +------+-------+--------+
+            | TYPE |  CMD  | STATUS |
+            +------+-------+--------+
+            |   1  |   1   |    1   |
+            +------+-------+--------+
+
+Campos:
+            TYPE -> Reservado en 0x00
+            CMD -> Reservado en 0x00
+            STATUS -> Campo Status definido en la introducción
+
+
+5 - Información de los Autores
 
 Autores:
     - Ignacio Ribas

@@ -18,7 +18,9 @@ send_reply_failure(struct selector_key * key)
     reply[5] = 0x00;
     reply[6] = 0x00;
 
-    send(s->client_fd, reply , reply_s, MSG_DONTWAIT);
+    ssize_t n = send(s->client_fd, reply , reply_s, MSG_DONTWAIT);
+    // Metrics
+    add_transfered_bytes(n);
     free(reply);
 }
 

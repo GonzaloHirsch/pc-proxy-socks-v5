@@ -92,6 +92,8 @@ request_read(struct selector_key *key)
     n = recv(key->fd, ptr, count, 0);
     if (n > 0)
     {
+        // Metrics
+        add_transfered_bytes(n);
         // Notifying the data to the buffer
         buffer_write_adv(b, n);
         // Consuming the message

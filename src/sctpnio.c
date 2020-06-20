@@ -18,6 +18,7 @@ static unsigned handle_login_request(struct selector_key *key);
 static void sctp_read(struct selector_key *key);
 static void sctp_write(struct selector_key *key);
 static void sctp_close(struct selector_key *key);
+static void sctp_done(struct selector_key *key);
 
 // TYPE + CMD handlers
 static unsigned handle_list_users(struct selector_key *key);
@@ -26,13 +27,16 @@ static unsigned handle_user_create(struct selector_key *key, buffer *b);
 static unsigned handle_list_metrics(struct selector_key *key);
 static unsigned handle_config_edit(struct selector_key *key, buffer *b);
 
+/** Handler for when the TYPE + CMD pair is invalid, responds and closes connection */
+static void handle_invalid_type_cmd(struct selector_key *key);
+
 // Response preparers
 static uint8_t *prepare_list_users(uint8_t **users, int count, int len);
 
 // Helpers
 static bool get_8_bit_integer_from_buffer(buffer *b, uint8_t *n);
 static bool get_16_bit_integer_from_buffer(buffer *b, uint16_t *n);
-static void free_list_users(uint8_t ** users, int count);
+static void free_list_users(uint8_t **users, int count);
 
 // Selector event handler
 static const struct fd_handler sctp_handler = {
@@ -199,14 +203,17 @@ fail:
 static void
 sctp_read(struct selector_key *key)
 {
-    // Obtain the sctp struct from the selector key
-    struct sctp *d = ATTACHMENT(key);
-
     // Result, next state to move in the process
     unsigned ret = handle_request(key);
 
-    // Saving the state
-    d->state = ret;
+    if (ret == SCTP_FATAL_ERROR)
+    {
+        sctp_done(key);
+    }
+    else
+    {
+        ATTACHMENT(key)->state = ret;
+    }
 }
 
 static void
@@ -254,8 +261,8 @@ sctp_write(struct selector_key *key)
             break;
         }
         default:
-            // CMD not allowed
-            break;
+            handle_invalid_type_cmd(key);
+            return;
         }
         break;
     case TYPE_CONFIG:
@@ -265,6 +272,7 @@ sctp_write(struct selector_key *key)
         {
             d->datagram.configs_list.configs_data[2] = d->error;
             n = sctp_sendmsg(key->fd, (void *)d->datagram.configs_list.configs_data, d->datagram.configs_list.configs_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            free(d->datagram.configs_list.configs_data);
             break;
         }
         case CMD_EDIT:
@@ -274,8 +282,8 @@ sctp_write(struct selector_key *key)
             break;
         }
         default:
-            // CMD not allowed
-            break;
+            handle_invalid_type_cmd(key);
+            return;
         }
         break;
     case TYPE_METRICS:
@@ -285,11 +293,12 @@ sctp_write(struct selector_key *key)
         {
             d->datagram.metrics_list.metrics_data[2] = d->error;
             n = sctp_sendmsg(key->fd, (void *)d->datagram.metrics_list.metrics_data, d->datagram.metrics_list.metrics_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            free(d->datagram.metrics_list.metrics_data);
             break;
         }
         default:
-            // CMD not allowed
-            break;
+            handle_invalid_type_cmd(key);
+            return;
         }
         break;
     // TYPE not allowed
@@ -298,15 +307,26 @@ sctp_write(struct selector_key *key)
         {
         case CMD_NOCMD:
         {
-            uint8_t login_data[] = {SCTP_VERSION, d->error};
-            n = sctp_sendmsg(key->fd, (void *)login_data, N(login_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            if (d->error == SCTP_ERROR_INVALID_CMD || d->error == SCTP_ERROR_INVALID_TYPE)
+            {
+                handle_invalid_type_cmd(key);
+                return;
+            }
+            else
+            {
+                uint8_t login_data[] = {SCTP_VERSION, d->error};
+                n = sctp_sendmsg(key->fd, (void *)login_data, N(login_data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            }
             break;
         }
         default:
-            // CMD not allowed
-            break;
+            handle_invalid_type_cmd(key);
+            return;
         }
         break;
+    default:
+        handle_invalid_type_cmd(key);
+        return;
     }
 
     if (n > 0)
@@ -314,17 +334,19 @@ sctp_write(struct selector_key *key)
         // Add bytes to metrics
         add_transfered_bytes(n);
 
+        // Resetting the error
+        d->error = SCTP_ERROR_NO_ERROR;
+        d->state = SCTP_REQUEST;
+
         // Setting the fd to read.
         if (SELECTOR_SUCCESS != selector_set_interest(key->s, key->fd, OP_READ))
         {
-            // Error setting interest, unregister
-            selector_unregister_fd(key->s, d->client_fd);
+            sctp_done(key);
         }
     }
     else
     {
-        // Error sending message, unregister
-        selector_unregister_fd(key->s, d->client_fd);
+        sctp_done(key);
     }
 }
 
@@ -334,45 +356,74 @@ sctp_close(struct selector_key *key)
     // Removing the current connection from the metrics
     remove_current_connections(1);
 
+    // Destroying the struct, calling the destroy directly because the pool is not implemented
     sctp_destroy_(ATTACHMENT(key));
+}
+
+static void
+sctp_done(struct selector_key *key)
+{
+    int client_fd = ATTACHMENT(key)->client_fd;
+    selector_status ss = selector_unregister_fd(key->s, ATTACHMENT(key)->client_fd);
+    if (ss != SELECTOR_SUCCESS)
+    {
+        printf("SCTP is done for %d\n", client_fd);
+        abort();
+    }
+    close(client_fd);
 }
 
 ///////////////////////////////////////////////////////////////////
 // REQUESTS
 ///////////////////////////////////////////////////////////////////
 
-static TYPE determine_type(int val)
+static bool determine_type(int val, TYPE *t)
 {
     switch (val)
     {
     case TYPE_NOTYPE:
-        return TYPE_NOTYPE;
+        *t = TYPE_NOTYPE;
+        return true;
     case TYPE_CONFIG:
-        return TYPE_CONFIG;
+        *t = TYPE_CONFIG;
+        return true;
     case TYPE_METRICS:
-        return TYPE_METRICS;
+        *t = TYPE_METRICS;
+        return true;
     case TYPE_USERS:
-        return TYPE_USERS;
+        *t = TYPE_USERS;
+        return true;
     default:
-        return TYPE_NOTYPE;
+        return false;
     }
 }
 
-static CMD determine_cmd(int val)
+static bool determine_cmd(int val, CMD *c)
 {
     switch (val)
     {
     case CMD_CREATE:
-        return CMD_CREATE;
+        *c = CMD_CREATE;
+        return true;
     case CMD_EDIT:
-        return CMD_EDIT;
+        *c = CMD_EDIT;
+        return true;
     case CMD_LIST:
-        return CMD_LIST;
+        *c = CMD_LIST;
+        return true;
     case CMD_NOCMD:
-        return CMD_NOCMD;
+        *c = CMD_NOCMD;
+        return true;
     default:
-        return CMD_NOCMD;
+        return false;
     }
+}
+
+static void handle_invalid_type_cmd(struct selector_key *key)
+{
+    uint8_t data[3] = {0x00, 0x00, ATTACHMENT(key)->error};
+    sctp_sendmsg(key->fd, (void *)data, N(data), NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+    sctp_done(key);
 }
 
 static unsigned handle_request(struct selector_key *key)
@@ -398,8 +449,7 @@ static unsigned handle_request(struct selector_key *key)
     ssize_t length = sctp_recvmsg(d->client_fd, ptr, count, &from, 0, &sender_info, &flags);
     if (length <= 0)
     {
-        selector_unregister_fd(key->s, d->client_fd);
-        return SCTP_ERROR;
+        return SCTP_FATAL_ERROR;
     }
 
     // Add bytes to metrics
@@ -439,7 +489,8 @@ static unsigned handle_normal_request(struct selector_key *key)
     }
     else
     {
-        return SCTP_ERROR;
+        d->error = SCTP_ERROR_INVALID_TYPE;
+        ret = SCTP_ERROR;
     }
 
     // Advancing the buffer
@@ -452,63 +503,75 @@ static unsigned handle_normal_request(struct selector_key *key)
     }
     else
     {
-        return SCTP_ERROR;
+        d->error = SCTP_ERROR_INVALID_CMD;
+        ret = SCTP_ERROR;
     }
 
     // Advancing the buffer
     buffer_read_adv(b, 1);
 
-    TYPE type = determine_type(given_type);
-    CMD cmd = determine_cmd(given_cmd);
+    bool type_ok = determine_type(given_type, &d->info.type);
+    bool cmd_ok = determine_cmd(given_cmd, &d->info.cmd);
 
-    d->info.cmd = cmd;
-    d->info.type = type;
-
-    // Switching TYPE and CMD to determine available operations
-    switch (type)
+    if (!type_ok)
     {
-    case TYPE_USERS:
-        switch (cmd)
-        {
-        case CMD_LIST:
-            ret = handle_list_users(key);
-            break;
-        case CMD_CREATE:
-            ret = handle_user_create(key, b);
-            break;
-        default: // CMD not allowed
-            ret = SCTP_ERROR;
-            break;
-        }
-        break;
-    case TYPE_CONFIG:
-        switch (cmd)
-        {
-        case CMD_LIST:
-            ret = handle_list_configs(key);
-            break;
-        case CMD_EDIT:
-            ret = handle_config_edit(key, b);
-            break;
-        default: // CMD not allowed
-            ret = SCTP_ERROR;
-            break;
-        }
-        break;
-    case TYPE_METRICS:
-        switch (cmd)
-        {
-        case CMD_LIST:
-            ret = handle_list_metrics(key);
-            break;
-        default: // CMD not allowed
-            ret = SCTP_ERROR;
-            break;
-        }
-        break;
-    case TYPE_NOTYPE: // TYPE not allowed
+        d->error = SCTP_ERROR_INVALID_TYPE;
         ret = SCTP_ERROR;
-        break;
+    }
+    if (!cmd_ok)
+    {
+        d->error = SCTP_ERROR_INVALID_CMD;
+        ret = SCTP_ERROR;
+    }
+
+    if (ret != SCTP_ERROR)
+    {
+        // Switching TYPE and CMD to determine available operations
+        switch (d->info.type)
+        {
+        case TYPE_USERS:
+            switch (d->info.cmd)
+            {
+            case CMD_LIST:
+                ret = handle_list_users(key);
+                break;
+            case CMD_CREATE:
+                ret = handle_user_create(key, b);
+                break;
+            default: // CMD not allowed
+                ret = SCTP_ERROR;
+                break;
+            }
+            break;
+        case TYPE_CONFIG:
+            switch (d->info.cmd)
+            {
+            case CMD_LIST:
+                ret = handle_list_configs(key);
+                break;
+            case CMD_EDIT:
+                ret = handle_config_edit(key, b);
+                break;
+            default: // CMD not allowed
+                ret = SCTP_ERROR;
+                break;
+            }
+            break;
+        case TYPE_METRICS:
+            switch (d->info.cmd)
+            {
+            case CMD_LIST:
+                ret = handle_list_metrics(key);
+                break;
+            default: // CMD not allowed
+                ret = SCTP_ERROR;
+                break;
+            }
+            break;
+        case TYPE_NOTYPE: // TYPE not allowed
+            ret = SCTP_ERROR;
+            break;
+        }
     }
 
     // Compacting the buffer
@@ -516,8 +579,7 @@ static unsigned handle_normal_request(struct selector_key *key)
 
     if (SELECTOR_SUCCESS != selector_set_interest(key->s, key->fd, OP_WRITE))
     {
-        selector_unregister_fd(key->s, d->client_fd);
-        ret = SCTP_ERROR;
+        ret = SCTP_FATAL_ERROR;
     }
 
     return ret;
@@ -537,8 +599,6 @@ static unsigned handle_login_request(struct selector_key *key)
     // Initializing the u+p parser
     up_req_parser_init(&d->paser.up_request);
 
-    printf("Logging user\n");
-
     // Parsing the information
     const enum up_req_state st = up_consume_message(b, &d->paser.up_request, &error);
     // Checking if the parser is done parsing the message
@@ -547,8 +607,7 @@ static unsigned handle_login_request(struct selector_key *key)
         selector_status ss = selector_set_interest(key->s, key->fd, OP_WRITE);
         if (ss != SELECTOR_SUCCESS)
         {
-            selector_unregister_fd(key->s, d->client_fd);
-            ret = SCTP_ERROR;
+            ret = SCTP_FATAL_ERROR;
         }
         else
         {
@@ -565,11 +624,13 @@ static unsigned handle_login_request(struct selector_key *key)
                 memset(d->username, 0, 255);
                 memcpy(d->username, uid, uid_l);
                 d->is_logged = true;
+                d->error = SCTP_ERROR_NO_ERROR;
                 ret = SCTP_RESPONSE;
             }
             else
             {
                 // Setting error for invalid data sent
+                d->is_logged = false;
                 d->error = SCTP_ERROR_INVALID_DATA;
                 ret = SCTP_ERROR;
             }
@@ -591,9 +652,8 @@ static unsigned handle_list_users(struct selector_key *key)
     // Getting all the users
     uint8_t count = 0;
     int size = 0;
-    uint8_t *users[MAX_USER_PASS];
-    list_user_admin(users, &count, &size);
-    if (users == NULL)
+    list_user_admin(ATTACHMENT(key)->datagram.user_list.users, &count, &size);
+    if (ATTACHMENT(key)->datagram.user_list.users == NULL)
     {
         // Setting general error
         ATTACHMENT(key)->error = SCTP_ERROR_GENERAL_ERROR;
@@ -601,7 +661,6 @@ static unsigned handle_list_users(struct selector_key *key)
     }
 
     // Adding the list and the count to the requets data
-    ATTACHMENT(key)->datagram.user_list.users = users;
     ATTACHMENT(key)->datagram.user_list.user_count = count;
     ATTACHMENT(key)->datagram.user_list.users_len = size;
 
@@ -628,8 +687,7 @@ static unsigned handle_user_create(struct selector_key *key, buffer *b)
         selector_status ss = selector_set_interest(key->s, key->fd, OP_WRITE);
         if (ss != SELECTOR_SUCCESS)
         {
-            selector_unregister_fd(key->s, d->client_fd);
-            ret = SCTP_ERROR;
+            ret = SCTP_FATAL_ERROR;
         }
         else
         {
@@ -647,6 +705,10 @@ static unsigned handle_user_create(struct selector_key *key, buffer *b)
             {
                 d->error = SCTP_ERROR_INVALID_DATA;
                 ret = SCTP_ERROR;
+            }
+            else
+            {
+                d->error = SCTP_ERROR_NO_ERROR;
             }
         }
     }
@@ -719,6 +781,7 @@ static unsigned handle_config_edit(struct selector_key *key, buffer *b)
     if (buffer_can_read(b))
     {
         config_type = *b->read;
+        d->error = SCTP_ERROR_NO_ERROR;
     }
     else
     {
@@ -776,6 +839,10 @@ static unsigned handle_config_edit(struct selector_key *key, buffer *b)
         d->error = SCTP_ERROR_INVALID_VALUE;
         return SCTP_ERROR;
     }
+    else
+    {
+        d->error = SCTP_ERROR_NO_ERROR;
+    }
 
     return SCTP_RESPONSE;
 }
@@ -811,7 +878,8 @@ static uint8_t *prepare_list_users(uint8_t **users, int count, int len)
     return value;
 }
 
-static void free_list_users(uint8_t ** users, int count){
+static void free_list_users(uint8_t **users, int count)
+{
     free_list_user_admin(users, count);
 }
 

@@ -226,14 +226,31 @@ int main(const int argc, char * const*argv)
     destroy_metrics();
 
     // Freeing the options for the args
-    free(options);
+    if (options != NULL){
+        free(options);
+    }
 
     // Freeing the selector
-    selector_destroy(selector);
+    if (selector != NULL){
+        selector_destroy(selector);
+    }
+    selector_close();
+    
+    // Closing the sockets
+    if (master_socket >= 0){
+        close(master_socket);
+    }
+    if (management_socket >= 0){
+        close(management_socket);
+    }
 
     // Freeing the socket handlers
-    free(masterSocketHandler);
-    free(managementSocketHandler);
-
+    if (masterSocketHandler != NULL){
+        free(masterSocketHandler);
+    }
+    if (managementSocketHandler != NULL){
+        free(managementSocketHandler);
+    }
+    
     return 0;
 }
