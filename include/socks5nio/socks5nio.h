@@ -25,7 +25,6 @@
 #include "authentication.h"
 #include "args.h"
 
-
 #define N(x) (sizeof(x) / sizeof((x)[0]))
 /** TODO: define appropiate size */
 #define BUFFERSIZE 4096
@@ -210,6 +209,7 @@ typedef enum ConnectionState {
 typedef enum ResolveResponseState {
     RES_RESP_IPV4,
     RES_RESP_IPV6,
+
     RES_RESP_DONE,
 }ResolveResponseState;
 
@@ -370,6 +370,26 @@ typedef struct socks5
     /** Information about the origin server */
     struct socks5_origin_info origin_info;
 } socks5;
+
+
+//--------------------------------HANDLERS----------------------------------
+
+/** obtiene el struct (socks5 *) desde la llave de selección  */
+#define ATTACHMENT(key) ((struct socks5 *)(key)->data)
+
+/* declaración forward de los handlers de selección de una conexión
+ * establecida entre un cliente y el proxy.
+ */
+void socksv5_read(struct selector_key *key);
+void socksv5_write(struct selector_key *key);
+void socksv5_block(struct selector_key *key);
+void socksv5_close(struct selector_key *key);
+static const struct fd_handler socks5_handler = {
+    .handle_read = socksv5_read,
+    .handle_write = socksv5_write,
+    .handle_close = socksv5_close,
+    .handle_block = socksv5_block,
+};
 
 #include "dohClient.h"
 #endif

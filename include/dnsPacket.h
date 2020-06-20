@@ -10,7 +10,7 @@
 #include<arpa/inet.h> //inet_addr , inet_ntoa , ntohs etc
 #include<netinet/in.h>
 #include<unistd.h>    //getpid
-#include "socks5nio.h" //socks5 struct
+#include "socks5nio/socks5nio.h" //socks5 struct
 
 
 #define MAX_HOST_SIZE 255

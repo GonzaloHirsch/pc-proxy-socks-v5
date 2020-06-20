@@ -7,7 +7,7 @@
 #include "parsers/connection_req_parser.h"
 #include "selector.h"
 #include "stateMachine.h"
-#include "socks5nio.h"
+#include "socks5nio/socks5nio.h"
 #include "sctpnio.h"
 #include "authentication.h"
 #include "args.h"
