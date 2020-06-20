@@ -96,7 +96,7 @@ typedef struct sctp_auth_message
 typedef struct sctp_user_list_message
 {
     uint8_t user_count;
-    uint8_t **users;
+    uint8_t *users[MAX_USER_PASS];
     int users_len;
 } sctp_user_list_message;
 

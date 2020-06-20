@@ -118,13 +118,19 @@ void list_user_admin(uint8_t **users, uint8_t *count, int *size)
     {
         if (user_pass_table[i].level == ADMIN_AUTH_LEVEL)
         {
-            // Getting the username with the finishing
+            // Getting the name stored in the table
             uid_stored = user_pass_table[i].user;
+            // Getting the len of the name
             slen = strlen((const char *)uid_stored);
+            // Allocating for memory for the specific pointer
             users[*count] = calloc(slen + 1, sizeof(uint8_t));
+            // Copying the data
             memcpy(users[*count], uid_stored, slen);
+            // Adding terminating 0x00
             users[*count][slen] = 0x00;
+            // Incrementing the length of the total usernames (without the 0x00)
             (*size) += slen;
+            // Incrementing the username count
             (*count)++;
         }
         i++;

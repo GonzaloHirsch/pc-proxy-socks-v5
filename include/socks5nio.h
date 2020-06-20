@@ -23,6 +23,7 @@
 #include "selector.h"
 #include "stateMachine.h"
 #include "authentication.h"
+#include "metrics.h"
 #include "args.h"
 
 

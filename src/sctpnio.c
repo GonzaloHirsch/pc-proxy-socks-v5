@@ -595,9 +595,8 @@ static unsigned handle_list_users(struct selector_key *key)
     // Getting all the users
     uint8_t count = 0;
     int size = 0;
-    uint8_t *users[MAX_USER_PASS];
-    list_user_admin(users, &count, &size);
-    if (users == NULL)
+    list_user_admin(ATTACHMENT(key)->datagram.user_list.users, &count, &size);
+    if (ATTACHMENT(key)->datagram.user_list.users == NULL)
     {
         // Setting general error
         ATTACHMENT(key)->error = SCTP_ERROR_GENERAL_ERROR;
@@ -605,7 +604,6 @@ static unsigned handle_list_users(struct selector_key *key)
     }
 
     // Adding the list and the count to the requets data
-    ATTACHMENT(key)->datagram.user_list.users = users;
     ATTACHMENT(key)->datagram.user_list.user_count = count;
     ATTACHMENT(key)->datagram.user_list.users_len = size;
 
