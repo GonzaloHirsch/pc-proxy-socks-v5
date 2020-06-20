@@ -134,6 +134,7 @@ copy_read(struct selector_key *key)
                             extract_http_auth(&http_p);
                         }
                         http_message_parser_init(&http_p);
+                        errored=0;
                     }
 
                 }

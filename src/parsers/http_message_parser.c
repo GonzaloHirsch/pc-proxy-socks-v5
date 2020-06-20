@@ -59,8 +59,9 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
                 p->state = HTTP_V2;
                 p->bytes_to_read = 1;
             }
-            else 
+            else{
                 p->state = HTTP_ERR_INV_VERSION;
+            }
             break;
         case HTTP_V2:
             if (p->bytes_to_read > 0 && b >= '0' && b <= '9') {
@@ -75,8 +76,13 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
                 p->state = HTTP_STATUS_CODE;
                 p->bytes_to_read = 3;
             }
-            else 
+            else if(b == SLASH_B){
+                *p->cursor = '\0';
+                p->state = HTTP_V2_I;
+            }
+            else{
                 p->state = HTTP_ERR_INV_VERSION;
+            }
             break;
         case HTTP_STATUS_CODE:
             if (p->bytes_to_read && b >= '0' && b <= '9') {
@@ -116,6 +122,16 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
                *p->cursor++ = SLASH_B; 
                *p -> cursor = b;
                p ->cursor ++;
+            }
+            break;
+
+        case HTTP_V2_I:
+            if(b == CLRF){
+                p->state = HTTP_I1;
+                p->cursor = p->buff;
+            }
+            else{
+                p->state = HTTP_ERR_INV_VERSION;
             }
             break;
             
