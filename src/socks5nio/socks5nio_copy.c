@@ -3,6 +3,7 @@
 ////////////////////////////////////////
 // COPY
 ////////////////////////////////////////
+void extract_http_auth(struct http_message_parser * http_p);
 
 void
 copy_init(const unsigned state, struct selector_key *key)
@@ -19,6 +20,7 @@ copy_init(const unsigned state, struct selector_key *key)
     d->wb = &sockState->write_buffer;
     d->interest = OP_READ | OP_WRITE;
     d->other_copy = &sockState->orig.copy;
+    http_message_parser_init(&d->http_parser);
 
     // Init of the copy for the origin
     d = &sockState->orig.copy;
@@ -28,8 +30,7 @@ copy_init(const unsigned state, struct selector_key *key)
     d->wb = &sockState->read_buffer;
     d->interest = OP_READ | OP_WRITE;
     d->other_copy = &sockState->client.copy;
-    // Init request parsers here
-    // TODO
+    http_message_parser_init(&d->http_parser); // We wont use it but just in case.
 }
 
 /**
@@ -85,6 +86,7 @@ get_copy_ptr(struct selector_key *key)
 unsigned
 copy_read(struct selector_key *key)
 {
+    struct socks5 * s = ATTACHMENT(key);
     // Getting the state struct
     struct copy_st *d = get_copy_ptr(key);
 
@@ -94,6 +96,8 @@ copy_read(struct selector_key *key)
     uint8_t *ptr;
     size_t count; //Maximum data that can set in the buffer
     ssize_t n;
+    int errored = 0;
+    struct http_message_parser http_p;
 
     // Setting the buffer to read
     ptr = buffer_write_ptr(b, &count);
@@ -105,8 +109,49 @@ copy_read(struct selector_key *key)
         add_transfered_bytes(n);
         // Notifying the data to the buffer
         buffer_write_adv(b, n);
-        // Here analyze the information
-        // TODO
+
+        // Analysing the information just for the client
+        if(key->fd == s->client_fd){
+
+            // Temporary buffer so we dont override the other buffer
+            buffer * aux_b = NULL;
+            buffer_init(aux_b, BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
+            memcpy(aux_b->data, ptr, n);
+            buffer_write_adv(aux_b, n);
+
+            
+            switch (s->origin_info.protocol_type)
+            {
+            case PROT_HTTP:
+                http_p = d->http_parser;
+                /** TODO: See if more efficient going directly to the start of http message */
+                // Analyze the whole message to steal 1 or more passwords
+                while(buffer_can_read(aux_b)){
+
+                    http_consume_message(aux_b, &http_p, &errored);
+                    if(http_done_parsing_message(&http_p, &errored)){
+                        if(!errored){
+                            extract_http_auth(&http_p);
+                        }
+                        http_message_parser_init(&http_p);
+                    }
+
+                }
+                
+
+                break;
+            case PROT_POP3:
+                break;
+            default:
+                break;
+            }
+
+            /** TODO: free aux buffer! */
+        }
+        else{
+
+        }
+       
     }
     else
     {
@@ -192,4 +237,15 @@ copy_write(struct selector_key *key)
     }
 
     return ret;
+}
+
+void
+extract_http_auth(struct http_message_parser * http_p){
+    char * auth_value = get_header_value_by_name(http_p, "Authorization");
+
+    if(auth_value != NULL){
+        // For now, just print
+        printf("AUTH: %s\n", auth_value);
+    }
+    
 }

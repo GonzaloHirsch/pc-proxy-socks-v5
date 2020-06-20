@@ -210,9 +210,14 @@ typedef enum ConnectionState {
 typedef enum ResolveResponseState {
     RES_RESP_IPV4,
     RES_RESP_IPV6,
-
     RES_RESP_DONE,
 }ResolveResponseState;
+
+typedef enum ProtocolType{
+    PROT_UNIDENTIFIED,
+    PROT_POP3,
+    PROT_HTTP
+}ProtocolType;
 
 /** Used by the HELLO_READ and HELLO_WRITE states */
 typedef struct hello_st
@@ -274,6 +279,11 @@ typedef struct copy_st
     fd_interest interest;
     /** Pointer to the structure of the opposing copy state*/
     struct copy_st * other_copy;
+
+    /** Parser to use if sniffing http protocol */
+    struct http_message_parser http_parser;
+
+
 } copy_st;
 
 typedef enum connecting_substate {
@@ -310,6 +320,8 @@ typedef struct socks5_origin_info
 
     /** Port info */
     uint8_t port[PORT_SIZE];
+
+    uint8_t protocol_type;
     
     /** Origin info in case we need to relve */
     uint8_t * resolve_addr;

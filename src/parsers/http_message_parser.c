@@ -310,6 +310,15 @@ int get_numeric_header_value(http_message_parser p, const char * header_name) {
     return -1;
 }
 
+char * get_header_value_by_name(http_message_parser p, const char * header_name) {
+    for (int i = 0; i < p->headers_num; i++) {
+        if (i_strcmp(p->headers[i]->type, header_name) == 0) {
+            return p->headers[i]->value;
+        } 
+    }
+    return NULL;
+}
+
 http_header ** get_headers(http_message_parser p){
     return p->headers;
 }
