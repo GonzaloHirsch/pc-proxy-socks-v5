@@ -282,6 +282,8 @@ typedef struct copy_st
 
     /** Parser to use if sniffing http protocol */
     struct http_message_parser http_parser;
+    /** Auxiliary buffer */
+    buffer aux_b;
 
 
 } copy_st;

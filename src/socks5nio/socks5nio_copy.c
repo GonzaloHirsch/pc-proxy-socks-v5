@@ -20,7 +20,10 @@ copy_init(const unsigned state, struct selector_key *key)
     d->wb = &sockState->write_buffer;
     d->interest = OP_READ | OP_WRITE;
     d->other_copy = &sockState->orig.copy;
+    // Init parser and buffer, just for the client fd
     http_message_parser_init(&d->http_parser);
+    buffer_init(&d->aux_b, BUFFERSIZE+1, malloc(BUFFERSIZE+1));
+
 
     // Init of the copy for the origin
     d = &sockState->orig.copy;
@@ -38,6 +41,7 @@ copy_close(const unsigned state, struct selector_key *key)
     struct socks5 *s = ATTACHMENT(key);
 
     free_http_message_parser(&s->client.copy.http_parser);
+    free(s->client.copy.aux_b.data);
     /** TODO: Free remaining stuff */
 }
 
@@ -107,7 +111,7 @@ copy_read(struct selector_key *key)
     size_t count; //Maximum data that can set in the buffer
     ssize_t n;
     int errored = 0;
-    struct http_message_parser http_p;
+    buffer * aux_b;
 
     // Setting the buffer to read
     ptr = buffer_write_ptr(b, &count);
@@ -124,25 +128,23 @@ copy_read(struct selector_key *key)
         if(key->fd == s->client_fd){
 
             // Temporary buffer so we dont override the other buffer
-            buffer aux_b;
-            buffer_init(&aux_b, BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
-            memcpy(aux_b.data, ptr, n);
-            buffer_write_adv(&aux_b, n);
-
+            aux_b = &d->aux_b;
+            buffer_reset(aux_b);
+            memcpy(aux_b->data, ptr, n);
+            buffer_write_adv(aux_b, n);
             
             switch (s->origin_info.protocol_type)
             {
             case PROT_HTTP:
-                http_p = d->http_parser;
                 // Analyze the whole message to steal 1 or more passwords
-                while(buffer_can_read(&aux_b)){
+                while(buffer_can_read(aux_b)){
 
-                    http_consume_message(&aux_b, &http_p, &errored);
-                    if(http_done_parsing_message(&http_p, &errored)){
+                    http_consume_message(aux_b, &d->http_parser, &errored);
+                    if(http_done_parsing_message(&d->http_parser, &errored)){
                         if(!errored){
-                            extract_http_auth(&http_p);
+                            extract_http_auth(&d->http_parser);
                         }
-                        http_message_parser_init(&http_p);
+                        http_message_parser_init(&d->http_parser);
                         errored=0;
                     }
 
@@ -155,9 +157,6 @@ copy_read(struct selector_key *key)
             default:
                 break;
             }
-
-            //Freeing aux buffer.
-            free(aux_b.data);
             
         }
         else{
