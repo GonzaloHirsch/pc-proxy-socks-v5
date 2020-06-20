@@ -560,7 +560,7 @@ static unsigned handle_login_request(struct selector_key *key)
             if (auth_valid)
             {
                 // Setting the username in the sctp object
-                d->username = malloc(uid_l * sizeof(uint8_t));
+                memset(d->username, 0, 255);
                 memcpy(d->username, uid, uid_l);
                 d->is_logged = true;
                 ret = SCTP_RESPONSE;

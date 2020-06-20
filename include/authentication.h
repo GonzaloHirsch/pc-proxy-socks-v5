@@ -25,6 +25,7 @@ typedef struct user_pass {
 
 int create_up_table();
 int create_up_admin_table();
+void free_user_list();
 bool validate_up(uint8_t * uid, uint8_t * pw, uint8_t level);
 bool validate_user_admin(uint8_t * uid, uint8_t * pw);
 bool validate_user_proxy(uint8_t * uid, uint8_t * pw);

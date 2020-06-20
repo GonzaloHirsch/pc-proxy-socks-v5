@@ -100,6 +100,14 @@ bool validate_user_proxy(uint8_t *uid, uint8_t *pw)
     return validate_up(uid, pw, USER_AUTH_LEVEL);
 }
 
+void free_user_list(){
+    int i;
+    for (i = 0; i < user_pass_c; i++){
+        free(user_pass_table[i].password);
+        free(user_pass_table[i].user);
+    }
+}
+
 void list_user_admin(uint8_t **users, uint8_t *count, int *size)
 {
     uint8_t *uid_stored;

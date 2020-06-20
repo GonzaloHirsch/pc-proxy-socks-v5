@@ -165,7 +165,7 @@ typedef struct sctp
     unsigned references;
 
     /** Username of the active user performing changes */
-    uint8_t *username;
+    uint8_t username[255];
 
     /** Next item in the pool */
     struct sctp *next;
