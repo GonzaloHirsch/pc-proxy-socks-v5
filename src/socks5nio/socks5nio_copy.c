@@ -114,7 +114,7 @@ copy_read(struct selector_key *key)
         if(key->fd == s->client_fd){
 
             // Temporary buffer so we dont override the other buffer
-            buffer * aux_b = NULL;
+            buffer * aux_b = malloc(sizeof(buffer));
             buffer_init(aux_b, BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
             memcpy(aux_b->data, ptr, n);
             buffer_write_adv(aux_b, n);
