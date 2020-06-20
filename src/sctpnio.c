@@ -265,6 +265,7 @@ sctp_write(struct selector_key *key)
         {
             d->datagram.configs_list.configs_data[2] = d->error;
             n = sctp_sendmsg(key->fd, (void *)d->datagram.configs_list.configs_data, d->datagram.configs_list.configs_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            free(d->datagram.configs_list.configs_data);
             break;
         }
         case CMD_EDIT:
@@ -285,6 +286,7 @@ sctp_write(struct selector_key *key)
         {
             d->datagram.metrics_list.metrics_data[2] = d->error;
             n = sctp_sendmsg(key->fd, (void *)d->datagram.metrics_list.metrics_data, d->datagram.metrics_list.metrics_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            free(d->datagram.metrics_list.metrics_data);
             break;
         }
         default:
@@ -565,11 +567,13 @@ static unsigned handle_login_request(struct selector_key *key)
                 memset(d->username, 0, 255);
                 memcpy(d->username, uid, uid_l);
                 d->is_logged = true;
+                d->error = SCTP_ERROR_NO_ERROR;
                 ret = SCTP_RESPONSE;
             }
             else
             {
                 // Setting error for invalid data sent
+                d->is_logged = false;
                 d->error = SCTP_ERROR_INVALID_DATA;
                 ret = SCTP_ERROR;
             }
@@ -647,6 +651,8 @@ static unsigned handle_user_create(struct selector_key *key, buffer *b)
             {
                 d->error = SCTP_ERROR_INVALID_DATA;
                 ret = SCTP_ERROR;
+            } else {
+                d->error = SCTP_ERROR_NO_ERROR;
             }
         }
     }
@@ -719,6 +725,7 @@ static unsigned handle_config_edit(struct selector_key *key, buffer *b)
     if (buffer_can_read(b))
     {
         config_type = *b->read;
+        d->error = SCTP_ERROR_NO_ERROR;
     }
     else
     {
@@ -775,6 +782,8 @@ static unsigned handle_config_edit(struct selector_key *key, buffer *b)
     {
         d->error = SCTP_ERROR_INVALID_VALUE;
         return SCTP_ERROR;
+    } else {
+        d->error = SCTP_ERROR_NO_ERROR;
     }
 
     return SCTP_RESPONSE;
