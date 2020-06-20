@@ -835,7 +835,7 @@ resolve_read(struct selector_key *key)
         //ptr[n++] = '\n';
 
         //it removes  \r from headers so that parser is consistent
-        parse_to_crlf(ptr, &n); 
+        //parse_to_crlf(ptr, &n); 
         // Advancing the buffer
         buffer_write_adv(b, n);
 
