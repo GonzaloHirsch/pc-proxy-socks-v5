@@ -135,11 +135,15 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
         
         case HTTP_I1_I:
             if(b == CLRF){
-                // TODO check content-length
                 p->body_len = get_numeric_header_value(p, "content-length");
-                p->body = malloc(p->body_len);
-                p->cursor = p->body;
-                p->state = HTTP_B;  
+                if(p->body_len != -1){
+                    p->body = malloc(p->body_len);
+                    p->cursor = p->body;
+                    p->state = HTTP_B;  
+                }
+                else{
+                    p->state = HTTP_F;
+                }
             }
             else
             {
@@ -198,14 +202,7 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
             }
             break;
         case HTTP_B:
-            //if (b == CLRF) {
-            //    p->state = HTTP_I2;
-            //}
-            if(p ->body_len < -1){
-                *p->cursor = b;
-                p->cursor++;
-            }
-            else if (p->cursor - p->body < p->body_len) {
+            if (p->cursor - p->body < p->body_len) {
                 *p->cursor = b;
                 p->cursor++;
                 if(p->cursor - p->body == p->body_len){
