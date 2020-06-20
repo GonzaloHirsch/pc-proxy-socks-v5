@@ -119,8 +119,6 @@ resolve_close(const unsigned state, struct selector_key *key)
     // Unregister the doh_fd.
     selector_unregister_fd(key->s, s->orig.resolve.doh_fd);
 
-    // Closing the descriptor used by the socket
-    // close(s->orig.resolve.doh_fd);
 }
 
 // static unsigned

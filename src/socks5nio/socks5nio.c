@@ -283,8 +283,7 @@ socksv5_close(struct selector_key *key)
     // Removing the current connection from the metrics
     remove_current_connections(1);
 
-    // Calling the destroy_ method because the object pool is not implemented
-    socks5_destroy_(ATTACHMENT(key));
+    close(key->fd);
 }
 
 void
@@ -303,8 +302,11 @@ socksv5_done(struct selector_key *key)
                 printf("Socks is done for %d\n", fds[i]);
                 abort();
             }
-            close(fds[i]);
+            //close(fds[i]);
         }
     }
+
+    // Calling the destroy_ method because the object pool is not implemented
+    socks5_destroy_(ATTACHMENT(key));
 }
 
