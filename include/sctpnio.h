@@ -37,7 +37,8 @@ typedef enum SCTP_STATES
 {
     SCTP_REQUEST,
     SCTP_RESPONSE,
-    SCTP_ERROR
+    SCTP_ERROR,
+    SCTP_FATAL_ERROR
 } SCTP_STATES;
 
 /** Different errors the server can return */
