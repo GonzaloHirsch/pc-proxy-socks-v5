@@ -1,81 +1,109 @@
-#include "../include/logging.h"
-#include <time.h>
+#include "logging.h"
 
-static FILE * requests_log_ptr;
-static FILE * credentials_log_ptr;
+#define ACCESS_CHAR 'A'
+#define PASSWORD_CHAR 'P'
 
-void init_requests_log(){
-    // Opening the file
-    requests_log_ptr = fopen(REQUESTS_FILE, "a");
-    if (requests_log_ptr == NULL){
-        // HANDLE ERROR
-        printf("Error initializing the requests file");
+/*
+    Request logging must contain:
+     - Time
+     - Username
+     - Register Type -> A
+     - User IP
+     - User PORT
+     - Destination IP/NAME
+     - Destination PORT
+     - Socks Status
+*/
+void log_request(const int status, const uint8_t *username, const struct sockaddr *clientaddr, const struct sockaddr *originaddr, const uint8_t *fqdn)
+{
+    // Generating the time buffer
+    char time_buff[32] = {0};
+    unsigned n = N(time_buff);
+    time_t now = 0;
+    time(&now);
+    strftime(time_buff, n, "%FT%TZ", gmtime(&now)); // tendriamos que usar gmtime_r pero no está disponible en C99
+
+    // Generating the client buffer
+    char client_buff[SOCKADDR_TO_HUMAN_MIN] = {0};
+    sockaddr_to_human(client_buff, N(client_buff), clientaddr);
+
+    // It means I have a domain
+    if (fqdn != NULL)
+    {
+        // Extracting the port
+        in_port_t port = 0;
+        switch (originaddr->sa_family)
+        {
+        case AF_INET:
+            port = ((struct sockaddr_in *)originaddr)->sin_port;
+            break;
+        case AF_INET6:
+            port = ((struct sockaddr_in6 *)originaddr)->sin6_port;
+            break;
+        }
+        fprintf(stdout, "%s\t%s\t%c\t%s\t%s\t%d\t%d\n", time_buff, username, ACCESS_CHAR, client_buff, fqdn, ntohs(port), status);
+    }
+    else
+    {
+        // Generating the origin buffer
+        char origin_buff[SOCKADDR_TO_HUMAN_MIN] = {0};
+        sockaddr_to_human(origin_buff, N(origin_buff), originaddr);
+        fprintf(stdout, "%s\t%s\t%c\t%s\t%s\t%d\n", time_buff, username, ACCESS_CHAR, client_buff, origin_buff, status);
     }
 }
 
-void init_credentials_log(){
-    // Opening the file
-    credentials_log_ptr = fopen(CREDENTIALS_FILE, "a");
-    if (credentials_log_ptr == NULL){
-        // HANDLE ERROR
-        printf("Error initializing the credentials file");
+/*
+    Request loggin must contain:
+     - Time
+     - Username
+     - Register Type -> P
+     - Protocol -> HTTP/POP3
+     - Destination IP/NAME
+     - Destination PORT
+     - Username
+     - Password
+*/
+void log_password(const uint8_t *owner, const int protocol, const struct sockaddr *originaddr, const uint8_t *fqdn, const uint8_t *u, const uint8_t *p)
+{
+    // Generating the time buffer
+    char time_buff[32] = {0};
+    unsigned n = N(time_buff);
+    time_t now = 0;
+    time(&now);
+    strftime(time_buff, n, "%FT%TZ", gmtime(&now)); // tendriamos que usar gmtime_r pero no está disponible en C99
+
+    char *proto = "UNDEFINED";
+    switch (protocol)
+    {
+    case 1:
+        break;
+    case 2:
+        break;
+    default:
+        break;
     }
-}
 
-void log_request(uint8_t * client_address, uint8_t * client_port, uint8_t * origin_address, uint8_t * origin_port){
-    if (requests_log_ptr != NULL){
-        // Getting the time of now
-        time_t now = 0;
-        time(&now);
-
-        // Generaing a human readable time
-        uint8_t time_buff[100];
-        strftime((char *) time_buff, N(time_buff), "%x %X", localtime(&now));
-
-        // Generating the string to output on the log line
-        size_t size = strlen(" - : -> :\n") + strlen((const char *)time_buff) + strlen((const char *)client_address) + strlen((const char *)client_port) + strlen((const char *)origin_address) + strlen((const char *)origin_port);
-        char * log = malloc(size * sizeof(char));
-        sprintf(log, "%s - %s:%s -> %s:%s\n", time_buff, client_address, client_port, origin_address, origin_port);
-
-        // Writing to file
-        fprintf(requests_log_ptr, "%s", log);
-
-        // Freeing the pointer to the
-        free(log);
+    // It means I have a domain
+    if (fqdn != NULL)
+    {
+        // Extracting the port
+        in_port_t port = 0;
+        switch (originaddr->sa_family)
+        {
+        case AF_INET:
+            port = ((struct sockaddr_in *)originaddr)->sin_port;
+            break;
+        case AF_INET6:
+            port = ((struct sockaddr_in6 *)originaddr)->sin6_port;
+            break;
+        }
+        fprintf(stdout, "%s\t%s\t%c\t%s\t%s\t%d\t%s\t%s\n", time_buff, owner, PASSWORD_CHAR, proto, fqdn, ntohs(port), u, p);
     }
-}
-
-void log_credential(uint8_t * user, uint8_t * pass){
-    if (credentials_log_ptr != NULL){
-        // Getting the time of now
-        time_t now = 0;
-        time(&now);
-
-        // Generaing a human readable time
-        uint8_t time_buff[100];
-        strftime((char *) time_buff, N(time_buff), "%x %X", localtime(&now));
-
-        // Generating the string to output on the log line
-        size_t size = strlen(" - :\n") + strlen((const char *) time_buff) + strlen((const char *) user) + strlen((const char *) pass);
-        char * log = malloc(size * sizeof(char));
-        sprintf(log, "%s - %s:%s\n", time_buff, user, pass);
-
-        // Writing to file
-        fprintf(credentials_log_ptr, "%s", log);
-
-        // Freeing the pointer to the
-        free(log);
-    }
-}
-
-void close_requests_log(){
-    if (requests_log_ptr != NULL){
-        fclose(requests_log_ptr);
-    }
-}
-
-void close_credentials_log(){
-    if (credentials_log_ptr != NULL){
-        fclose(credentials_log_ptr);
+    else
+    {
+        // Generating the origin buffer
+        char origin_buff[SOCKADDR_TO_HUMAN_MIN] = {0};
+        sockaddr_to_human(origin_buff, N(origin_buff), originaddr);
+        fprintf(stdout, "%s\t%s\t%c\t%s\t%s\t%s\t%s\n", time_buff, owner, PASSWORD_CHAR, proto, origin_buff, u, p);
     }
 }

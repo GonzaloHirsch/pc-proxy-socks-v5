@@ -46,6 +46,10 @@ static int connecting_send_conn_response (struct selector_key * key) {
     send(s->client_fd, response, response_size, 0);
     free(response);
     // TODO react to error
+
+    // Logging the request
+    log_request(0, s->username, (const struct sockaddr *)&s->client_addr, (const struct sockaddr *)&s->origin_info.origin_addr, s->origin_info.resolve_addr);
+    
     selector_set_interest(key->s, s->origin_fd, OP_READ | OP_WRITE);
     selector_set_interest(key->s, s->client_fd, OP_READ | OP_WRITE);
     return COPY;

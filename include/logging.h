@@ -7,24 +7,13 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <stdint.h>
+#include <time.h>
+#include <netinet/in.h>
+#include "netutils.h"
 
+#define N(x) (sizeof(x) / sizeof((x)[0]))
 
-#define N(x) (sizeof(x)/sizeof((x)[0]))
-
-// To get the time in a human readable form https://www.tutorialspoint.com/c_standard_library/c_function_strftime.htm
-// To write to a file https://www.programiz.com/c-programming/c-file-input-output
-
-// #ifndef for tests to avoid duplicate definition of constants
-const char * REQUESTS_FILE = "./logs/requests.log";
-const char * CREDENTIALS_FILE = "./logs/credentials.log";
-
-void init_requests_log();
-void init_credentials_log();
-
-void log_request(uint8_t * client_address, uint8_t * client_port, uint8_t * origin_address, uint8_t * origin_port);
-void log_credential(uint8_t * user, uint8_t * pass);
-
-void close_requests_log();
-void close_credentials_log();
+void log_request(const int status, const uint8_t *username, const struct sockaddr *clientaddr, const struct sockaddr *originaddr, const uint8_t *fqdn);
+void log_password(const uint8_t *owner, const int protocol, const struct sockaddr *originaddr, const uint8_t *fqdn, const uint8_t *u, const uint8_t *p);
 
 #endif
