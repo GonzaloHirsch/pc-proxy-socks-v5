@@ -159,6 +159,11 @@ void socksv5_passive_accept(struct selector_key *key)
     {
         goto fail;
     }
+
+    // If everything is ok, add the metrics for the current/historic connections
+    add_current_connections(1);
+    add_historic_connections(1);
+
     return;
 fail:
     if (client != -1)
@@ -211,6 +216,8 @@ hello_read(struct selector_key *key)
     n = recv(key->fd, ptr, count, 0);
     if (n > 0)
     {
+        // Metrics
+        add_transfered_bytes(n);
         buffer_write_adv(d->rb, n);
         const enum hello_state st = hello_consume(d->rb, &d->parser, &error);
         if (hello_is_done(st, &error) && !error)
@@ -309,6 +316,9 @@ hello_write(struct selector_key *key)
     n = send(key->fd, data, 2, 0);
     if (n > 0)
     {
+        // Metrics
+        add_transfered_bytes(n);
+
         // Setting the fd to read.
         if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_READ))
         {
@@ -372,6 +382,9 @@ userpass_read(struct selector_key *key)
     n = recv(key->fd, ptr, count, 0);
     if (n > 0)
     {
+        // Metrics
+        add_transfered_bytes(n);
+
         buffer_write_adv(up_s->rb, n);
         // Parse the inofmration
         const enum up_req_state st = up_consume_message(up_s->rb, &up_s->parser, &error);
@@ -462,6 +475,9 @@ userpass_write(struct selector_key *key)
     n = send(key->fd, data, 2, 0);
     if (n > 0)
     {
+        // Metrics
+        add_transfered_bytes(n);
+
         // Setting the fd to read.
         if (SELECTOR_SUCCESS != selector_set_interest_key(key, OP_READ))
         {
@@ -505,7 +521,9 @@ send_reply_failure(struct selector_key * key)
     reply[5] = 0x00;
     reply[6] = 0x00;
 
-    send(s->client_fd, reply , reply_s, MSG_DONTWAIT);
+    ssize_t n = send(s->client_fd, reply , reply_s, MSG_DONTWAIT);
+    // Metrics
+    add_transfered_bytes(n);
     free(reply);
 }
 
@@ -597,6 +615,8 @@ request_read(struct selector_key *key)
     n = recv(key->fd, ptr, count, 0);
     if (n > 0)
     {
+        // Metrics
+        add_transfered_bytes(n);
         // Notifying the data to the buffer
         buffer_write_adv(b, n);
         // Consuming the message
@@ -863,6 +883,9 @@ resolve_read(struct selector_key *key)
     
     n = recv(r_s->doh_fd, ptr, count, MSG_DONTWAIT);
     if(n > 0){
+        // Metrics
+        add_transfered_bytes(n);
+
         // Advancing the buffer
         buffer_write_adv(b, n);
 
@@ -1010,6 +1033,9 @@ resolve_write(struct selector_key *key)
         n = send(r_s->doh_fd, http_request,final_buffer_size, MSG_DONTWAIT);
         m = send(r_s->doh_fd, http_request2,final_buffer_size2, MSG_DONTWAIT);
         if(n > 0 && m > 0){
+            // Metrics
+            add_transfered_bytes(n);
+            add_transfered_bytes(m);
             // Establish the resolve response state.
             r_s->resp_state = RES_RESP_IPV4;
             s->origin_info.ipv4_c = s->origin_info.ipv6_c = 0;
@@ -1495,6 +1521,8 @@ copy_read(struct selector_key *key)
     n = recv(key->fd, ptr, count, 0);
     if (n > 0)
     {
+        // Metrics
+        add_transfered_bytes(n);
         // Notifying the data to the buffer
         buffer_write_adv(b, n);
         // Here analyze the information
@@ -1550,6 +1578,8 @@ copy_write(struct selector_key *key)
 
     if (n != -1)
     {
+        // Metrics
+        add_transfered_bytes(n);
         // Notifying the data to the buffer
         buffer_read_adv(b, n);
         // Here analyze the information
@@ -1691,6 +1721,9 @@ socksv5_block(struct selector_key *key)
 static void
 socksv5_close(struct selector_key *key)
 {
+    // Removing the current connection from the metrics
+    remove_current_connections(1);
+
     socks5_destroy(ATTACHMENT(key));
 }
 

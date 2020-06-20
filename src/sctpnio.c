@@ -18,6 +18,7 @@ static unsigned handle_login_request(struct selector_key *key);
 static void sctp_read(struct selector_key *key);
 static void sctp_write(struct selector_key *key);
 static void sctp_close(struct selector_key *key);
+static void sctp_done(struct selector_key *key);
 
 // TYPE + CMD handlers
 static unsigned handle_list_users(struct selector_key *key);
@@ -32,7 +33,7 @@ static uint8_t *prepare_list_users(uint8_t **users, int count, int len);
 // Helpers
 static bool get_8_bit_integer_from_buffer(buffer *b, uint8_t *n);
 static bool get_16_bit_integer_from_buffer(buffer *b, uint16_t *n);
-static void free_list_users(uint8_t ** users, int count);
+static void free_list_users(uint8_t **users, int count);
 
 // Selector event handler
 static const struct fd_handler sctp_handler = {
@@ -199,14 +200,17 @@ fail:
 static void
 sctp_read(struct selector_key *key)
 {
-    // Obtain the sctp struct from the selector key
-    struct sctp *d = ATTACHMENT(key);
-
     // Result, next state to move in the process
     unsigned ret = handle_request(key);
 
-    // Saving the state
-    d->state = ret;
+    if (ret == SCTP_FATAL_ERROR)
+    {
+        sctp_done(key);
+    }
+    else
+    {
+        ATTACHMENT(key)->state = ret;
+    }
 }
 
 static void
@@ -265,6 +269,7 @@ sctp_write(struct selector_key *key)
         {
             d->datagram.configs_list.configs_data[2] = d->error;
             n = sctp_sendmsg(key->fd, (void *)d->datagram.configs_list.configs_data, d->datagram.configs_list.configs_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            free(d->datagram.configs_list.configs_data);
             break;
         }
         case CMD_EDIT:
@@ -285,6 +290,7 @@ sctp_write(struct selector_key *key)
         {
             d->datagram.metrics_list.metrics_data[2] = d->error;
             n = sctp_sendmsg(key->fd, (void *)d->datagram.metrics_list.metrics_data, d->datagram.metrics_list.metrics_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+            free(d->datagram.metrics_list.metrics_data);
             break;
         }
         default:
@@ -317,14 +323,12 @@ sctp_write(struct selector_key *key)
         // Setting the fd to read.
         if (SELECTOR_SUCCESS != selector_set_interest(key->s, key->fd, OP_READ))
         {
-            // Error setting interest, unregister
-            selector_unregister_fd(key->s, d->client_fd);
+            sctp_done(key);
         }
     }
     else
     {
-        // Error sending message, unregister
-        selector_unregister_fd(key->s, d->client_fd);
+        sctp_done(key);
     }
 }
 
@@ -334,7 +338,21 @@ sctp_close(struct selector_key *key)
     // Removing the current connection from the metrics
     remove_current_connections(1);
 
+    // Destroying the struct, calling the destroy directly because the pool is not implemented
     sctp_destroy_(ATTACHMENT(key));
+}
+
+static void
+sctp_done(struct selector_key *key)
+{
+    int client_fd = ATTACHMENT(key)->client_fd;
+    selector_status ss = selector_unregister_fd(key->s, ATTACHMENT(key)->client_fd);
+    if (ss != SELECTOR_SUCCESS)
+    {
+        printf("SCTP is done for %d\n", client_fd);
+        abort();
+    }
+    close(client_fd);
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -398,8 +416,7 @@ static unsigned handle_request(struct selector_key *key)
     ssize_t length = sctp_recvmsg(d->client_fd, ptr, count, &from, 0, &sender_info, &flags);
     if (length <= 0)
     {
-        selector_unregister_fd(key->s, d->client_fd);
-        return SCTP_ERROR;
+        return SCTP_FATAL_ERROR;
     }
 
     // Add bytes to metrics
@@ -516,8 +533,7 @@ static unsigned handle_normal_request(struct selector_key *key)
 
     if (SELECTOR_SUCCESS != selector_set_interest(key->s, key->fd, OP_WRITE))
     {
-        selector_unregister_fd(key->s, d->client_fd);
-        ret = SCTP_ERROR;
+        ret = SCTP_FATAL_ERROR;
     }
 
     return ret;
@@ -547,8 +563,7 @@ static unsigned handle_login_request(struct selector_key *key)
         selector_status ss = selector_set_interest(key->s, key->fd, OP_WRITE);
         if (ss != SELECTOR_SUCCESS)
         {
-            selector_unregister_fd(key->s, d->client_fd);
-            ret = SCTP_ERROR;
+            ret = SCTP_FATAL_ERROR;
         }
         else
         {
@@ -565,11 +580,13 @@ static unsigned handle_login_request(struct selector_key *key)
                 memset(d->username, 0, 255);
                 memcpy(d->username, uid, uid_l);
                 d->is_logged = true;
+                d->error = SCTP_ERROR_NO_ERROR;
                 ret = SCTP_RESPONSE;
             }
             else
             {
                 // Setting error for invalid data sent
+                d->is_logged = false;
                 d->error = SCTP_ERROR_INVALID_DATA;
                 ret = SCTP_ERROR;
             }
@@ -591,9 +608,8 @@ static unsigned handle_list_users(struct selector_key *key)
     // Getting all the users
     uint8_t count = 0;
     int size = 0;
-    uint8_t *users[MAX_USER_PASS];
-    list_user_admin(users, &count, &size);
-    if (users == NULL)
+    list_user_admin(ATTACHMENT(key)->datagram.user_list.users, &count, &size);
+    if (ATTACHMENT(key)->datagram.user_list.users == NULL)
     {
         // Setting general error
         ATTACHMENT(key)->error = SCTP_ERROR_GENERAL_ERROR;
@@ -601,7 +617,6 @@ static unsigned handle_list_users(struct selector_key *key)
     }
 
     // Adding the list and the count to the requets data
-    ATTACHMENT(key)->datagram.user_list.users = users;
     ATTACHMENT(key)->datagram.user_list.user_count = count;
     ATTACHMENT(key)->datagram.user_list.users_len = size;
 
@@ -628,8 +643,7 @@ static unsigned handle_user_create(struct selector_key *key, buffer *b)
         selector_status ss = selector_set_interest(key->s, key->fd, OP_WRITE);
         if (ss != SELECTOR_SUCCESS)
         {
-            selector_unregister_fd(key->s, d->client_fd);
-            ret = SCTP_ERROR;
+            ret = SCTP_FATAL_ERROR;
         }
         else
         {
@@ -647,6 +661,10 @@ static unsigned handle_user_create(struct selector_key *key, buffer *b)
             {
                 d->error = SCTP_ERROR_INVALID_DATA;
                 ret = SCTP_ERROR;
+            }
+            else
+            {
+                d->error = SCTP_ERROR_NO_ERROR;
             }
         }
     }
@@ -719,6 +737,7 @@ static unsigned handle_config_edit(struct selector_key *key, buffer *b)
     if (buffer_can_read(b))
     {
         config_type = *b->read;
+        d->error = SCTP_ERROR_NO_ERROR;
     }
     else
     {
@@ -776,6 +795,10 @@ static unsigned handle_config_edit(struct selector_key *key, buffer *b)
         d->error = SCTP_ERROR_INVALID_VALUE;
         return SCTP_ERROR;
     }
+    else
+    {
+        d->error = SCTP_ERROR_NO_ERROR;
+    }
 
     return SCTP_RESPONSE;
 }
@@ -811,7 +834,8 @@ static uint8_t *prepare_list_users(uint8_t **users, int count, int len)
     return value;
 }
 
-static void free_list_users(uint8_t ** users, int count){
+static void free_list_users(uint8_t **users, int count)
+{
     free_list_user_admin(users, count);
 }
 

@@ -68,5 +68,7 @@ metrics get_metrics(){
 */
 void destroy_metrics()
 {
-    free(m);
+    if (m != NULL){
+        free(m);
+    }
 }
