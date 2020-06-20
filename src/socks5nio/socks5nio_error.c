@@ -19,6 +19,10 @@ send_reply_failure(struct selector_key * key)
     reply[6] = 0x00;
 
     ssize_t n = send(s->client_fd, reply , reply_s, MSG_DONTWAIT);
+
+    // Logging the error in the request
+    log_request(s->reply_type != -1 ? s->reply_type : REPLY_RESP_GENERAL_FAILURE, s->username, (const struct sockaddr *)&s->client_addr, (const struct sockaddr *)&s->origin_info.origin_addr, s->origin_info.resolve_addr);
+
     // Metrics
     add_transfered_bytes(n);
     free(reply);

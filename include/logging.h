@@ -13,6 +13,7 @@
 
 #define N(x) (sizeof(x) / sizeof((x)[0]))
 
-void log_request(const int status, const struct sockaddr *clientaddr, const struct sockaddr *originaddr);
+void log_request(const int status, const uint8_t *username, const struct sockaddr *clientaddr, const struct sockaddr *originaddr, const uint8_t *fqdn);
+void log_password(const uint8_t *owner, const int protocol, const struct sockaddr *originaddr, const uint8_t *fqdn, const uint8_t *u, const uint8_t *p);
 
 #endif

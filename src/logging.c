@@ -1,20 +1,109 @@
 #include "logging.h"
 
-void log_request(const int status, const struct sockaddr *clientaddr, const struct sockaddr *originaddr)
+#define ACCESS_CHAR 'A'
+#define PASSWORD_CHAR 'P'
+
+/*
+    Request logging must contain:
+     - Time
+     - Username
+     - Register Type -> A
+     - User IP
+     - User PORT
+     - Destination IP/NAME
+     - Destination PORT
+     - Socks Status
+*/
+void log_request(const int status, const uint8_t *username, const struct sockaddr *clientaddr, const struct sockaddr *originaddr, const uint8_t *fqdn)
 {
-    char cbuff[SOCKADDR_TO_HUMAN_MIN * 2 + 2 + 32] = {0};
-    unsigned n = N(cbuff);
+    // Generating the time buffer
+    char time_buff[32] = {0};
+    unsigned n = N(time_buff);
     time_t now = 0;
     time(&now);
+    strftime(time_buff, n, "%FT%TZ", gmtime(&now)); // tendriamos que usar gmtime_r pero no está disponible en C99
 
-    // tendriamos que usar gmtime_r pero no está disponible en C99
-    strftime(cbuff, n, "%FT%TZ\t", gmtime(&now));
-    size_t len = strlen(cbuff);
-    sockaddr_to_human(cbuff + len, N(cbuff) - len, clientaddr);
-    strncat(cbuff, "\t", n - 1);
-    cbuff[n - 1] = 0;
-    len = strlen(cbuff);
-    sockaddr_to_human(cbuff + len, N(cbuff) - len, originaddr);
+    // Generating the client buffer
+    char client_buff[SOCKADDR_TO_HUMAN_MIN] = {0};
+    sockaddr_to_human(client_buff, N(client_buff), clientaddr);
 
-    fprintf(stdout, "%s\tstatus=%d\n", cbuff, status);
+    // It means I have a domain
+    if (fqdn != NULL)
+    {
+        // Extracting the port
+        in_port_t port = 0;
+        switch (originaddr->sa_family)
+        {
+        case AF_INET:
+            port = ((struct sockaddr_in *)originaddr)->sin_port;
+            break;
+        case AF_INET6:
+            port = ((struct sockaddr_in6 *)originaddr)->sin6_port;
+            break;
+        }
+        fprintf(stdout, "%s\t%s\t%c\t%s\t%s\t%d\t%d\n", time_buff, username, ACCESS_CHAR, client_buff, fqdn, ntohs(port), status);
+    }
+    else
+    {
+        // Generating the origin buffer
+        char origin_buff[SOCKADDR_TO_HUMAN_MIN] = {0};
+        sockaddr_to_human(origin_buff, N(origin_buff), originaddr);
+        fprintf(stdout, "%s\t%s\t%c\t%s\t%s\t%d\n", time_buff, username, ACCESS_CHAR, client_buff, origin_buff, status);
+    }
+}
+
+/*
+    Request loggin must contain:
+     - Time
+     - Username
+     - Register Type -> P
+     - Protocol -> HTTP/POP3
+     - Destination IP/NAME
+     - Destination PORT
+     - Username
+     - Password
+*/
+void log_password(const uint8_t *owner, const int protocol, const struct sockaddr *originaddr, const uint8_t *fqdn, const uint8_t *u, const uint8_t *p)
+{
+    // Generating the time buffer
+    char time_buff[32] = {0};
+    unsigned n = N(time_buff);
+    time_t now = 0;
+    time(&now);
+    strftime(time_buff, n, "%FT%TZ", gmtime(&now)); // tendriamos que usar gmtime_r pero no está disponible en C99
+
+    char *proto = "UNDEFINED";
+    switch (protocol)
+    {
+    case 1:
+        break;
+    case 2:
+        break;
+    default:
+        break;
+    }
+
+    // It means I have a domain
+    if (fqdn != NULL)
+    {
+        // Extracting the port
+        in_port_t port = 0;
+        switch (originaddr->sa_family)
+        {
+        case AF_INET:
+            port = ((struct sockaddr_in *)originaddr)->sin_port;
+            break;
+        case AF_INET6:
+            port = ((struct sockaddr_in6 *)originaddr)->sin6_port;
+            break;
+        }
+        fprintf(stdout, "%s\t%s\t%c\t%s\t%s\t%d\t%s\t%s\n", time_buff, owner, PASSWORD_CHAR, proto, fqdn, ntohs(port), u, p);
+    }
+    else
+    {
+        // Generating the origin buffer
+        char origin_buff[SOCKADDR_TO_HUMAN_MIN] = {0};
+        sockaddr_to_human(origin_buff, N(origin_buff), originaddr);
+        fprintf(stdout, "%s\t%s\t%c\t%s\t%s\t%s\t%s\n", time_buff, owner, PASSWORD_CHAR, proto, origin_buff, u, p);
+    }
 }

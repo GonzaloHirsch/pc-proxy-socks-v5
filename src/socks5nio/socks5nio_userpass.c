@@ -83,8 +83,9 @@ userpass_process(struct userpass_st *up_s, bool * auth_valid){
     *auth_valid = validate_user_proxy(uid, pw);
     
     if(*auth_valid){            
-        up_s->user = malloc(uid_l);
-        memcpy(up_s, uid, uid_l);
+        up_s->user = malloc(uid_l + 1);
+        memcpy(up_s->user, uid, uid_l);
+        up_s->user[uid_l] = 0x00;
     }           
             
 
