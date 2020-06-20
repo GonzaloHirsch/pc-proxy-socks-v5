@@ -129,8 +129,6 @@ static const struct fd_handler socks5_handler = {
 /** Intenta aceptar la nueva conexión entrante*/
 void socksv5_passive_accept(struct selector_key *key)
 {
-    printf("Inside passive accept\n");
-
     struct sockaddr_storage client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
     struct socks5 *state = NULL;
@@ -865,13 +863,6 @@ resolve_read(struct selector_key *key)
     
     n = recv(r_s->doh_fd, ptr, count, MSG_DONTWAIT);
     if(n > 0){
-
-        //doh responds without terminating the body
-        //ptr[n++] = '\n'; 
-        //ptr[n++] = '\n';
-
-        //it removes  \r from headers so that parser is consistent
-        //parse_to_crlf(ptr, &n); 
         // Advancing the buffer
         buffer_write_adv(b, n);
 
@@ -1122,8 +1113,6 @@ static int connecting_send_conn_response (struct selector_key * key) {
     struct socks5 *s = ATTACHMENT(key);
     struct socks5_origin_info *s5oi = &s->origin_info;
     
-    printf("Writing back to client (fd = %d)\n", s->client_fd);
-    
     int response_size = 6;
     uint8_t *response = malloc(response_size);
     response[0] = 0x05; // VERSION
@@ -1207,7 +1196,6 @@ static int try_connection(int origin_fd, int *connect_ret, connecting_st *d, soc
 
 void connecting_init(const unsigned state, struct selector_key *key)
 {
-    printf("Connecting Init: init\n");
     
     struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
     struct socks5 *s = ATTACHMENT(key);
@@ -1260,10 +1248,10 @@ void connecting_init(const unsigned state, struct selector_key *key)
         }
     }
     if (connect_ret > 0) {
-        printf("Connected to origin (fd = %d)\n", s->origin_fd);
         st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_NOOP, ATTACHMENT(key));
-        if (st == SELECTOR_SUCCESS)
-            printf("Successfully registered origin fd in selector\n");
+        if (st == SELECTOR_SUCCESS){
+            //printf("Successfully registered origin fd in selector\n");
+        }
     }
 
 }
@@ -1277,7 +1265,6 @@ static unsigned try_ips(struct selector_key * key) {
             switch (errno) {
                 // TODO try to remove code repetition
                 case EINPROGRESS:
-                    printf("I'm waiting for a connection for a different IP\n");
                     // selector_status st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
                     // if (st != SELECTOR_SUCCESS){
                     //     printf("Error registering FD to wait for connection\n");
@@ -1302,7 +1289,6 @@ static unsigned try_ips(struct selector_key * key) {
                         d->first_working_ip_index++;
                         return try_ips(key);
                     }
-                    fprintf(stderr, "Could not connect\n");
                     determine_connect_error(errno);
                     s->reply_type = REPLY_RESP_REFUSED_BY_DEST_HOST;
                     return ERROR;
@@ -1342,7 +1328,6 @@ static unsigned connecting_check_origin_connected(struct selector_key * key) {
                     d->first_working_ip_index++;
                     return try_ips(key);
                 }
-                fprintf(stderr, "Could not connect after failure\n");
                 determine_connect_error(errno);
                 s->reply_type = REPLY_RESP_REFUSED_BY_DEST_HOST;
                 return ERROR;
@@ -1351,7 +1336,6 @@ static unsigned connecting_check_origin_connected(struct selector_key * key) {
     else {
         // Connected after EINPROGRESS. All done: set client_fd for reading 
         // and writing again, then send response and go to COPY
-        printf("Finally connected after EINPROGRESS\n");
         selector_set_interest(key->s, s->client_fd, OP_READ | OP_WRITE);
         return connecting_send_conn_response(key);
     }
@@ -1359,7 +1343,6 @@ static unsigned connecting_check_origin_connected(struct selector_key * key) {
 
 // not considered for now
 static unsigned connecting_read(struct selector_key * key) {
-    printf("Reading\n");
     if (key->fd == ATTACHMENT(key)->origin_fd) {
         return connecting_check_origin_connected(key);
     }
@@ -1375,11 +1358,9 @@ static unsigned connecting_read(struct selector_key * key) {
 static unsigned connecting_write(struct selector_key *key)
 {
     struct connecting_st * d = &ATTACHMENT(key)->orig.conn;
-    printf("on connecting write\n");
     struct socks5 *s = ATTACHMENT(key);
     if (key->fd == s->client_fd) {
         // shouldn't happen
-        printf("Writing from client\n");
         return connecting_send_conn_response(key);
     } else if (key->fd == s->origin_fd) {
         // this should be entered only when EINPROGRESS is obtained
@@ -1410,7 +1391,7 @@ void connecting_close(const unsigned state, struct selector_key *key)
         send_reply_failure(key);
     }
 
-    printf("Connecting - close\n");
+    /** TODO: FREE MEMORY */
 }
 
 ////////////////////////////////////////
