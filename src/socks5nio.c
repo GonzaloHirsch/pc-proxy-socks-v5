@@ -129,8 +129,6 @@ static const struct fd_handler socks5_handler = {
 /** Intenta aceptar la nueva conexión entrante*/
 void socksv5_passive_accept(struct selector_key *key)
 {
-    printf("Inside passive accept\n");
-
     struct sockaddr_storage client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
     struct socks5 *state = NULL;
@@ -748,7 +746,6 @@ doh_check_connection(struct resolve_st *r_s)
         }
     }
     else {
-        // Shouldnt happen
         return CONN_SUCCESS;
     }
 }
@@ -866,13 +863,6 @@ resolve_read(struct selector_key *key)
     
     n = recv(r_s->doh_fd, ptr, count, MSG_DONTWAIT);
     if(n > 0){
-
-        //doh responds without terminating the body
-        //ptr[n++] = '\n'; 
-        //ptr[n++] = '\n';
-
-        //it removes  \r from headers so that parser is consistent
-        //parse_to_crlf(ptr, &n); 
         // Advancing the buffer
         buffer_write_adv(b, n);
 
@@ -1123,8 +1113,6 @@ static int connecting_send_conn_response (struct selector_key * key) {
     struct socks5 *s = ATTACHMENT(key);
     struct socks5_origin_info *s5oi = &s->origin_info;
     
-    printf("Writing back to client (fd = %d)\n", s->client_fd);
-    
     int response_size = 6;
     uint8_t *response = malloc(response_size);
     response[0] = 0x05; // VERSION
@@ -1155,17 +1143,19 @@ static int connecting_send_conn_response (struct selector_key * key) {
     response[response_size - 1] = s5oi->port[1];
     send(s->client_fd, response, response_size, 0);
     free(response);
+    // TODO react to error
+    selector_set_interest(key->s, s->origin_fd, OP_READ | OP_WRITE);
+    selector_set_interest(key->s, s->client_fd, OP_READ | OP_WRITE);
     return COPY;
 }
 
 static int try_connection(int origin_fd, int *connect_ret, connecting_st *d, socks5_origin_info *s5oi, AddrType addrType)
 {
-    
     struct sockaddr_storage *sin = (struct sockaddr_storage *)&s5oi->origin_addr;
-    do
+    
+    while (*connect_ret < 0 && d->first_working_ip_index < ((addrType == IPv4) ? s5oi->ipv4_c : s5oi->ipv6_c))
     {
         // Setting up in socket address
-        
         if (addrType == IPv4) {
             sin->ss_family = AF_INET;
             memcpy((void *)&(((struct sockaddr_in*)sin)->sin_addr), s5oi->ipv4_addrs[d->first_working_ip_index], IP_V4_ADDR_SIZE); // Address
@@ -1178,28 +1168,52 @@ static int try_connection(int origin_fd, int *connect_ret, connecting_st *d, soc
         }
         s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
         *connect_ret = connect(origin_fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
-        if (errno == EINPROGRESS || errno == EISCONN || errno == EALREADY)
+        // if (*connect_ret == 0) printf("SUCCESSFULLY CONNECTED\n");
+        if (errno == EINPROGRESS) {
             return origin_fd;
-        if (*connect_ret < 0)
+        }
+        if (*connect_ret < 0) {
+            // Does it even get to this case?
+            printf("Error on connect call\n");
             d->first_working_ip_index++;
-    } while (*connect_ret < 0 && d->first_working_ip_index < ((addrType == IPv4) ? s5oi->ipv4_c : s5oi->ipv6_c));
-    if (d->first_working_ip_index >= s5oi->ipv4_c)
-        d->first_working_ip_index = -1;
+        }
+    } 
+    // If all addresses have been checked, then one has to check if all the addreses for the other family have also been
+    // checked
+    if (d->first_working_ip_index >= ((addrType == IPv4) ? s5oi->ipv4_c : s5oi->ipv6_c)) {
+        if (d->families_to_check == 1) {
+            d->families_to_check = 0;
+            d->first_working_ip_index = -1;
+        }
+        else if (d->families_to_check == 2) {
+            d->first_working_ip_index = 0;
+            d->families_to_check = 1;
+            s5oi->ip_selec = (addrType = IPv4) ? IPv6 : IPv4;
+        }
+    }
     return origin_fd;
 }
 
 void connecting_init(const unsigned state, struct selector_key *key)
 {
-    printf("Connecting Init\n");
+    
     struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
     struct socks5 *s = ATTACHMENT(key);
     struct socks5_origin_info *s5oi = &s->origin_info;
     int connect_ret = -1;
     selector_status st = SELECTOR_SUCCESS;
+    
     int origin_fd = socket(AF_INET, SOCK_STREAM, 0);
     selector_fd_set_nio(origin_fd);
+    
     d->rb = &(ATTACHMENT(key)->read_buffer);
     d->first_working_ip_index = 0;
+    // Need to know how many families there are to check
+    d->families_to_check += s->origin_info.ipv4_c > 0;
+    d->families_to_check += s->origin_info.ipv6_c > 0;
+    d->substate = CONN_SUB_TRY_IPS;
+
+    // Attempt to connect with addresses of the selected family
     s->origin_fd = try_connection(origin_fd, &connect_ret, d, s5oi, s5oi->ip_selec);
 
     if (connect_ret == -1)
@@ -1207,28 +1221,84 @@ void connecting_init(const unsigned state, struct selector_key *key)
         // If the error is connection in progress, one needs to register the fd to be able to respond to origin
         switch (errno) {
             case EINPROGRESS:
-                printf("I'm waiting connection\n");
+                printf("Connecting Init: connection in progress\n");
                 st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
                 st = selector_set_interest(key->s, s->client_fd, OP_NOOP);
                 if (st != SELECTOR_SUCCESS){
                     printf("Error registering FD to wait for connection\n");
-                    s->origin_fd = -1;
+                    // s->origin_fd = -1;
                     return;
                 }
+                // On next write handle, connecting to origin must be checked
+                d->substate = CONN_SUB_CHECK_ORIGIN;
                 break;
             default:
-                s->origin_fd = -1;
-                fprintf(stderr, "Could not connect on init\n");
-                determine_connect_error(errno);
+                // If this is reached, then every ip has been tried for preferred family
+                // SHOULD try with the other family (TODO)
+                // s->origin_fd = -1;
+                d->first_working_ip_index = 0;
+                // fprintf(stderr, "Could not connect on init\n");
+                // determine_connect_error(errno);
+                if (d->families_to_check > 0) {
+                    d->substate = CONN_SUB_TRY_IPS;
+                }
+                else {
+                    d->substate = CONN_SUB_ERROR;
+                }
         }
     }
     if (connect_ret > 0) {
-        printf("Connected to origin (fd = %d)\n", s->origin_fd);
-        st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
-        if (st == SELECTOR_SUCCESS)
-            printf("Successfully registered origin fd in selector\n");
+        st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_NOOP, ATTACHMENT(key));
+        if (st == SELECTOR_SUCCESS){
+            //printf("Successfully registered origin fd in selector\n");
+        }
     }
 
+}
+
+static unsigned try_ips(struct selector_key * key) {
+    struct socks5 * s = ATTACHMENT(key);
+    struct connecting_st * d = &s->orig.conn;
+    int connect_ret = -1;
+    try_connection(s->origin_fd, &connect_ret, d, &s->origin_info, s->origin_info.ip_selec);
+        if (connect_ret < 0) {
+            switch (errno) {
+                // TODO try to remove code repetition
+                case EINPROGRESS:
+                    // selector_status st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
+                    // if (st != SELECTOR_SUCCESS){
+                    //     printf("Error registering FD to wait for connection\n");
+                    //     s->origin_fd = -1;
+                    //     return;
+                    // }
+                    d->substate = CONN_SUB_CHECK_ORIGIN;
+                    return CONNECTING;
+                    break;
+                default:
+                    // s->origin_fd = -1;
+                    if (d->first_working_ip_index >= ((s->origin_info.ip_selec == IPv4) ?  s->origin_info.ipv4_c : s->origin_info.ipv6_c) &&
+                        d->families_to_check > 0) {
+                        // TODO Actually, here, one must check if all options for
+                        // both or only one family have been tried (and try with the other family)
+                            d->substate = CONN_SUB_TRY_IPS;
+                            // Start from first address
+                            d->first_working_ip_index = 0;
+                            return try_ips(key);
+                        }
+                    else if (d->first_working_ip_index < ((s->origin_info.ip_selec == IPv4) ?  s->origin_info.ipv4_c : s->origin_info.ipv6_c)) {
+                        d->first_working_ip_index++;
+                        return try_ips(key);
+                    }
+                    determine_connect_error(errno);
+                    s->reply_type = REPLY_RESP_REFUSED_BY_DEST_HOST;
+                    return ERROR;
+            }
+        }
+        // Connected, just follow the usual routine
+        else {
+            selector_set_interest(key->s, s->client_fd, OP_READ | OP_WRITE);
+            return connecting_send_conn_response(key);
+        }
 }
 
 static unsigned connecting_check_origin_connected(struct selector_key * key) {
@@ -1237,94 +1307,91 @@ static unsigned connecting_check_origin_connected(struct selector_key * key) {
     int connect_ret = connect(key->fd, (struct sockaddr *)&s->origin_info.origin_addr, s->origin_info.origin_addr_len);
     if (connect_ret < 0) {
         switch (errno) {
+            case EISCONN:
             case EINPROGRESS:
             case EALREADY:
-                printf("\t %d CONNECTING?\n", s->origin_fd);
+                // All harmless errors but shouldn't happen
+                // TODO decide how they should be handled
                 return CONNECTING;
-            case EISCONN:
-                // Connection successful
-                // one should reset interests for client_fd (which were set to OP_NOOP)
-                // and go to COPY state
-                selector_set_interest(key->s, s->client_fd, OP_READ | OP_WRITE);
-                // Go on
-                break;
             default:
                 // s->origin_fd = -1;
-                if (d->first_working_ip_index >= ((s->origin_info.ip_selec == IPv4) ?  s->origin_info.ipv4_c : s->origin_info.ipv6_c)) {
-                    fprintf(stderr, "Could not connect after failure\n");
-                    determine_connect_error(errno);
-                    s->reply_type=REPLY_RESP_REFUSED_BY_DEST_HOST;
-                    return ERROR;
+                // Connection progress ended up in error: try with 
+                if (d->first_working_ip_index >= ((s->origin_info.ip_selec == IPv4) ?  s->origin_info.ipv4_c : s->origin_info.ipv6_c) &&
+                    d->families_to_check > 0) {
+                // TODO Actually, here, one must check if all options for
+                // both or only one family have been tried (and try with the other family)
+                    d->substate = CONN_SUB_TRY_IPS;
+                    d->first_working_ip_index = 0;
+                    return try_ips(key);
                 }
-                else {
-                    try_connection(s->origin_fd, &connect_ret, d, &s->origin_info, s->origin_info.ip_selec);
-                    if (connect_ret < 0) {
-                        switch (errno) {
-                            // TODO try to remove code repetition
-                            case EINPROGRESS:
-                                printf("I'm waiting for a connection for a different IP\n");
-                                // selector_status st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
-                                // if (st != SELECTOR_SUCCESS){
-                                //     printf("Error registering FD to wait for connection\n");
-                                //     s->origin_fd = -1;
-                                //     return;
-                                // }
-                                return CONNECTING;
-                                break;
-                            default:
-                                s->origin_fd = -1;
-                                fprintf(stderr, "Could not connect\n");
-                                determine_connect_error(errno);
-                                s->reply_type=REPLY_RESP_REFUSED_BY_DEST_HOST;
-                                return ERROR;
-                        }
-                    }
+                else if (d->first_working_ip_index < ((s->origin_info.ip_selec == IPv4) ?  s->origin_info.ipv4_c : s->origin_info.ipv6_c)) {
+                    d->first_working_ip_index++;
+                    return try_ips(key);
                 }
+                determine_connect_error(errno);
+                s->reply_type = REPLY_RESP_REFUSED_BY_DEST_HOST;
+                return ERROR;
         }
     }
     else {
+        // Connected after EINPROGRESS. All done: set client_fd for reading 
+        // and writing again, then send response and go to COPY
         selector_set_interest(key->s, s->client_fd, OP_READ | OP_WRITE);
+        return connecting_send_conn_response(key);
     }
-    return connecting_send_conn_response(key);
 }
 
+// not considered for now
 static unsigned connecting_read(struct selector_key * key) {
-    printf("Reading\n");
     if (key->fd == ATTACHMENT(key)->origin_fd) {
         return connecting_check_origin_connected(key);
     }
     else {
         printf("WARNING: connecting reading but with client_fd\n");
-        sleep(1);
     }
-    return COPY;
+    // shouldn't reach this spot
+    ATTACHMENT(key)->reply_type = REPLY_RESP_REFUSED_BY_DEST_HOST;
+    return ERROR;
 }
+
 
 static unsigned connecting_write(struct selector_key *key)
 {
-    // write connection response to client
-    printf("on connecting write\n");
-    // struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
+    struct connecting_st * d = &ATTACHMENT(key)->orig.conn;
     struct socks5 *s = ATTACHMENT(key);
-    // struct socks5_origin_info *s5oi = &s->origin_info;
-    // int connect_ret = -1;
-    // selector_status st = SELECTOR_SUCCESS;
-
     if (key->fd == s->client_fd) {
         // shouldn't happen
-        printf("Writing from client\n");
         return connecting_send_conn_response(key);
     } else if (key->fd == s->origin_fd) {
         // this should be entered only when EINPROGRESS is obtained
         // next thing up is to check if connection went well or wrong
-        return connecting_check_origin_connected(key);
+        switch (d->substate) {
+            case CONN_SUB_CHECK_ORIGIN:
+                return connecting_check_origin_connected(key);
+                break;
+            case CONN_SUB_TRY_IPS:
+                return try_ips(key);
+            case CONN_SUB_ERROR:
+                s->reply_type = REPLY_RESP_REFUSED_BY_DEST_HOST;
+                return ERROR;
+
+        }
     }
-    return COPY;
+    // shouldn't reach this spot
+    s->reply_type = REPLY_RESP_REFUSED_BY_DEST_HOST;
+    return ERROR;
 }
 
 void connecting_close(const unsigned state, struct selector_key *key)
 {
-    printf("Connecting - close\n");
+    struct socks5 *s = ATTACHMENT(key);
+
+    // Sends reply failure if needed
+    if(s->reply_type != -1){
+        send_reply_failure(key);
+    }
+
+    /** TODO: FREE MEMORY */
 }
 
 ////////////////////////////////////////

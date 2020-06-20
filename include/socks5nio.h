@@ -275,13 +275,20 @@ typedef struct copy_st
     struct copy_st * other_copy;
 } copy_st;
 
+typedef enum connecting_substate {
+    CONN_SUB_CHECK_ORIGIN,
+    CONN_SUB_TRY_IPS,
+    CONN_SUB_ERROR
+} connecting_substate;
+
 /** Used by the CONNECTING state */
 typedef struct connecting_st
 {
     /** Buffer used for IO */
     buffer *rb;
     unsigned int first_working_ip_index;
-
+    uint8_t families_to_check;
+    connecting_substate substate;
 } connecting_st;
 
 /** Struct for origin server information */
