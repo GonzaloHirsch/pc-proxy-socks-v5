@@ -93,7 +93,7 @@ Campos:
             CMD -> Comando a realizar, X’01’ (LISTAR)
             STATUS -> Campo Status definido en la introducción
             ULEN -> Cantidad de usuarios a devolver
-            DATA -> Nombres de los usuarios, separados por coma (",")
+            DATA -> Nombres de los usuarios, separados por un byte en 0 (0x00)
 
 Para realizar un alta de un usuario, se envía una request de creacion de un usuario:
 

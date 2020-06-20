@@ -97,6 +97,7 @@ typedef struct sctp_user_list_message
 {
     uint8_t user_count;
     uint8_t **users;
+    int users_len;
 } sctp_user_list_message;
 
 /** Struct to hold information about a list metrics request */
@@ -164,7 +165,7 @@ typedef struct sctp
     unsigned references;
 
     /** Username of the active user performing changes */
-    uint8_t *username;
+    uint8_t username[255];
 
     /** Next item in the pool */
     struct sctp *next;

@@ -123,8 +123,9 @@ int main(const int argc, char * const*argv)
 
     // ----------------- CREATING SIGNAL HANDLERS -----------------
 
-    // Handling the SIGTERM signal, in order to make server stopping more clean and be able to free resources
+    // Handling the SIGTERM and SIGINT signal, in order to make server stopping more clean and be able to free resources
     signal(SIGTERM, signal_handler);
+    signal(SIGINT, signal_handler);
 
     // ----------------- CREATE THE SELECTOR -----------------
 
@@ -218,8 +219,21 @@ int main(const int argc, char * const*argv)
 
     // TODO: FREE ALL RESOURCES
 
+    // Freeing the users struct
+    free_user_list();
+
     // Freeing the metrics struct
     destroy_metrics();
+
+    // Freeing the options for the args
+    free(options);
+
+    // Freeing the selector
+    selector_destroy(selector);
+
+    // Freeing the socket handlers
+    free(masterSocketHandler);
+    free(managementSocketHandler);
 
     return 0;
 }

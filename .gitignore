@@ -22,3 +22,5 @@ sctp_client
 sctp_lient
 
 a.out
+
+valgrind-output.txt

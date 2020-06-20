@@ -2,7 +2,7 @@
 
 #include <string.h>
 #include "io_utils/strings.h"
-
+#define SLASH_B '\r'
 #define CLRF '\n' // I know...
 
 void http_message_parser_init(http_message_parser hmp) {
@@ -98,21 +98,30 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
                 *p->cursor = b;
                 p->cursor++;
             }
-            else if (b == CLRF) {
+            else if (b == SLASH_B) {
+                p -> state = HTTP_STATUS_MSG_I;
+            }
+            else
+                p->state = HTTP_ERR_INV_STATUS_LINE;
+            break;
+
+        case HTTP_STATUS_MSG_I:
+            if(b == CLRF){
                 *p->cursor = '\0';
                 p->state = HTTP_I1;
                 p->cursor = p->buff;
             }
             else
-                p->state = HTTP_ERR_INV_STATUS_LINE;
+            {
+               *p->cursor++ = SLASH_B; 
+               *p -> cursor = b;
+               p ->cursor ++;
+            }
             break;
+            
         case HTTP_I1:
-            if (b == CLRF) {
-                // TODO check content-length
-                p->body_len = get_numeric_header_value(p, "content-length");
-                p->body = malloc(p->body_len);
-                p->cursor = p->body;
-                p->state = HTTP_B;
+            if (b == SLASH_B) {
+                p -> state = HTTP_I1_I;
             }
             else if (IS_HEADER_NAME_SYMBOL(b)) {
                 p->cursor = p->header_name;
@@ -123,6 +132,25 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
             else
                 p->state = HTTP_ERR_INV_MSG;
             break;
+        
+        case HTTP_I1_I:
+            if(b == CLRF){
+                // TODO check content-length
+                p->body_len = get_numeric_header_value(p, "content-length");
+                p->body = malloc(p->body_len);
+                p->cursor = p->body;
+                p->state = HTTP_B;  
+            }
+            else
+            {
+                *p -> cursor = SLASH_B;
+                p->cursor++;
+                *p -> cursor = b;
+                p->cursor++;
+            }
+            
+        break;
+
         case HTTP_HK:
             if (IS_HEADER_NAME_SYMBOL(b)) {
                 *p->cursor = b;
@@ -138,11 +166,17 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
                 p->state = HTTP_ERR_INV_HK;
             break; 
         case HTTP_HV:
-            if (b != CLRF) {
+            if (b != SLASH_B) {
                 *p->cursor = b;
                 p->cursor++;
             }
             else {
+                p -> state = HTTP_HV_I;
+            }
+            break;
+        
+        case HTTP_HV_I:
+            if(b == CLRF){
                 *p->cursor = '\0';
                 // Save new header
                 p->headers[p->headers_num] = malloc(sizeof(http_header));
@@ -154,6 +188,13 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
 
                 p->state = HTTP_I1;
                 p->cursor = p->buff;
+            }
+            else
+            {
+                *p -> cursor = SLASH_B;
+                p->cursor++;
+                *p -> cursor = b;
+                p->cursor++;
             }
             break;
         case HTTP_B:
