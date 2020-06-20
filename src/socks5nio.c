@@ -748,7 +748,6 @@ doh_check_connection(struct resolve_st *r_s)
         }
     }
     else {
-        // Shouldnt happen
         return CONN_SUCCESS;
     }
 }
@@ -1305,6 +1304,7 @@ static unsigned try_ips(struct selector_key * key) {
                     }
                     fprintf(stderr, "Could not connect\n");
                     determine_connect_error(errno);
+                    s->reply_type = REPLY_RESP_REFUSED_BY_DEST_HOST;
                     return ERROR;
             }
         }
@@ -1344,6 +1344,7 @@ static unsigned connecting_check_origin_connected(struct selector_key * key) {
                 }
                 fprintf(stderr, "Could not connect after failure\n");
                 determine_connect_error(errno);
+                s->reply_type = REPLY_RESP_REFUSED_BY_DEST_HOST;
                 return ERROR;
         }
     }
@@ -1366,6 +1367,7 @@ static unsigned connecting_read(struct selector_key * key) {
         printf("WARNING: connecting reading but with client_fd\n");
     }
     // shouldn't reach this spot
+    ATTACHMENT(key)->reply_type = REPLY_RESP_REFUSED_BY_DEST_HOST;
     return ERROR;
 }
 
@@ -1389,15 +1391,25 @@ static unsigned connecting_write(struct selector_key *key)
             case CONN_SUB_TRY_IPS:
                 return try_ips(key);
             case CONN_SUB_ERROR:
+                s->reply_type = REPLY_RESP_REFUSED_BY_DEST_HOST;
                 return ERROR;
+
         }
     }
     // shouldn't reach this spot
+    s->reply_type = REPLY_RESP_REFUSED_BY_DEST_HOST;
     return ERROR;
 }
 
 void connecting_close(const unsigned state, struct selector_key *key)
 {
+    struct socks5 *s = ATTACHMENT(key);
+
+    // Sends reply failure if needed
+    if(s->reply_type != -1){
+        send_reply_failure(key);
+    }
+
     printf("Connecting - close\n");
 }
 
