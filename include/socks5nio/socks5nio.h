@@ -329,7 +329,11 @@ typedef struct socks5
     int client_fd;
     /** File descriptor number for the origin */
     int origin_fd;
-
+    /** File descriptor number for the origin v6*/
+    int origin_fd6;
+    /** Selected origin_fd */
+    int sel_origin_fd;
+    
     /** States for the client fd */
     union {
         hello_st hello;
