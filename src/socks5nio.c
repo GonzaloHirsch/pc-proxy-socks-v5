@@ -47,6 +47,8 @@ static struct socks5 *socks5_new(const int client)
     sockState->client_fd = client;
     sockState->origin_fd = -1;
 
+    sockState->reply_type = -1;
+
     return sockState;
 }
 
@@ -486,12 +488,40 @@ userpass_write(struct selector_key *key)
 // REQUEST
 ////////////////////////////////////////
 
+
+static void
+send_reply_failure(struct selector_key * key)
+{
+    struct socks5 *s = ATTACHMENT(key);
+
+    //Reply to be send
+    
+    // Build the reply
+    uint8_t reply_s = 7;
+    uint8_t *reply = malloc(reply_s);
+    reply[0] = 0x05;            // Version
+    reply[1] = s->reply_type != -1 ? s->reply_type : REPLY_RESP_GENERAL_FAILURE;  // Reply field
+    reply[2] = 0x00;            //Rsv
+    reply[3] = 0x00;
+    reply[4] = 0x00;
+    reply[5] = 0x00;
+    reply[6] = 0x00;
+
+    send(s->client_fd, reply , reply_s, MSG_DONTWAIT);
+    free(reply);
+}
+
 /** Frees the parser used */
 static void
 request_close(const unsigned state, struct selector_key *key)
 {
     // Sock5 state
     struct socks5 *s = ATTACHMENT(key);
+
+    // Sends reply failure if needed
+    if(s->reply_type != -1){
+        send_reply_failure(key);
+    }
 
     // Reset read and write buffer for reuse.
     buffer_reset(&s->write_buffer);
@@ -551,11 +581,10 @@ request_process(struct selector_key *key, struct request_st *d);
 
 static unsigned
 request_read(struct selector_key *key)
-{
+{   
+    struct socks5 *s= ATTACHMENT(key);
     // Getting the state struct
-    struct request_st *d = &ATTACHMENT(key)->client.request;
-    // Getting the read buffer
-
+    struct request_st *d = &s->client.request;
 
     buffer *b = d->rb;
     unsigned ret = REQUEST_READ;
@@ -581,25 +610,29 @@ request_read(struct selector_key *key)
 
         if (error)
         {
-            /** TODO: HANDLE ERRORS */
             switch (st)
             {
             case CONN_REQ_ERR_INV_VERSION:
-                break;
-            case CONN_REQ_ERR_INV_CMD:
-                break;
             case CONN_REQ_ERR_INV_RSV:
+            case CONN_REQ_GENERIC_ERR:
+                /** TODO: see if there is a better response to this states */
+                s->reply_type = REPLY_RESP_GENERAL_FAILURE; 
                 break;
             case CONN_REQ_ERR_INV_DSTADDR:
+                s->reply_type = REPLY_RESP_ADDR_TYPE_NOT_SUPPORTED;
                 break;
-            case CONN_REQ_GENERIC_ERR:
+            case CONN_REQ_ERR_INV_CMD:
+                s->reply_type = REPLY_RESP_CMD_NOT_SUPPORTED;
+                break;
             default:
                 break;
             }
+            ret = ERROR;
         }
     }
     else
     {
+        s->reply_type=REPLY_RESP_GENERAL_FAILURE;
         ret = ERROR;
     }
 
@@ -674,12 +707,14 @@ request_process(struct selector_key *key, struct request_st *d)
             break;
 
         default:
+            s->reply_type = REPLY_RESP_ADDR_TYPE_NOT_SUPPORTED;
             ret = ERROR;
             break;
         }
     }
     else
     {
+        s->reply_type = REPLY_RESP_CMD_NOT_SUPPORTED; 
         ret = ERROR;
     }
 
@@ -793,6 +828,11 @@ resolve_close(const unsigned state, struct selector_key *key)
     // Sock5 state
     struct socks5 *s = ATTACHMENT(key);
 
+    // Sends reply failure if needed
+    if(s->reply_type != -1){
+        send_reply_failure(key);
+    }
+
     // Reset read and write buffer for reuse.
     buffer_reset(&s->write_buffer);
     buffer_reset(&s->read_buffer);
@@ -802,9 +842,6 @@ resolve_close(const unsigned state, struct selector_key *key)
 
     // Free http parser
     free_http_message_parser(&s->orig.resolve.parser);
-
-    
-
 }
 
 // static unsigned
@@ -898,8 +935,17 @@ resolve_read(struct selector_key *key)
             // Shouldnt happen, just in case
             break;
         default:
-            return ERROR;
+            s->reply_type = REPLY_RESP_GENERAL_FAILURE;
+            ret = ERROR;
         }
+    }
+    // If connection was closed --> We are done and need to check if we collected a ip
+    else if(n == 0){
+       r_s->resp_state = RES_RESP_DONE;
+    }
+    else{
+        s->reply_type = REPLY_RESP_HOST_UNREACHABLE;
+        ret = ERROR;
     }
 
     // If already recevied both responses.
@@ -914,10 +960,12 @@ resolve_read(struct selector_key *key)
 
             // Setting the CLIENT fd for WRITE --> REQUEST WILL need to write
             if (SELECTOR_SUCCESS != selector_set_interest(key->s, s->client_fd, OP_WRITE)){
+                s->reply_type = REPLY_RESP_GENERAL_FAILURE;
                 ret = ERROR;
             }
         }
         else {
+            s->reply_type = REPLY_RESP_HOST_UNREACHABLE;
             ret = ERROR;
         }    
     }
@@ -951,32 +999,23 @@ resolve_write(struct selector_key *key)
         return RESOLVE;
         break;
     case CONN_FAILURE:
-        //Check if we need to unregister the fd
-        if(key->fd == r_s->doh_fd){
-             // Unregister the dns server fd.
-            if(SELECTOR_SUCCESS != selector_unregister_fd(key->s, r_s->doh_fd)){
-                ret = ERROR;
-            }
-        }
-        // Setting the CLIENT fd for WRITE --> REQUEST WILL need to write
-        if (SELECTOR_SUCCESS != selector_set_interest(key->s, s->client_fd, OP_WRITE)){
-            ret = ERROR;
-        }
-        /** TODO: Assign response to client that we failed to resolve */
+        // Establish the reply type for the reply to the cleint
+        s->reply_type = REPLY_RESP_NET_UNREACHABLE;
         return ERROR;
-    //Else the connection has been established :)
-    default:
+    //The connection has been established :)
+    case CONN_SUCCESS:
         break;
+    default:
+        s->reply_type = REPLY_RESP_GENERAL_FAILURE;
+        return ERROR;
     }
 
     // Generate the DNS requests: First the ipv4 then th
     char * http_request = request_generate((char *)s->origin_info.resolve_addr, &final_buffer_size, T_A); //request ipv4
     char * http_request2 = request_generate((char *)s->origin_info.resolve_addr, &final_buffer_size2, T_AAAA); //request ipv6
 
-    //char * final_http = malloc(final_buffer_size + final_buffer_size2);
-
     // Validate that we were able to connect and the request is valid.
-    if(r_s->doh_fd > 0 && http_request != NULL){
+    if(r_s->doh_fd > 0 && http_request != NULL && http_request2 != NULL){
         // Send the doh request to the nginx server
         n = send(r_s->doh_fd, http_request,final_buffer_size, MSG_DONTWAIT);
         m = send(r_s->doh_fd, http_request2,final_buffer_size2, MSG_DONTWAIT);
@@ -988,15 +1027,16 @@ resolve_write(struct selector_key *key)
             // Set the interests for the selector
             if (SELECTOR_SUCCESS != selector_set_interest(key->s, r_s->doh_fd, OP_READ))
             {
-                printf("Could not set interest of %d for %d\n", OP_READ, r_s->doh_fd);
                 ret = ERROR;
             }
         }
         else {
+            s->reply_type=REPLY_RESP_GENERAL_FAILURE;
             ret = ERROR;
         }
     }
     else{
+        s->reply_type=REPLY_RESP_GENERAL_FAILURE;
         ret = ERROR;
     }
 
@@ -1006,11 +1046,6 @@ resolve_write(struct selector_key *key)
 
     return ret;
 }
-
-// static unsigned
-// resolve_process(struct userpass_st *up_s){
-    
-// }
 
 ////////////////////////////////////////
 // CONNECTING
@@ -1095,9 +1130,9 @@ static int connecting_send_conn_response (struct selector_key * key) {
     response[0] = 0x05; // VERSION
     //  STATUS
     if (s->origin_fd < 0)
-        response[1] = CONN_RESP_GENERAL_FAILURE;
+        response[1] = REPLY_RESP_REFUSED_BY_DEST_HOST;
     else
-        response[1] = CONN_RESP_REQ_GRANTED;
+        response[1] = REPLY_RESP_SUCCESS;
     response[2] = 0x00; //RSV
     //BNDADDR
     switch (s5oi->ip_selec)
@@ -1126,13 +1161,21 @@ static int connecting_send_conn_response (struct selector_key * key) {
 static int try_connection(int origin_fd, int *connect_ret, connecting_st *d, socks5_origin_info *s5oi, AddrType addrType)
 {
     
-    struct sockaddr_in *sin = (struct sockaddr_in *)&s5oi->origin_addr;
+    struct sockaddr_storage *sin = (struct sockaddr_storage *)&s5oi->origin_addr;
     do
     {
         // Setting up in socket address
-        sin->sin_family = AF_INET;
-        memcpy((void *)&sin->sin_addr, (addrType == IPv4) ? s5oi->ipv4_addrs[d->first_working_ip_index] : s5oi->ipv6_addrs[d->first_working_ip_index], (addrType == IPv4) ? IP_V4_ADDR_SIZE : IP_V6_ADDR_SIZE); // Address
-        memcpy((void *)&sin->sin_port, s5oi->port, 2);                                                               // Port
+        
+        if (addrType == IPv4) {
+            sin->ss_family = AF_INET;
+            memcpy((void *)&(((struct sockaddr_in*)sin)->sin_addr), s5oi->ipv4_addrs[d->first_working_ip_index], IP_V4_ADDR_SIZE); // Address
+            memcpy((void *)&(((struct sockaddr_in*)sin)->sin_port), s5oi->port, 2);
+        }
+        else if (addrType == IPv6) {
+            sin->ss_family = AF_INET6;
+            memcpy((void *)&(((struct sockaddr_in6*)sin)->sin6_addr), s5oi->ipv6_addrs[d->first_working_ip_index], IP_V6_ADDR_SIZE); // Address
+            memcpy((void *)&(((struct sockaddr_in6*)sin)->sin6_port), s5oi->port, 2); // Port
+        }
         s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
         *connect_ret = connect(origin_fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
         if (errno == EINPROGRESS || errno == EISCONN || errno == EALREADY)
@@ -1210,6 +1253,7 @@ static unsigned connecting_check_origin_connected(struct selector_key * key) {
                 if (d->first_working_ip_index >= ((s->origin_info.ip_selec == IPv4) ?  s->origin_info.ipv4_c : s->origin_info.ipv6_c)) {
                     fprintf(stderr, "Could not connect after failure\n");
                     determine_connect_error(errno);
+                    s->reply_type=REPLY_RESP_REFUSED_BY_DEST_HOST;
                     return ERROR;
                 }
                 else {
@@ -1231,6 +1275,7 @@ static unsigned connecting_check_origin_connected(struct selector_key * key) {
                                 s->origin_fd = -1;
                                 fprintf(stderr, "Could not connect\n");
                                 determine_connect_error(errno);
+                                s->reply_type=REPLY_RESP_REFUSED_BY_DEST_HOST;
                                 return ERROR;
                         }
                     }
