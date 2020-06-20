@@ -70,13 +70,11 @@ static int try_connection(int origin_fd, int *connect_ret, connecting_st *d, soc
         }
         s5oi->origin_addr_len = sizeof(s5oi->origin_addr);
         *connect_ret = connect(origin_fd, (struct sockaddr *)&s5oi->origin_addr, s5oi->origin_addr_len);
-        // if (*connect_ret == 0) printf("SUCCESSFULLY CONNECTED\n");
         if (errno == EINPROGRESS) {
             return origin_fd;
         }
         if (*connect_ret < 0) {
             // Does it even get to this case?
-            printf("Error on connect call\n");
             d->first_working_ip_index++;
         }
     } 
@@ -123,11 +121,9 @@ void connecting_init(const unsigned state, struct selector_key *key)
         // If the error is connection in progress, one needs to register the fd to be able to respond to origin
         switch (errno) {
             case EINPROGRESS:
-                printf("Connecting Init: connection in progress\n");
                 st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
                 st = selector_set_interest(key->s, s->client_fd, OP_NOOP);
                 if (st != SELECTOR_SUCCESS){
-                    printf("Error registering FD to wait for connection\n");
                     // s->origin_fd = -1;
                     return;
                 }
@@ -139,7 +135,6 @@ void connecting_init(const unsigned state, struct selector_key *key)
                 // SHOULD try with the other family (TODO)
                 // s->origin_fd = -1;
                 d->first_working_ip_index = 0;
-                // fprintf(stderr, "Could not connect on init\n");
                 // determine_connect_error(errno);
                 if (d->families_to_check > 0) {
                     d->substate = CONN_SUB_TRY_IPS;
@@ -152,7 +147,6 @@ void connecting_init(const unsigned state, struct selector_key *key)
     if (connect_ret > 0) {
         st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_NOOP, ATTACHMENT(key));
         if (st == SELECTOR_SUCCESS){
-            //printf("Successfully registered origin fd in selector\n");
         }
     }
 
@@ -169,7 +163,6 @@ static unsigned try_ips(struct selector_key * key) {
                 case EINPROGRESS:
                     // selector_status st = selector_register(key->s, s->origin_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
                     // if (st != SELECTOR_SUCCESS){
-                    //     printf("Error registering FD to wait for connection\n");
                     //     s->origin_fd = -1;
                     //     return;
                     // }
@@ -247,9 +240,6 @@ static unsigned connecting_check_origin_connected(struct selector_key * key) {
 unsigned connecting_read(struct selector_key * key) {
     if (key->fd == ATTACHMENT(key)->origin_fd) {
         return connecting_check_origin_connected(key);
-    }
-    else {
-        printf("WARNING: connecting reading but with client_fd\n");
     }
     // shouldn't reach this spot
     ATTACHMENT(key)->reply_type = REPLY_RESP_REFUSED_BY_DEST_HOST;
