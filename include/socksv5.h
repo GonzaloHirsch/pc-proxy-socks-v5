@@ -8,7 +8,7 @@
 #include "selector.h"
 #include "stateMachine.h"
 #include "socks5nio/socks5nio.h"
-#include "sctpnio.h"
+#include "sctpnio/sctpnio.h"
 #include "authentication.h"
 #include "args.h"
 #include <stdio.h>
