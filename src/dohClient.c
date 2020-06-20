@@ -5,66 +5,68 @@
 
 const char b64chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-
 size_t base64_encoded_size(size_t inlen)
 {
-	size_t ret;
+    size_t ret;
 
-	ret = inlen;
-    
-	if (inlen % 3 != 0)
-		ret += 3 - (inlen % 3);
-        
-	ret /= 3;
-	ret *= 4;
+    ret = inlen;
 
-	return ret;
+    if (inlen % 3 != 0)
+        ret += 3 - (inlen % 3);
+
+    ret /= 3;
+    ret *= 4;
+
+    return ret;
 }
 
-char *base64_encode(const unsigned char *in, size_t len, size_t * elen)
+char *base64_encode(const unsigned char *in, size_t len, size_t *elen)
 {
-	char   *out;
+    char *out;
 
-	size_t  i;
-	size_t  j;
-	size_t  v;
+    size_t i;
+    size_t j;
+    size_t v;
 
-	if (in == NULL || len == 0)
-		return NULL;
+    if (in == NULL || len == 0)
+        return NULL;
 
-	*elen = base64_encoded_size(len);
-	out  = malloc((*elen)+1);
-	out[*elen] = '\0';
+    *elen = base64_encoded_size(len);
+    out = malloc((*elen) + 1);
+    out[*elen] = '\0';
 
-	for (i=0, j=0; i<len; i+=3, j+=4) {
-		v = in[i];
-		v = i+1 < len ? v << 8 | in[i+1] : v << 8;
-		v = i+2 < len ? v << 8 | in[i+2] : v << 8;
+    for (i = 0, j = 0; i < len; i += 3, j += 4)
+    {
+        v = in[i];
+        v = i + 1 < len ? v << 8 | in[i + 1] : v << 8;
+        v = i + 2 < len ? v << 8 | in[i + 2] : v << 8;
 
-		out[j]   = b64chars[(v >> 18) & 0x3F];
-		out[j+1] = b64chars[(v >> 12) & 0x3F];
-		if (i+1 <= len) {
-			out[j+2] = b64chars[(v >> 6) & 0x3F];
-		} else {
-			out[j+2] = '0';
-		}
-		if (i+2 <= len) {
-			out[j+3] = b64chars[v & 0x3F];
-		} else {
-			out[j+3] = '0';
-		}
-	}
+        out[j] = b64chars[(v >> 18) & 0x3F];
+        out[j + 1] = b64chars[(v >> 12) & 0x3F];
+        if (i + 1 <= len)
+        {
+            out[j + 2] = b64chars[(v >> 6) & 0x3F];
+        }
+        else
+        {
+            out[j + 2] = '0';
+        }
+        if (i + 2 <= len)
+        {
+            out[j + 3] = b64chars[v & 0x3F];
+        }
+        else
+        {
+            out[j + 3] = '0';
+        }
+    }
 
-	return out;
+    return out;
 }
-
-
 
 // finish code from https://nachtimwald.com/2017/11/18/base64-encode-and-decode-in-c/
 
-
 // static int mod_table[] = {0, 2, 1};
-
 
 // char *base64_encode(const unsigned char *data,
 //                     size_t input_length,
@@ -94,12 +96,9 @@ char *base64_encode(const unsigned char *in, size_t len, size_t * elen)
 //         encoded_data[*output_length - 1 - i] = '=';
 
 //         */
-        
 
 //   return encoded_data;
 // }
-
-
 
 /* code from stack overflow */
 
@@ -216,103 +215,85 @@ ret = parse_dns_resp(http_parser.body, domain);
 }
 */
 
-char * copy_advance (char * ptr, int * length, char * str);
+char *copy_advance(char *ptr, int *length, char *str);
 
-char * request_generate(char * domain, int *length, int qtype){
+char *request_generate(char *domain, int *length, int qtype)
+{
 
     int request_length = 0;
 
     int dns_length;
     size_t dns_encoded_length;
 
-    uint8_t * dns_request = generate_dns_req(domain, &dns_length, qtype);    //gets the dns request wirh the host name 
-                                                                    //returns the request and the size of the request
+    uint8_t *dns_request = generate_dns_req(domain, &dns_length, qtype); //gets the dns request wirh the host name
+                                                                         //returns the request and the size of the request
 
-    char * encoded_dns_request = base64_encode((const unsigned char *)dns_request, dns_length, &dns_encoded_length);
-
-
-
+    char *encoded_dns_request = base64_encode((const unsigned char *)dns_request, dns_length, &dns_encoded_length);
 
     char sendline[BUFFERSIZE_DOH];
-    char * ptr = sendline; //pointer used to copy the http request
+    char *ptr = sendline; //pointer used to copy the http request
 
-    char * get_first_part = "GET "; 
+    char *get_first_part = "GET ";
 
     ptr = copy_advance(ptr, &request_length, get_first_part);
 
-
-    char * path = options ->doh.path;
+    char *path = options->doh.path;
 
     ptr = copy_advance(ptr, &request_length, path);
 
-    char * query = options -> doh.query;
+    char *query = options->doh.query;
 
     ptr = copy_advance(ptr, &request_length, query);
-
-
 
     //same methodology with encoded dns request
 
     memcpy(ptr, encoded_dns_request, dns_encoded_length);
 
     free(encoded_dns_request);
+    free(dns_request);
 
     ptr += dns_encoded_length;
     request_length += dns_encoded_length;
 
-
     //now the scheme used
 
-    char * scheme = " HTTP/1.1\r\n";
+    char *scheme = " HTTP/1.1\r\n";
 
     ptr = copy_advance(ptr, &request_length, scheme);
 
     //host we use in this case doh
 
-    char * authority = "Host: doh\r\nUser-Agent: curl/7.54.0\r\n";
+    char *authority = "Host: doh\r\nUser-Agent: curl/7.54.0\r\n";
 
     ptr = copy_advance(ptr, &request_length, authority);
 
-
     //accept
 
-
-    char * accept = "accept: application/dns-message\r\n";
+    char *accept = "accept: application/dns-message\r\n";
 
     ptr = copy_advance(ptr, &request_length, accept);
 
-
-    char * connection = "Connection : keep-alive\r\n\r\n";
+    char *connection = "Connection : keep-alive\r\n\r\n";
 
     ptr = copy_advance(ptr, &request_length, connection);
 
-
-
     (*length) = request_length;
-
-
 
     //now the request is completed
 
-    char * request = malloc(request_length);
+    char *request = malloc(request_length);
 
     memcpy(request, sendline, request_length);
 
-
-
     return request;
-
-
-
 }
 
-
-char * copy_advance (char * ptr, int * length, char * str){
+char *copy_advance(char *ptr, int *length, char *str)
+{
     int size = strlen(str);
     memcpy(ptr, str, size);
     (*length) += size;
     return ptr + size;
-
 }
 
 /*
@@ -353,20 +334,24 @@ void receive_dns_parse(char * final_buffer, char * domain, int buf_size, struct 
 */
 
 /*  code from stack overflow */
-void parse_to_crlf(uint8_t * response, size_t *size){
+void parse_to_crlf(uint8_t *response, size_t *size)
+{
 
     int i = 0;
     int j = 0;
     size_t old_size = *size;
     size_t new_size = *size;
 
-    while(i < old_size){
+    while (i < old_size)
+    {
 
-        if(response[i] == '\r'){
+        if (response[i] == '\r')
+        {
             i++;
             new_size--;
         }
-        else{
+        else
+        {
             response[j] = response[i];
             i++;
             j++;

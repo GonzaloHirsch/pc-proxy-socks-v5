@@ -112,7 +112,7 @@ uint8_t * generate_dns_req(char * host, int * final_size, int qtype){
             lock++; 
         }
     }
-    //free(host_name);
+    free(host_name);
     *dns++='\0';
 }
 

@@ -71,11 +71,24 @@ socks5_destroy_(struct socks5 *s)
         //freeaddrinfo(s->origin_resolution);
         s->origin_resolution = 0;
     }
-    // Liberating the buffers
-    free(s->read_buffer.data);
-    free(s->write_buffer.data);
-    // Liberating the struct
-    free(s);
+    if (s != NULL)
+    {
+        // Liberating the username if allocated
+        if (s->username != NULL)
+        {
+            free(s->username);
+        }
+        // Freeing the address name if allocated
+        if (s->origin_info.resolve_addr != NULL)
+        {
+            free(s->origin_info.resolve_addr);
+        }
+        // Liberating the buffers
+        free(s->read_buffer.data);
+        free(s->write_buffer.data);
+        // Liberating the struct
+        free(s);
+    }
 }
 
 /**
@@ -122,8 +135,6 @@ void socksv5_pool_destroy(void)
         free(s);
     }
 }
-
-
 
 /** Intenta aceptar la nueva conexión entrante*/
 void socksv5_passive_accept(struct selector_key *key)
@@ -172,7 +183,6 @@ fail:
 
 //------------------------------STATE FUNCTION HANDLERS--------------------------------
 
-
 //------------------------STATES DEFINITION--------------------------------------
 
 /** definición de handlers para cada estado */
@@ -183,10 +193,10 @@ static const struct state_definition client_statbl[] = {
         .on_departure = hello_read_close,
         .on_read_ready = hello_read,
     },
-    {   .state = HELLO_WRITE,
-        .on_arrival = hello_write_init,
-        .on_departure = hello_write_close,
-        .on_write_ready = hello_write},
+    {.state = HELLO_WRITE,
+     .on_arrival = hello_write_init,
+     .on_departure = hello_write_close,
+     .on_write_ready = hello_write},
     {
         .state = USERPASS_READ,
         .on_arrival = userpass_read_init,
@@ -211,7 +221,7 @@ static const struct state_definition client_statbl[] = {
         .on_departure = resolve_close,
         .on_read_ready = resolve_read,
         .on_write_ready = resolve_write,
-        
+
     },
     {
         .state = CONNECTING,
@@ -220,10 +230,10 @@ static const struct state_definition client_statbl[] = {
         .on_write_ready = connecting_write,
         .on_departure = connecting_close,
     },
-    {   .state = COPY,
-        .on_arrival = copy_init,
-        .on_read_ready = copy_read,
-        .on_write_ready = copy_write},
+    {.state = COPY,
+     .on_arrival = copy_init,
+     .on_read_ready = copy_read,
+     .on_write_ready = copy_write},
     {
         .state = DONE,
         // For now, no need to define any handlers, all in sockv5_done
@@ -241,8 +251,7 @@ static const struct state_definition client_statbl[] = {
 // son los que emiten los eventos a la maquina de estados.
 void socksv5_done(struct selector_key *key);
 
-void
-socksv5_read(struct selector_key *key)
+void socksv5_read(struct selector_key *key)
 {
     struct state_machine *stm = &ATTACHMENT(key)->stm;
     const enum socks_v5state st = stm_handler_read(stm, key);
@@ -253,8 +262,7 @@ socksv5_read(struct selector_key *key)
     }
 }
 
-void
-socksv5_write(struct selector_key *key)
+void socksv5_write(struct selector_key *key)
 {
     struct state_machine *stm = &ATTACHMENT(key)->stm;
     const enum socks_v5state st = stm_handler_write(stm, key);
@@ -265,8 +273,7 @@ socksv5_write(struct selector_key *key)
     }
 }
 
-void
-socksv5_block(struct selector_key *key)
+void socksv5_block(struct selector_key *key)
 {
     struct state_machine *stm = &ATTACHMENT(key)->stm;
     const enum socks_v5state st = stm_handler_block(stm, key);
@@ -277,8 +284,7 @@ socksv5_block(struct selector_key *key)
     }
 }
 
-void
-socksv5_close(struct selector_key *key)
+void socksv5_close(struct selector_key *key)
 {
     // Removing the current connection from the metrics
     remove_current_connections(1);
@@ -286,8 +292,7 @@ socksv5_close(struct selector_key *key)
     close(key->fd);
 }
 
-void
-socksv5_done(struct selector_key *key)
+void socksv5_done(struct selector_key *key)
 {
     const int fds[] = {
         ATTACHMENT(key)->client_fd,
@@ -309,4 +314,3 @@ socksv5_done(struct selector_key *key)
     // Calling the destroy_ method because the object pool is not implemented
     socks5_destroy_(ATTACHMENT(key));
 }
-
