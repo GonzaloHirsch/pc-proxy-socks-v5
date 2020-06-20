@@ -5,7 +5,8 @@ static int user_pass_c;
 
 int create_table(char *filename, auth_level level)
 {
-    uint8_t line[514], *uid_stored, *pw_stored, *uid, *pw;
+    uint8_t line[514] = {0x00}, *uid_stored, *pw_stored, *uid, *pw;
+    int ulen, plen;
 
     FILE *file = fopen(filename, "r");
     if (file == NULL)
@@ -19,16 +20,23 @@ int create_table(char *filename, auth_level level)
         uid_stored = (uint8_t *)strtok((char *)line, " ");
         pw_stored = (uint8_t *)strtok(NULL, "\n");
 
-        uid = malloc(1 + strlen((const char *)uid_stored));
+        ulen = strlen((const char *)uid_stored);
+        plen = strlen((const char *)pw_stored);
+
+        uid = calloc(1 + ulen, sizeof(uint8_t));
         if (uid == NULL)
             return -1;
 
-        pw = malloc(1 + strlen((const char *)pw_stored));
+        pw = calloc(1 + plen, sizeof(uint8_t));
         if (pw == NULL)
             return -1;
 
-        strcpy((char *)uid, (const char *)uid_stored);
-        strcpy((char *)pw, (const char *)pw_stored);
+        memset(uid, 0, 1 + ulen);
+        memset(pw, 0, 1 + plen);
+        memcpy(uid, uid_stored, ulen);
+        memcpy(pw, pw_stored, plen);
+        uid[ulen] = 0x00;
+        pw[plen] = 0x00;
 
         user_pass_table[user_pass_c].user = uid;
         user_pass_table[user_pass_c].password = pw;
@@ -92,27 +100,47 @@ bool validate_user_proxy(uint8_t *uid, uint8_t *pw)
     return validate_up(uid, pw, USER_AUTH_LEVEL);
 }
 
-void list_user_admin(uint8_t **users, uint8_t *count)
+void free_user_list(){
+    int i;
+    for (i = 0; i < user_pass_c; i++){
+        free(user_pass_table[i].password);
+        free(user_pass_table[i].user);
+    }
+}
+
+void list_user_admin(uint8_t **users, uint8_t *count, int *size)
 {
     uint8_t *uid_stored;
     *count = 0;
-    int i = 0;
+    int i = 0, slen = 0;
 
     while (i < user_pass_c)
     {
         if (user_pass_table[i].level == ADMIN_AUTH_LEVEL)
         {
-            // Getting the username + password
+            // Getting the username with the finishing
             uid_stored = user_pass_table[i].user;
-            users[*count] = malloc(strlen((const char *)uid_stored) + 1);
-            memcpy(users[*count], uid_stored, strlen((const char *)uid_stored) + 1);
+            slen = strlen((const char *)uid_stored);
+            users[*count] = calloc(slen + 1, sizeof(uint8_t));
+            memcpy(users[*count], uid_stored, slen);
+            users[*count][slen] = 0x00;
+            (*size) += slen;
             (*count)++;
         }
         i++;
     }
 }
 
-bool create_user(uint8_t *username, uint8_t *pass, auth_level level, bool canOverride)
+void free_list_user_admin(uint8_t **users, uint8_t count)
+{
+    int i;
+    for (i = 0; i < count; i++)
+    {
+        free(users[i]);
+    }
+}
+
+bool create_user(uint8_t *username, uint8_t *pass, uint8_t ulen, uint8_t plen, auth_level level, bool canOverride)
 {
     uint8_t *uid, *pw;
     int i = 0;
@@ -133,14 +161,15 @@ bool create_user(uint8_t *username, uint8_t *pass, auth_level level, bool canOve
                 }
 
                 // Reallocating the memory to fit the new password
-                user_pass_table[i].password = realloc(user_pass_table[i].password, 1 + strlen((const char *)pass));
+                user_pass_table[i].password = realloc(user_pass_table[i].password, 1 + plen);
                 if (user_pass_table[i].password == NULL)
                 {
                     return false;
                 }
 
                 // Putting the new password
-                strcpy((char *)user_pass_table[i].password, (const char *)pass);
+                memcpy(user_pass_table[i].password, pass, plen);
+                user_pass_table[i].password[plen] = 0x00;
                 return true;
             }
         }
@@ -149,16 +178,18 @@ bool create_user(uint8_t *username, uint8_t *pass, auth_level level, bool canOve
 
     if (!exists)
     {
-        uid = malloc(1 + strlen((const char *)username));
+        uid = malloc(1 + ulen);
         if (uid == NULL)
             return false;
 
-        pw = malloc(1 + strlen((const char *)pass));
+        pw = malloc(1 + plen);
         if (pw == NULL)
             return false;
 
-        strcpy((char *)uid, (const char *)username);
-        strcpy((char *)pw, (const char *)pass);
+        memcpy((char *)uid, username, ulen);
+        uid[ulen] = 0x00;
+        memcpy((char *)pw, pass, plen);
+        pw[plen] = 0x00;
 
         user_pass_table[user_pass_c].user = uid;
         user_pass_table[user_pass_c].password = pw;
@@ -169,12 +200,12 @@ bool create_user(uint8_t *username, uint8_t *pass, auth_level level, bool canOve
     return true;
 }
 
-bool create_user_proxy(uint8_t *username, uint8_t *pass)
+bool create_user_proxy(uint8_t *username, uint8_t *pass, uint8_t ulen, uint8_t plen)
 {
-    return create_user(username, pass, USER_AUTH_LEVEL, true);
+    return create_user(username, pass, ulen, plen, USER_AUTH_LEVEL, true);
 }
 
-bool create_user_admin(uint8_t *username, uint8_t *pass)
+bool create_user_admin(uint8_t *username, uint8_t *pass, uint8_t ulen, uint8_t plen)
 {
-    return create_user(username, pass, ADMIN_AUTH_LEVEL, false);
+    return create_user(username, pass, ulen, plen, ADMIN_AUTH_LEVEL, false);
 }
