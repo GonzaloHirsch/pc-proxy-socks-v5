@@ -23,6 +23,7 @@
 #include "selector.h"
 #include "stateMachine.h"
 #include "authentication.h"
+#include "args.h"
 
 
 #define N(x) (sizeof(x) / sizeof((x)[0]))
@@ -188,23 +189,29 @@ typedef enum AddressSize {
     PORT_SIZE = 2,
 } AddressSize;
 
-typedef enum ConnectionResponse {
-    CONN_RESP_REQ_GRANTED = 0x00,
-    CONN_RESP_GENERAL_FAILURE,
-    CONN_RESP_NOT_ALLOWED_BY_RULESET,
-    CONN_RESP_NET_UNREACHABLE,
-    CONN_RESP_HOST_UNREACHABLE,
-    CONN_RESP_REFUSED_BY_DEST_HOST,
-    CONN_RESP_TTL_EXPIRED,
-    CONN_RESP_CMD_NOT_SUPPORTED,
-    CONN_RESP_ADDR_TYPE_NOT_SUPPORTED
-}ConnectionResponse;
+typedef enum ReplyType{
+    REPLY_RESP_SUCCESS = 0x00,
+    REPLY_RESP_GENERAL_FAILURE,
+    REPLY_RESP_NOT_ALLOWED_BY_RULESET,
+    REPLY_RESP_NET_UNREACHABLE,
+    REPLY_RESP_HOST_UNREACHABLE,
+    REPLY_RESP_REFUSED_BY_DEST_HOST,
+    REPLY_RESP_TTL_EXPIRED,
+    REPLY_RESP_CMD_NOT_SUPPORTED,
+    REPLY_RESP_ADDR_TYPE_NOT_SUPPORTED
+}ReplyType;
 
 typedef enum ConnectionState {
     CONN_INPROGRESS, 
     CONN_FAILURE,
     CONN_SUCCESS
 }ConnectionState;
+
+typedef enum ResolveResponseState {
+    RES_RESP_IPV4,
+    RES_RESP_IPV6,
+    RES_RESP_DONE,
+}ResolveResponseState;
 
 /** Used by the HELLO_READ and HELLO_WRITE states */
 typedef struct hello_st
@@ -249,6 +256,8 @@ typedef struct resolve_st
     struct http_message_parser parser;
     struct sockaddr_in serv_addr;
     unsigned int conn_state;
+    unsigned int resp_state;
+    
 } resolve_st;
 
 /** Used by the COPY state */
@@ -347,6 +356,9 @@ typedef struct socks5
 
     /** Credentials */
     uint8_t * username;    
+
+    /** Reply type */
+    int reply_type;
 
     /** Information about the origin server */
     struct socks5_origin_info origin_info;
