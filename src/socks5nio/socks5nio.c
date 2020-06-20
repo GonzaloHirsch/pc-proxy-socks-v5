@@ -215,7 +215,9 @@ static const struct state_definition client_statbl[] = {
     {   .state = COPY,
         .on_arrival = copy_init,
         .on_read_ready = copy_read,
-        .on_write_ready = copy_write},
+        .on_write_ready = copy_write,
+        .on_departure = copy_close
+        },
     {
         .state = DONE,
         // For now, no need to define any handlers, all in sockv5_done

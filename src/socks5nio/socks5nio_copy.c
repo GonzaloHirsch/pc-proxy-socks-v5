@@ -30,8 +30,18 @@ copy_init(const unsigned state, struct selector_key *key)
     d->wb = &sockState->read_buffer;
     d->interest = OP_READ | OP_WRITE;
     d->other_copy = &sockState->client.copy;
-    http_message_parser_init(&d->http_parser); // We wont use it but just in case.
 }
+
+void
+copy_close(const unsigned state, struct selector_key *key)
+{
+    struct socks5 *s = ATTACHMENT(key);
+
+    free_http_message_parser(&s->client.copy.http_parser);
+    /** TODO: Free remaining stuff */
+}
+
+
 
 /**
  * Determines the new interest of the given copy_st and sets it in the selector 
@@ -114,21 +124,20 @@ copy_read(struct selector_key *key)
         if(key->fd == s->client_fd){
 
             // Temporary buffer so we dont override the other buffer
-            buffer * aux_b = malloc(sizeof(buffer));
-            buffer_init(aux_b, BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
-            memcpy(aux_b->data, ptr, n);
-            buffer_write_adv(aux_b, n);
+            buffer aux_b;
+            buffer_init(&aux_b, BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
+            memcpy(aux_b.data, ptr, n);
+            buffer_write_adv(&aux_b, n);
 
             
             switch (s->origin_info.protocol_type)
             {
             case PROT_HTTP:
                 http_p = d->http_parser;
-                /** TODO: See if more efficient going directly to the start of http message */
                 // Analyze the whole message to steal 1 or more passwords
-                while(buffer_can_read(aux_b)){
+                while(buffer_can_read(&aux_b)){
 
-                    http_consume_message(aux_b, &http_p, &errored);
+                    http_consume_message(&aux_b, &http_p, &errored);
                     if(http_done_parsing_message(&http_p, &errored)){
                         if(!errored){
                             extract_http_auth(&http_p);
@@ -147,7 +156,9 @@ copy_read(struct selector_key *key)
                 break;
             }
 
-            /** TODO: free aux buffer! */
+            //Freeing aux buffer.
+            free(aux_b.data);
+            
         }
         else{
 

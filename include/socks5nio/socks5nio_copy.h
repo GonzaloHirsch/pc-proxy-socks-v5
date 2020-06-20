@@ -5,6 +5,8 @@
 
 void
 copy_init(const unsigned state, struct selector_key *key);
+void
+copy_close(const unsigned state, struct selector_key *key);
 unsigned
 copy_read(struct selector_key *key);
 unsigned
