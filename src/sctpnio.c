@@ -320,6 +320,10 @@ sctp_write(struct selector_key *key)
         // Add bytes to metrics
         add_transfered_bytes(n);
 
+        // Resetting the error
+        d->error = SCTP_ERROR_NO_ERROR;
+        d->state = SCTP_REQUEST;
+
         // Setting the fd to read.
         if (SELECTOR_SUCCESS != selector_set_interest(key->s, key->fd, OP_READ))
         {
