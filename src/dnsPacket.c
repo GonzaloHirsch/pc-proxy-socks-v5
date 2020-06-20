@@ -151,6 +151,9 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
  
             reader = reader + ntohs(answers[i].resource->data_len);
         }
+        else{
+            reader = reader + ntohs(answers[i].resource->data_len);
+        }
          
     }
 

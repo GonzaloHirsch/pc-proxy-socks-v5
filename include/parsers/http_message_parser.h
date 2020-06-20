@@ -14,6 +14,7 @@
 #define MAX_HEADER_VALUE_LEN 100
 #define BLOCK_SIZE 512
 
+
 // Warning! This assumes HTTP Versions of regex [0-9]\.[0-9]
 // You've been warned --
 
@@ -25,6 +26,9 @@ typedef enum http_message_state {
     HTTP_HK, HTTP_HV,
     HTTP_B,
     HTTP_I2,
+    HTTP_STATUS_MSG_I,
+    HTTP_I1_I,
+    HTTP_HV_I,
     HTTP_F,
     HTTP_ERR_INV_MSG,
     HTTP_ERR_INV_STATUS_LINE,
@@ -32,7 +36,8 @@ typedef enum http_message_state {
     HTTP_ERR_INV_STATUS_CODE,
     HTTP_ERR_INV_HK,
     HTTP_ERR_INV_HV,
-    HTTP_ERR_INV_BODY
+    HTTP_ERR_INV_BODY,
+    
 } http_message_state;
 
 struct http_message_parser {

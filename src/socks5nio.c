@@ -771,6 +771,7 @@ resolve_init(const unsigned state, struct selector_key *key)
     selector_status st = SELECTOR_SUCCESS;
 
     // Structure to connect to the dns server
+ 
     memset(&r_s->serv_addr, 0, sizeof(r_s->serv_addr));              // Zero out structure
     r_s->serv_addr.sin_family = AF_INET;                             // IPv4 address family
     r_s->serv_addr.sin_addr.s_addr = inet_addr(options ->doh.ip);            // Address
@@ -871,7 +872,7 @@ resolve_read(struct selector_key *key)
         //ptr[n++] = '\n';
 
         //it removes  \r from headers so that parser is consistent
-        parse_to_crlf(ptr, &n); 
+        //parse_to_crlf(ptr, &n); 
         // Advancing the buffer
         buffer_write_adv(b, n);
 
@@ -884,7 +885,7 @@ resolve_read(struct selector_key *key)
             http_consume_message(r_s->rb, &r_s->parser, &errored);
 
             //If we done parsing the first response
-            if(http_done_parsing_message(&r_s->parser, &errored)){
+            if(http_done_parsing_message(&r_s->parser, &errored) && strcmp((const char *) r_s->parser.status, "200") == 0){ //checks if it is done the http parsing and that the status code is not error
                 
                 // If the http message is correct --> parse the dns response
                 if(!errored){
@@ -913,7 +914,7 @@ resolve_read(struct selector_key *key)
             http_consume_message(r_s->rb, &r_s->parser, &errored);
 
             //If we done parsing the first response
-            if(http_done_parsing_message(&r_s->parser, &errored)){
+            if(http_done_parsing_message(&r_s->parser, &errored)  && strcmp((const char *) r_s->parser.status, "200") == 0){
                 
                 // If the http message is correct --> parse the dns response
                 if(!errored){
