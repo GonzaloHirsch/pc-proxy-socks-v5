@@ -136,16 +136,7 @@ void free_list_user_admin(uint8_t **users, uint8_t count)
     int i;
     for (i = 0; i < count; i++)
     {
-        if (i % 3 == 0)
-        {
-        }
-        else if (i % 3 == 1)
-        {
-            free(users[i]);
-        }
-        if (i % 3 == 2)
-        {
-        }
+        free(users[i]);
     }
 }
 

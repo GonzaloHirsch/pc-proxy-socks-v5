@@ -219,8 +219,21 @@ int main(const int argc, char * const*argv)
 
     // TODO: FREE ALL RESOURCES
 
+    // Freeing the users struct
+    free_user_list();
+
     // Freeing the metrics struct
     destroy_metrics();
+
+    // Freeing the options for the args
+    free(options);
+
+    // Freeing the selector
+    selector_destroy(selector);
+
+    // Freeing the socket handlers
+    free(masterSocketHandler);
+    free(managementSocketHandler);
 
     return 0;
 }

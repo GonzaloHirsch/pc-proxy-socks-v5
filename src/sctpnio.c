@@ -50,6 +50,8 @@ static const struct fd_handler sctp_handler = {
 static void
 sctp_destroy_(struct sctp *s)
 {
+    free(s->buffer_read.data);
+    free(s->buffer_write.data);
     free(s);
 }
 
@@ -332,7 +334,7 @@ sctp_close(struct selector_key *key)
     // Removing the current connection from the metrics
     remove_current_connections(1);
 
-    sctp_destroy(ATTACHMENT(key));
+    sctp_destroy_(ATTACHMENT(key));
 }
 
 ///////////////////////////////////////////////////////////////////
