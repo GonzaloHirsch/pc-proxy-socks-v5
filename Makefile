@@ -22,3 +22,4 @@ clean:
 # find . -type f -exec touch {} +
 # valgrind --leak-check=yes --track-origins=yes --trace-children=yes ./sctp_client
 # valgrind --leak-check=yes --track-origins=yes --trace-children=yes --tool=memcheck -v --log-file="valgrind-output.txt" ./server
+# valgrind --leak-check=yes dren=yes --tool=memcheck --read-var-info=yes --show-reachable=yes -v --track-fds=yes --log-file="valgrind-output.txt" ./server
