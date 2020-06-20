@@ -9,8 +9,9 @@
 #include <stdint.h>
 #include <time.h>
 #include <netinet/in.h>
-#include "socks5nio.h"
 #include "netutils.h"
+
+#define N(x) (sizeof(x) / sizeof((x)[0]))
 
 void log_request(const int status, const struct sockaddr *clientaddr, const struct sockaddr *originaddr);
 

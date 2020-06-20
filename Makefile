@@ -23,3 +23,4 @@ clean:
 # valgrind --leak-check=yes --track-origins=yes --trace-children=yes ./sctp_client
 # valgrind --leak-check=yes --track-origins=yes --trace-children=yes --tool=memcheck -v --log-file="valgrind-output.txt" ./server
 # valgrind --leak-check=full --trace-children=yes --tool=memcheck --read-var-info=yes --show-reachable=yes -v --track-fds=yes --log-file="valgrind-output.txt" ./server
+# DOH='--doh-port 80 --doh-path /dns-query --doh-host doh'
