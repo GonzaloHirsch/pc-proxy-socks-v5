@@ -92,7 +92,7 @@ static int try_connection(int origin_fd, int *connect_ret, connecting_st *d, soc
         else if (d->families_to_check == 2) {
             d->first_working_ip_index = 0;
             d->families_to_check = 1;
-            s5oi->ip_selec = (addrType = IPv4) ? IPv6 : IPv4;
+            s5oi->ip_selec = (addrType == IPv4) ? IPv6 : IPv4;
         }
     }
     return origin_fd;
