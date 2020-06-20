@@ -123,8 +123,9 @@ int main(const int argc, char * const*argv)
 
     // ----------------- CREATING SIGNAL HANDLERS -----------------
 
-    // Handling the SIGTERM signal, in order to make server stopping more clean and be able to free resources
+    // Handling the SIGTERM and SIGINT signal, in order to make server stopping more clean and be able to free resources
     signal(SIGTERM, signal_handler);
+    signal(SIGINT, signal_handler);
 
     // ----------------- CREATE THE SELECTOR -----------------
 

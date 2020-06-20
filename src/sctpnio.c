@@ -32,6 +32,7 @@ static uint8_t *prepare_list_users(uint8_t **users, int count, int len);
 // Helpers
 static bool get_8_bit_integer_from_buffer(buffer *b, uint8_t *n);
 static bool get_16_bit_integer_from_buffer(buffer *b, uint16_t *n);
+static void free_list_users(uint8_t ** users, int count);
 
 // Selector event handler
 static const struct fd_handler sctp_handler = {
@@ -114,12 +115,13 @@ static struct sctp *sctp_new(const int client)
     // Write Buffer for the socket(Initialized)
     buffer_init(&(sctpState->buffer_write), options->sctp_buffer_size + 1, malloc(options->sctp_buffer_size + 1));
     // Read Buffer for the socket(Initialized)
-    buffer_init(&(sctpState->buffer_read), options->sctp_buffer_size + 1 + 1, malloc(options->sctp_buffer_size + 1));
+    buffer_init(&(sctpState->buffer_read), options->sctp_buffer_size + 1, malloc(options->sctp_buffer_size + 1));
 
     // Setting initial values to avoid errors
     sctpState->is_logged = 0;
     sctpState->state = SCTP_REQUEST;
     sctpState->error = SCTP_ERROR_NO_ERROR;
+    sctpState->references = 1;
 
     // Intialize the client_fd
     sctpState->client_fd = client;
@@ -232,13 +234,15 @@ sctp_write(struct selector_key *key)
                 // Getting the representation for the users
                 uint8_t *users = prepare_list_users(d->datagram.user_list.users, d->datagram.user_list.user_count, d->datagram.user_list.users_len);
                 // Adding the info to the buffer
-                uint8_t *user_list_data = calloc(4 + packet_len, sizeof(uint8_t));
+                uint8_t user_list_data[4 + packet_len];
                 user_list_data[0] = d->info.type;
                 user_list_data[1] = d->info.cmd;
                 user_list_data[2] = d->error;
                 user_list_data[3] = d->datagram.user_list.user_count;
                 memcpy(&user_list_data[4], users, packet_len);
                 n = sctp_sendmsg(key->fd, (void *)user_list_data, 4 + packet_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+                free(users);
+                free_list_users(d->datagram.user_list.users, d->datagram.user_list.user_count);
             }
             break;
         case CMD_CREATE:
@@ -375,6 +379,8 @@ static unsigned handle_request(struct selector_key *key)
     struct sctp *d = ATTACHMENT(key);
     // Struct for information about the sender
     struct sctp_sndrcvinfo sender_info;
+    // Variable for the from data
+    struct sockaddr from;
     // Getting the buffer to read the data
     buffer *b = &d->buffer_read;
     // Amount that can be read
@@ -387,7 +393,7 @@ static unsigned handle_request(struct selector_key *key)
     unsigned ret = SCTP_RESPONSE;
 
     // Receiving the message
-    ssize_t length = sctp_recvmsg(d->client_fd, ptr, count, NULL, 0, &sender_info, &flags);
+    ssize_t length = sctp_recvmsg(d->client_fd, ptr, count, &from, 0, &sender_info, &flags);
     if (length <= 0)
     {
         selector_unregister_fd(key->s, d->client_fd);
@@ -633,7 +639,7 @@ static unsigned handle_user_create(struct selector_key *key, buffer *b)
             d->datagram.user.plen = d->paser.up_request.pwLen;
 
             // Validating the login request
-            error = !create_user_admin(d->datagram.user.user, d->datagram.user.pass);
+            error = !create_user_admin(d->datagram.user.user, d->datagram.user.pass, d->datagram.user.ulen, d->datagram.user.plen);
 
             if (error)
             {
@@ -778,9 +784,8 @@ static unsigned handle_config_edit(struct selector_key *key, buffer *b)
 
 static uint8_t *prepare_list_users(uint8_t **users, int count, int len)
 {
-    int i = 0, previous_len = 0;
-    uint8_t *value = malloc(len + count - 1); // Allocating for all users + the sepparator between them
-    printf("Total user len is %d\n", len);
+    int i = 0, previous_len = 0, slen = 0;
+    uint8_t *value = calloc(len + count - 1, sizeof(uint8_t)); // Allocating for all users + the sepparator between them
     if (value == NULL)
     {
         return NULL;
@@ -788,19 +793,24 @@ static uint8_t *prepare_list_users(uint8_t **users, int count, int len)
 
     for (i = 0; i < count; i++)
     {
+        slen = strlen((const char *)users[i]);
         if (i == 0)
         {
-            memcpy(value, users[i], strlen((const char *)users[i]));
-            previous_len = strlen((const char *)users[i]);
+            memcpy(value, users[i], slen);
+            previous_len = slen;
         }
         else
         {
             value[previous_len] = 0x00;
-            memcpy(value + previous_len + 1, (const char *)users[i], strlen((const char *)users[i]));
-            previous_len += 1 + strlen((const char *)users[i]);
+            memcpy(value + previous_len + 1, users[i], slen);
+            previous_len += 1 + slen;
         }
     }
     return value;
+}
+
+static void free_list_users(uint8_t ** users, int count){
+    free_list_user_admin(users, count);
 }
 
 ///////////////////////////////////////////////////////////////////
