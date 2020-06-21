@@ -37,13 +37,13 @@ int main(const int argc, char * const*argv)
     struct sockaddr_in6 address;
     address.sin6_family = AF_INET6;
     address.sin6_addr = in6addr_any;
-    address.sin6_port = htons(PORT);
+    address.sin_port = htons(options->socks_port);
 
     // Address for sctp socket binding
     struct sockaddr_in management_address;
     management_address.sin_family = AF_INET;
-    management_address.sin_addr.s_addr = INADDR_ANY;
-    management_address.sin_port = htons(SCTP_PORT);
+    management_address.sin_addr.s_addr = htons(INADDR_ANY);
+    management_address.sin_port = htons(options->mng_port);
 
     // ----------------- INITIALIZE THE MAIN SOCKET -----------------
 
