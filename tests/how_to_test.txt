@@ -22,3 +22,12 @@ Download: http://old-releases.ubuntu.com/releases/18.04.3/ubuntu-18.04.3-desktop
 5 - Run "curl -o proxy.iso -x socks5://localhost:1080 http://91.189.88.153:80/releases/18.04.3/ubuntu-18.04.3-desktop-amd64.iso" in terminal B
 6 - Calculate checksum of file with "md5sum debian-10.4.0-amd64-netinst.iso > proxy.txt" in terminal C
 7 - Check diff
+
+
+---------------------------------------------------------------
+How to test Disector:
+HTTP:
+curl -4 -x socks5://ribas:gato@localhost:1080 http://username:password@example.com/ 
+POP3:
+while running dovecot
+ncat --proxy-type socks5 -v --proxy-auth 2:2 --proxy 127.0.0.1:1080 127.0.0.1 110

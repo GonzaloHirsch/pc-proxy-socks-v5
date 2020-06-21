@@ -3,8 +3,8 @@
 ////////////////////////////////////////
 // COPY
 ////////////////////////////////////////
-void extract_http_auth(struct http_auth_parser * http_p);
-void extract_pop3_auth(pop3_parser pop3_p);
+void extract_http_auth(struct http_auth_parser * http_p, struct socks5  * s);
+void extract_pop3_auth(pop3_parser pop3_p, struct socks5 * s);
 
 void
 copy_init(const unsigned state, struct selector_key *key)
@@ -143,7 +143,7 @@ copy_read(struct selector_key *key)
                     http_auth_consume_msg(aux_b, &d->http_parser, &errored);
                     if(http_auth_done_parsing(&d->http_parser, &errored)){
                         if(!errored){
-                            extract_http_auth(&d->http_parser);
+                            extract_http_auth(&d->http_parser, s);
                         }
                         free_http_auth_parser(&d->http_parser);
                         http_auth_init(&d->http_parser);
@@ -156,7 +156,7 @@ copy_read(struct selector_key *key)
                     pop3_consume_msg(aux_b, &d->pop_parser, &errored);
                     if(pop3_done_parsing(&d->pop_parser, &errored)){
                         if(!errored){
-                            extract_pop3_auth(&d->pop_parser);
+                            extract_pop3_auth(&d->pop_parser, s);
                         }
                         free_pop3_parser(&d->pop_parser);
                         pop3_parser_init(&d->pop_parser);
@@ -261,22 +261,32 @@ copy_write(struct selector_key *key)
 }
 
 void
-extract_http_auth(struct http_auth_parser * http_p){
+extract_http_auth(struct http_auth_parser * http_p, struct socks5 * s){
 
     char * encoding_value = (char *) http_p -> encoding;
     char * auth_value = (char *) http_p ->content;
 
-    if(auth_value != NULL){
-        // For now, just print
-        printf("ENCODING: %s\n", encoding_value);
-        printf("AUTH: %s\n", auth_value);
-    }
+    /** TODO: Do smth about magic number*/
+    unsigned char decoded[256];
+    uint8_t * u, * p;
 
+    if(auth_value != NULL && encoding_value != NULL){
+
+        // If encoded in base64
+        if(strcmp(encoding_value, "Basic") == 0){
+            b64_decode(auth_value, decoded, 256);
+            if(decoded != 0){
+                u = (uint8_t *)strtok((char *)decoded, ":");
+                p = (uint8_t *)strtok(NULL, "\0");
+                log_disector(s->username, s->origin_info, u, p);
+            }
+        }
+    }
 }
 
 void
-extract_pop3_auth(pop3_parser pop3_p){
+extract_pop3_auth(pop3_parser pop3_p, struct socks5 * s){
     if(pop3_p->user != NULL && pop3_p->pass != NULL){
-        printf("User: %s Pass: %s\n", pop3_p->user, pop3_p->pass);
+        log_disector(s->username, s->origin_info, pop3_p->user, pop3_p->pass);
     }
 }

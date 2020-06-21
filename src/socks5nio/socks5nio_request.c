@@ -190,6 +190,8 @@ request_process(struct selector_key *key, struct request_st *d)
             //Save the port.
             memcpy(s->origin_info.port, dst_port, 2);
             s->origin_info.protocol_type = identify_protocol_type(dst_port);
+            //State that we have no domain
+            s->origin_resolution = NULL;
             // We have all the info to connect
             ret = CONNECTING;
             break;

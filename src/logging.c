@@ -63,7 +63,7 @@ void log_request(const int status, const uint8_t *username, const struct sockadd
      - Username
      - Password
 */
-void log_password(const uint8_t *owner, const int protocol, const struct sockaddr *originaddr, const uint8_t *fqdn, const uint8_t *u, const uint8_t *p)
+void log_disector(const uint8_t *owner, struct socks5_origin_info orig_info, const uint8_t *u, const uint8_t *p)
 {
     // Generating the time buffer
     char time_buff[32] = {0};
@@ -73,37 +73,28 @@ void log_password(const uint8_t *owner, const int protocol, const struct sockadd
     strftime(time_buff, n, "%FT%TZ", gmtime(&now)); // tendriamos que usar gmtime_r pero no está disponible en C99
 
     char *proto = "UNDEFINED";
-    switch (protocol)
+    switch (orig_info.protocol_type)
     {
-    case 1:
+    case PROT_HTTP:
+        proto = "HTTP PROTOCOL";
         break;
-    case 2:
+    case PROT_POP3:
+        proto = "POP3 PROTOCOL";
         break;
     default:
         break;
     }
 
     // It means I have a domain
-    if (fqdn != NULL)
+    if (orig_info.resolve_addr != NULL)
     {
-        // Extracting the port
-        in_port_t port = 0;
-        switch (originaddr->sa_family)
-        {
-        case AF_INET:
-            port = ((struct sockaddr_in *)originaddr)->sin_port;
-            break;
-        case AF_INET6:
-            port = ((struct sockaddr_in6 *)originaddr)->sin6_port;
-            break;
-        }
-        fprintf(stdout, "%s\t%s\t%c\t%s\t%s\t%d\t%s\t%s\n", time_buff, owner, PASSWORD_CHAR, proto, fqdn, ntohs(port), u, p);
+        fprintf(stdout, "%s\t%s\t%c\t%s\t%s\t%s\t%s\t%s\n", time_buff, owner, PASSWORD_CHAR, proto, orig_info.resolve_addr, orig_info.port, u, p);
     }
     else
     {
         // Generating the origin buffer
         char origin_buff[SOCKADDR_TO_HUMAN_MIN] = {0};
-        sockaddr_to_human(origin_buff, N(origin_buff), originaddr);
+        sockaddr_to_human(origin_buff, N(origin_buff), (struct sockaddr *) &orig_info.origin_addr);
         fprintf(stdout, "%s\t%s\t%c\t%s\t%s\t%s\t%s\n", time_buff, owner, PASSWORD_CHAR, proto, origin_buff, u, p);
     }
 }
