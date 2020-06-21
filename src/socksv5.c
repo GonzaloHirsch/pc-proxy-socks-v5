@@ -34,10 +34,10 @@ int main(const int argc, char * const*argv)
     fd_selector selector = NULL;
 
     // Address for socket binding
-    struct sockaddr_in address;
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
+    struct sockaddr_in6 address;
+    address.sin6_family = AF_INET6;
+    address.sin6_addr = in6addr_any;
+    address.sin6_port = htons(PORT);
 
     // Address for sctp socket binding
     struct sockaddr_in management_address;
@@ -50,7 +50,9 @@ int main(const int argc, char * const*argv)
     printf("Initializing main socket\n");
 
     // Creating the server socket to listen
-    master_socket = socket(AF_INET, SOCK_STREAM, 0);
+    master_socket = socket(AF_INET6, SOCK_STREAM, 0);
+    int no = 0;
+    setsockopt(master_socket, IPPROTO_IPV6, IPV6_V6ONLY, (void *) &no, sizeof(no));
     if (master_socket <= 0)
     {
         printf("socket failed");
