@@ -112,14 +112,16 @@ void connecting_init(const unsigned state, struct selector_key *key)
     struct socks5_origin_info *s5oi = &s->origin_info;
     int connect_ret = -1;
     selector_status st = SELECTOR_SUCCESS;
-    if (s->origin_info.ipv4_c > 0)
+    if (s->origin_info.ipv4_c > 0) {
         s->origin_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (s->origin_info.ipv6_c > 0)
+        selector_fd_set_nio(s->origin_fd);
+    }
+    if (s->origin_info.ipv6_c > 0) {
         s->origin_fd6 = socket(AF_INET6, SOCK_STREAM, 0);
-    int no = 0;
-    setsockopt(s->origin_fd6, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no));
-    selector_fd_set_nio(s->origin_fd);
-    selector_fd_set_nio(s->origin_fd6);
+        selector_fd_set_nio(s->origin_fd6);
+        int no = 0;
+        setsockopt(s->origin_fd6, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no));
+    }
 
     d->rb = &(ATTACHMENT(key)->read_buffer);
     d->first_working_ip_index = 0;
