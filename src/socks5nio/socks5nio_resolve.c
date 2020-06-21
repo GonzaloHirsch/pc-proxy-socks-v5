@@ -157,10 +157,10 @@ resolve_read(struct selector_key *key)
             http_consume_message(r_s->rb, &r_s->parser, &errored);
 
             //If we done parsing the first response
-            if(http_done_parsing_message(&r_s->parser, &errored) && strcmp((const char *) r_s->parser.status, "200") == 0){ //checks if it is done the http parsing and that the status code is not error
+            if(http_done_parsing_message(&r_s->parser, &errored)){ //checks if it is done the http parsing and that the status code is not error
                 
                 // If the http message is correct --> parse the dns response
-                if(!errored){
+                if(!errored && strcmp((const char *) r_s->parser.status, "200") == 0 && r_s->parser.body != NULL){
                     // Parse the dns response and save the info in the origin_info
                     parse_dns_resp(r_s->parser.body, (char *) s->origin_info.resolve_addr, s, &errored);
                 }
@@ -186,10 +186,10 @@ resolve_read(struct selector_key *key)
             http_consume_message(r_s->rb, &r_s->parser, &errored);
 
             //If we done parsing the first response
-            if(http_done_parsing_message(&r_s->parser, &errored)  && strcmp((const char *) r_s->parser.status, "200") == 0){
+            if(http_done_parsing_message(&r_s->parser, &errored)){
                 
                 // If the http message is correct --> parse the dns response
-                if(!errored){
+                if(!errored && strcmp((const char *) r_s->parser.status, "200") == 0 && r_s->parser.body != NULL){
                     // Parse the dns response and save the info in the origin_info
                     parse_dns_resp(r_s->parser.body, (char *) s->origin_info.resolve_addr, s, &errored);
                 }
