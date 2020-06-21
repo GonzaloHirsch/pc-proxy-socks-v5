@@ -53,7 +53,7 @@ static struct socks5 *socks5_new(const int client)
 
     // Intialize the client_fd and the server_fd
     sockState->client_fd = client;
-    sockState->origin_fd = -1;
+    sockState->origin_fd = sockState->origin_fd6 = sockState->sel_origin_fd = -1;
 
     sockState->reply_type = -1;
     sockState->references = 1;
@@ -297,6 +297,7 @@ void socksv5_done(struct selector_key *key)
     const int fds[] = {
         ATTACHMENT(key)->client_fd,
         ATTACHMENT(key)->origin_fd,
+        ATTACHMENT(key)->origin_fd6,
     };
     for (unsigned i = 0; i < N(fds); i++)
     {
