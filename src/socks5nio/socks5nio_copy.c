@@ -267,7 +267,7 @@ extract_http_auth(struct http_auth_parser * http_p, struct socks5 * s){
     char * auth_value = (char *) http_p ->content;
 
     /** TODO: Do smth about magic number*/
-    unsigned char decoded[256];
+    unsigned char decoded[256] = {0};
     uint8_t * u, * p;
 
     if(auth_value != NULL && encoding_value != NULL){
