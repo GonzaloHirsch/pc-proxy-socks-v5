@@ -138,7 +138,8 @@ copy_read(struct selector_key *key)
             case PROT_HTTP:
                 // Analyze the whole message to steal 1 or more passwords
                 while(buffer_can_read(aux_b)){
-
+                    buffer_read(aux_b);
+                    /*
                     http_consume_message(aux_b, &d->http_parser, &errored);
                     if(http_done_parsing_message(&d->http_parser, &errored)){
                         if(!errored){
@@ -147,7 +148,7 @@ copy_read(struct selector_key *key)
                         http_message_parser_init(&d->http_parser);
                         errored=0;
                     }
-
+                    */
                 }
                 
 
