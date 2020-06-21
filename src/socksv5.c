@@ -28,16 +28,22 @@ int main(const int argc, char * const*argv)
     printf("Starting server...\n");
 
     int opt = TRUE;
-    int master_socket, management_socket;
+    int master_socket, master_socket6, management_socket;
 
     // Selector for concurrent connexions
     fd_selector selector = NULL;
 
     // Address for socket binding
-    struct sockaddr_in6 address;
-    address.sin6_family = AF_INET6;
-    address.sin6_addr = in6addr_any;
-    address.sin6_port = htons(options->socks_port);
+    struct sockaddr_in address;
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(options->socks_port);
+
+    // Address for IPv6 socket binding
+    struct sockaddr_in6 address6;
+    address6.sin6_family = AF_INET6;
+    address6.sin6_addr = in6addr_any;
+    address6.sin6_port = htons(PORT);    
 
     // Address for sctp socket binding
     struct sockaddr_in management_address;
@@ -50,9 +56,8 @@ int main(const int argc, char * const*argv)
     printf("Initializing main socket\n");
 
     // Creating the server socket to listen
-    master_socket = socket(AF_INET6, SOCK_STREAM, 0);
-    int no = 0;
-    setsockopt(master_socket, IPPROTO_IPV6, IPV6_V6ONLY, (void *) &no, sizeof(no));
+    master_socket = socket(AF_INET, SOCK_STREAM, 0);
+    
     if (master_socket <= 0)
     {
         printf("socket failed");
@@ -78,6 +83,45 @@ int main(const int argc, char * const*argv)
     if (listen(master_socket, MAX_PENDING_CONNECTIONS) < 0)
     {
         perror("ERROR: Failure listening master socket\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // ----------------- INITIALIZE THE MAIN SOCKET (IPv6) -----------------
+
+    master_socket6 = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+
+    int yes = 1;
+
+    if (setsockopt(master_socket6, SOL_IPV6, IPV6_V6ONLY, (void*) &yes, sizeof(yes)) < 0) {
+        printf("Failed to set IPV6_V6ONLY\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (master_socket6 <= 0)
+    {
+        printf("socket6 failed");
+        //log(FATAL, "socket failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Setting the master socket to allow multiple connections, not required, just good habit
+    if (setsockopt(master_socket6, SOL_IPV6, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0)
+    {
+        perror("ERROR: Failure setting setting IPv6 master socket\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Binding the socket to localhost:1080
+    if (bind(master_socket6, (struct sockaddr *)&address6, sizeof(address6)) < 0)
+    {
+        perror("ERROR: Failure binding IPv6 master socket\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Checking if the socket is able to listen
+    if (listen(master_socket6, MAX_PENDING_CONNECTIONS) < 0)
+    {
+        perror("ERROR: Failure listening IPv6 master socket\n");
         exit(EXIT_FAILURE);
     }
 
@@ -179,6 +223,13 @@ int main(const int argc, char * const*argv)
     //TODO: define on close
     masterSocketHandler->handle_close = NULL;
 
+    // Create socket handler for IPv6 master socket
+    fd_handler * master_socket6_handler = malloc(sizeof(fd_handler));
+    master_socket6_handler->handle_read = socksv5_passive_accept;
+    master_socket6_handler->handle_write = NULL;
+    master_socket6_handler->handle_block = NULL;
+    master_socket6_handler->handle_close = NULL;
+
     // Create socket handler for the master socket
     fd_handler *managementSocketHandler = malloc(sizeof(fd_handler));
     managementSocketHandler->handle_read = sctp_passive_accept;
@@ -190,6 +241,12 @@ int main(const int argc, char * const*argv)
     // Register the master socket to the managed fds
     selector_status ss_master = selector_register(selector, master_socket, masterSocketHandler, OP_READ, NULL);
     if (ss_master != SELECTOR_SUCCESS)
+    {
+        printf("Error in master socket: %s", selector_error(ss_master));
+    }
+
+    selector_status ss_master6 = selector_register(selector, master_socket6, master_socket6_handler, OP_READ, NULL);
+    if (ss_master6 != SELECTOR_SUCCESS)
     {
         printf("Error in master socket: %s", selector_error(ss_master));
     }
