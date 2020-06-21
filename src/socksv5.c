@@ -37,7 +37,7 @@ int main(const int argc, char * const*argv)
     struct sockaddr_in6 address;
     address.sin6_family = AF_INET6;
     address.sin6_addr = in6addr_any;
-    address.sin_port = htons(options->socks_port);
+    address.sin6_port = htons(options->socks_port);
 
     // Address for sctp socket binding
     struct sockaddr_in management_address;
