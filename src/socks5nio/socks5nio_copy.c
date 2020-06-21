@@ -4,6 +4,7 @@
 // COPY
 ////////////////////////////////////////
 void extract_http_auth(struct http_message_parser * http_p);
+void extract_pop3_auth(pop3_parser pop3_p);
 
 void
 copy_init(const unsigned state, struct selector_key *key)
@@ -22,6 +23,7 @@ copy_init(const unsigned state, struct selector_key *key)
     d->other_copy = &sockState->orig.copy;
     // Init parser and buffer, just for the client fd
     http_message_parser_init(&d->http_parser);
+    pop3_parser_init(&d->pop_parser);
     buffer_init(&d->aux_b, BUFFERSIZE+1, malloc(BUFFERSIZE+1));
 
 
@@ -139,21 +141,20 @@ copy_read(struct selector_key *key)
                 // Analyze the whole message to steal 1 or more passwords
                 while(buffer_can_read(aux_b)){
                     buffer_read(aux_b);
-                    /*
-                    http_consume_message(aux_b, &d->http_parser, &errored);
-                    if(http_done_parsing_message(&d->http_parser, &errored)){
-                        if(!errored){
-                            extract_http_auth(&d->http_parser);
-                        }
-                        http_message_parser_init(&d->http_parser);
-                        errored=0;
-                    }
-                    */
                 }
-                
 
                 break;
             case PROT_POP3:
+                while(buffer_can_read(aux_b)){
+                    pop3_consume_msg(aux_b, &d->pop_parser, &errored);
+                    if(pop3_done_parsing(&d->pop_parser, &errored)){
+                        if(!errored){
+                            extract_pop3_auth(&d->pop_parser);
+                        }
+                        pop3_parser_init(&d->pop_parser);
+                    }
+                    //buffer_read(aux_b);
+                }
                 break;
             default:
                 break;
@@ -259,5 +260,12 @@ extract_http_auth(struct http_message_parser * http_p){
         // For now, just print
         printf("AUTH: %s\n", auth_value);
     }
-    
+
+}
+
+void
+extract_pop3_auth(pop3_parser pop3_p){
+    if(pop3_p->user != NULL && pop3_p->pass != NULL){
+        printf("User: %s Pass: %s\n", pop3_p->user, pop3_p->pass);
+    }
 }

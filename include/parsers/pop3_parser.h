@@ -45,11 +45,9 @@ struct pop3_parser
 typedef struct pop3_parser * pop3_parser;
 
 void pop3_parser_init(pop3_parser p);
-
 pop3_state pop3_consume_msg(buffer * b, pop3_parser p, int * errored);
-
 void free_pop3_parser(pop3_parser p);
-
+int pop3_done_parsing(pop3_parser p,int * errored);
 
 
 

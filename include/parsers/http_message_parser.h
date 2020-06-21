@@ -20,7 +20,7 @@
 
 typedef enum http_message_state {
     HTTP_H, HTTP_T1, HTTP_T2, HTTP_P,
-    HTTP_SLASH, HTTP_V1, HTTP_V2, HTTP_V2_I,
+    HTTP_SLASH, HTTP_V1, HTTP_V2,
     HTTP_STATUS_CODE, HTTP_STATUS_MSG,
     HTTP_I1,
     HTTP_HK, HTTP_HV,
