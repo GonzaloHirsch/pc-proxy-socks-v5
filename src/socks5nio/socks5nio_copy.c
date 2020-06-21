@@ -3,7 +3,7 @@
 ////////////////////////////////////////
 // COPY
 ////////////////////////////////////////
-void extract_http_auth(struct http_message_parser * http_p);
+void extract_http_auth(struct http_auth_parser * http_p);
 void extract_pop3_auth(pop3_parser pop3_p);
 
 void
@@ -22,7 +22,7 @@ copy_init(const unsigned state, struct selector_key *key)
     d->interest = OP_READ | OP_WRITE;
     d->other_copy = &sockState->orig.copy;
     // Init parser and buffer, just for the client fd
-    http_message_parser_init(&d->http_parser);
+    http_auth_init(&d->http_parser);
     pop3_parser_init(&d->pop_parser);
     buffer_init(&d->aux_b, BUFFERSIZE+1, malloc(BUFFERSIZE+1));
 
@@ -42,7 +42,7 @@ copy_close(const unsigned state, struct selector_key *key)
 {
     struct socks5 *s = ATTACHMENT(key);
 
-    free_http_message_parser(&s->client.copy.http_parser);
+    free_http_auth_parser(&s->client.copy.http_parser);
     free(s->client.copy.aux_b.data);
     /** TODO: Free remaining stuff */
 }
@@ -145,6 +145,7 @@ copy_read(struct selector_key *key)
                         if(!errored){
                             extract_http_auth(&d->http_parser);
                         }
+                        free_http_auth_parser(&d->http_parser);
                         http_auth_init(&d->http_parser);
                     }
                 }
@@ -157,6 +158,7 @@ copy_read(struct selector_key *key)
                         if(!errored){
                             extract_pop3_auth(&d->pop_parser);
                         }
+                        free_pop3_parser(&d->pop_parser);
                         pop3_parser_init(&d->pop_parser);
                     }
                     //buffer_read(aux_b);
@@ -259,13 +261,8 @@ copy_write(struct selector_key *key)
 }
 
 void
-extract_http_auth(struct http_message_parser * http_p){
-    char * auth_value = get_header_value_by_name(http_p, "Authorization");
-
-    if(auth_value != NULL){
-        // For now, just print
-        printf("AUTH: %s\n", auth_value);
-    }
+extract_http_auth(struct http_auth_parser * http_p){
+    
 
 }
 

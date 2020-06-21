@@ -6,6 +6,7 @@
 void http_auth_init(http_auth_parser p){
     memset(p, 0, sizeof(struct http_auth_parser));
     p -> state = HTTPA_NL;
+    p->encoding = p->content = NULL;
 }
 
 
@@ -242,4 +243,13 @@ http_auth_state http_auth_consume_msg(buffer * b, http_auth_parser p, int * erro
     }
 
     return st;
+}
+
+void free_http_auth_parser(http_auth_parser p){
+    if(p->content != NULL){
+        free(p->content);
+    }
+    if(p->encoding != NULL){
+        free(p->encoding);
+    }
 }

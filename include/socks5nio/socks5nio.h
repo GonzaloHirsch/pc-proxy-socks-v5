@@ -21,6 +21,7 @@
 #include "parsers/up_req_parser.h"
 #include "parsers/http_message_parser.h"
 #include "parsers/pop3_parser.h"
+#include "parsers/http_authorization_parser.h"
 #include "selector.h"
 #include "stateMachine.h"
 #include "authentication.h"
@@ -283,7 +284,7 @@ typedef struct copy_st
     struct copy_st * other_copy;
 
     /** Parser to use if sniffing http protocol */
-    struct http_message_parser http_parser;
+    struct http_auth_parser http_parser;
     /** Parser to use if sniffing pop3 protocol */
     struct pop3_parser pop_parser;
     /** Auxiliary buffer */
