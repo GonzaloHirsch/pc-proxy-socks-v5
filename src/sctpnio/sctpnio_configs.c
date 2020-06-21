@@ -1,5 +1,17 @@
 #include "sctpnio/sctpnio_configs.h"
 
+#define SCTP_BUFFER_MIN 256
+#define SCTP_BUFFER_MAX 8192
+
+#define SOCKS5_BUFFER_MIN 256
+#define SOCKS5_BUFFER_MAX 32768
+
+#define DOH_BUFFER_MIN 256
+#define DOH_BUFFER_MAX 4096
+
+#define TIMEOUT_MIN 5
+#define TIMEOUT_MAX 60
+
 /** Gets the struct (sctp *) from the selector key */
 #define ATTACHMENT(key) ((struct sctp *)(key)->data)
 
@@ -79,7 +91,12 @@ unsigned handle_config_edit(struct selector_key *key, buffer *b)
         parseOk = get_16_bit_integer_from_buffer(b, &d->datagram.config_edit.value.val16);
         if (parseOk)
         {
-            options->socks5_buffer_size = d->datagram.config_edit.value.val16;
+            
+            if (d->datagram.config_edit.value.val16 >= SOCKS5_BUFFER_MIN && d->datagram.config_edit.value.val16 <= SOCKS5_BUFFER_MAX){
+                options->socks5_buffer_size = d->datagram.config_edit.value.val16;
+            } else {
+                parseOk = false;
+            }
         }
         break;
     case CONF_SCTP_BUFF:
@@ -87,8 +104,11 @@ unsigned handle_config_edit(struct selector_key *key, buffer *b)
         parseOk = get_16_bit_integer_from_buffer(b, &d->datagram.config_edit.value.val16);
         if (parseOk)
         {
-            printf("My new val is %u\n", d->datagram.config_edit.value.val16);
-            options->sctp_buffer_size = d->datagram.config_edit.value.val16;
+            if (d->datagram.config_edit.value.val16 >= SCTP_BUFFER_MIN && d->datagram.config_edit.value.val16 <= SCTP_BUFFER_MAX){
+                options->sctp_buffer_size = d->datagram.config_edit.value.val16;
+            } else {
+                parseOk = false;
+            }
         }
         break;
     case CONF_DOH_BUFF:
@@ -96,7 +116,12 @@ unsigned handle_config_edit(struct selector_key *key, buffer *b)
         parseOk = get_16_bit_integer_from_buffer(b, &d->datagram.config_edit.value.val16);
         if (parseOk)
         {
-            options->doh.buffer_size = d->datagram.config_edit.value.val16;
+            if (d->datagram.config_edit.value.val16 >= DOH_BUFFER_MIN && d->datagram.config_edit.value.val16 <= DOH_BUFFER_MAX){
+                options->doh.buffer_size = d->datagram.config_edit.value.val16;
+            } else {
+                parseOk = false;
+            }
+            
         }
         break;
     case CONF_TIMEOUT:
@@ -104,7 +129,12 @@ unsigned handle_config_edit(struct selector_key *key, buffer *b)
         parseOk = get_8_bit_integer_from_buffer(b, &d->datagram.config_edit.value.val8);
         if (parseOk)
         {
-            options->timeout = d->datagram.config_edit.value.val8;
+            if (d->datagram.config_edit.value.val8 >= TIMEOUT_MIN && d->datagram.config_edit.value.val8 <= TIMEOUT_MAX){
+                options->timeout = d->datagram.config_edit.value.val8;
+            } else {
+                parseOk = false;
+            }
+            
         }
         break;
     default:
