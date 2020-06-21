@@ -262,8 +262,6 @@ copy_write(struct selector_key *key)
 
 void
 extract_http_auth(struct http_auth_parser * http_p){
-    
-extract_http_auth(struct http_auth_parser * http_p){
 
     char * encoding_value = (char *) http_p -> encoding;
     char * auth_value = (char *) http_p ->content;
