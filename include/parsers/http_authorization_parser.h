@@ -1,7 +1,7 @@
 #ifndef __HTTP_AUTH_PARSER__
 #define __HTTP_AUTH_PARSER__
 
-#define MAX_LINE 256
+#define MAX_HTTP_LINE 1024
 
 #include <stdio.h>
 #include <string.h>
@@ -46,7 +46,7 @@ typedef struct http_auth_parser * http_auth_parser;
 
 struct http_auth_parser{
 
-    uint8_t buffer[MAX_LINE];
+    uint8_t buffer[MAX_HTTP_LINE];
     uint8_t * cursor;
     uint8_t * encoding;
     uint8_t * content;    

@@ -243,3 +243,13 @@ http_auth_state http_auth_consume_msg(buffer * b, http_auth_parser p, int * erro
 
     return st;
 }
+
+void free_http_auth_parser(http_auth_parser p){
+
+    if(p ->encoding != NULL){
+        free(p -> encoding);
+    }
+    if(p -> content != NULL){
+        free(p -> content);
+    }
+}
