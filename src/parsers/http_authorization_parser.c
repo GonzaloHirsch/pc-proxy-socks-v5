@@ -153,6 +153,8 @@ http_auth_state http_auth_consume_byte(http_auth_parser p, uint8_t b){
         if(b != ' ')
         {
             p -> cursor = p -> buffer;
+            *p -> cursor = b;
+            p -> cursor++;
             p ->in_auth = 1;
             p -> state = HTTPA_G_ENCODING;
         }
