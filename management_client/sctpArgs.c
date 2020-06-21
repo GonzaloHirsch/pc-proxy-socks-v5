@@ -1,5 +1,59 @@
 #include "sctpArgs.h"
 
+static void
+address(char *address, int port, int protocol, int * family, struct addrinfo **addrinfo)
+{
+    unsigned char buff[sizeof(struct in6_addr)];
+    int r_4, r_6;
+
+    // Try to match with IPv4
+    r_4 = inet_pton(AF_INET, address, buff);
+
+    // IPv4 unsuccessful, try with IPv6
+    if (r_4 <= 0)
+    {
+        // Try to match with IPv4
+        r_6 = inet_pton(AF_INET6, address, buff);
+
+        // IPv6 error, exit
+        if (r_6 <= 0)
+        {
+            printf("Cannot determine address family %s, please try again with a valid address.\n", address);
+            fprintf(stderr, "Address resolution error\n");
+            free_memory();
+            exit(0);
+        }
+        else
+        {
+            *family = AF_INET6;
+        }
+    }
+    else
+    {
+        *family = AF_INET;
+    }
+
+    struct addrinfo hints = {
+        .ai_family = *family,
+        .ai_socktype = SOCK_STREAM,
+        .ai_flags = AI_PASSIVE,
+        .ai_protocol = protocol,
+        .ai_canonname = NULL,
+        .ai_addr = NULL,
+        .ai_next = NULL,
+    };
+
+    char port_buff[7];
+    sprintf(port_buff, "%hu", port);
+    if (0 != getaddrinfo(address, port_buff, &hints, addrinfo))
+    {
+        printf("Cannot resolve %s, please try again with a valid address.\n", address);
+        fprintf(stderr, "Domain name resolution error\n");
+        free_memory();
+        exit(0);
+    }
+}
+
 static unsigned short
 port(const char *s)
 {

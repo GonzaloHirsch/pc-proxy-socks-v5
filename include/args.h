@@ -11,6 +11,11 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <netinet/in.h>     // AF_UNSPEC
+#include <arpa/inet.h>      // inet_pton
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 #define MAX_USERS 10
 
@@ -29,11 +34,15 @@ struct doh {
 };
 
 typedef struct socks5args_struct {
-    char           *socks_addr;
-    unsigned short  socks_port;
+    char *              socks_addr;
+    unsigned short      socks_port;
+    int                 socks_family;
+    struct addrinfo *   socks_addr_info;
 
-    char *          mng_addr;
-    unsigned short  mng_port;
+    char *              mng_addr;
+    unsigned short      mng_port;
+    int                 mng_family;
+    struct addrinfo *   mng_addr_info;
 
     bool            disectors_enabled;
 
@@ -55,6 +64,11 @@ typedef struct socks5args_struct * socks5args;
  */
 void 
 parse_args(const int argc, char * const*argv);
+
+/**
+ * Frees the memory used by the options
+*/
+void free_memory();
 
 extern socks5args options;
 
