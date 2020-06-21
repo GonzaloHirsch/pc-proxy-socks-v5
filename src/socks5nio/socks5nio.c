@@ -47,9 +47,9 @@ static struct socks5 *socks5_new(const int client)
     stm_init(&(sockState->stm));
 
     // Write Buffer for the socket(Initialized)
-    buffer_init(&(sockState->write_buffer), BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
+    buffer_init(&(sockState->write_buffer), options->socks5_buffer_size + 1, malloc(options->socks5_buffer_size + 1));
     // Read Buffer for the socket(Initialized)
-    buffer_init(&(sockState->read_buffer), BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
+    buffer_init(&(sockState->read_buffer), options->socks5_buffer_size + 1, malloc(options->socks5_buffer_size + 1));
 
     // Intialize the client_fd and the server_fd
     sockState->client_fd = client;
@@ -286,9 +286,6 @@ void socksv5_block(struct selector_key *key)
 
 void socksv5_close(struct selector_key *key)
 {
-    // Removing the current connection from the metrics
-    remove_current_connections(1);
-
     close(key->fd);
 }
 
@@ -296,8 +293,7 @@ void socksv5_done(struct selector_key *key)
 {
     const int fds[] = {
         ATTACHMENT(key)->client_fd,
-        ATTACHMENT(key)->origin_fd,
-        ATTACHMENT(key)->origin_fd6,
+        ATTACHMENT(key)->sel_origin_fd
     };
     for (unsigned i = 0; i < N(fds); i++)
     {
@@ -314,4 +310,7 @@ void socksv5_done(struct selector_key *key)
 
     // Calling the destroy_ method because the object pool is not implemented
     socks5_destroy_(ATTACHMENT(key));
+
+    // Removing the current connection from the metrics
+    remove_current_connections(1);
 }

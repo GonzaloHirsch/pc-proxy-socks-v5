@@ -1,6 +1,5 @@
 #include "socks5nio/socks5nio_resolve.h"
 
-
 ////////////////////////////////////////
 // RESOLVE
 ////////////////////////////////////////
@@ -95,8 +94,6 @@ resolve_init(const unsigned state, struct selector_key *key)
     }
 
 }
-
-
 
 void
 resolve_close(const unsigned state, struct selector_key *key)
