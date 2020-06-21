@@ -52,7 +52,7 @@ pop3_state pop3_consume_byte(pop3_parser p, uint8_t b){
 
     case POP3_U_E:
         if(b == 'r' || b == 'R'){
-            p -> state = POP3_U_S;
+            p -> state = POP3_U_R;
         }
         else
         {
@@ -118,7 +118,7 @@ pop3_state pop3_consume_byte(pop3_parser p, uint8_t b){
 
         break;
     case POP3_P_S2:
-        if(b == ' ' || b == ' '){
+        if(b == ' '){
             if(p -> h_user){
                 p -> state = POP3_G_PASS;
                 p ->cursor = p -> buff;
