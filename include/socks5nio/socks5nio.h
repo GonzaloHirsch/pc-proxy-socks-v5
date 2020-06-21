@@ -26,6 +26,7 @@
 #include "authentication.h"
 #include "metrics.h"
 #include "args.h"
+#include "parsers/http_authorization_parser.h"
 
 #define N(x) (sizeof(x) / sizeof((x)[0]))
 /** TODO: define appropiate size */
