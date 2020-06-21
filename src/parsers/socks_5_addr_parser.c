@@ -100,7 +100,7 @@ const int get_socks_5_type(socks_5_addr_parser p) {
 
 void free_socks_5_addr_parser(socks_5_addr_parser p) {
     free(p->addr);
-    // free(p);
+    free(p);
 }
 
 

@@ -12,11 +12,8 @@
 #include <stdlib.h>
 #include <signal.h>
 #include "selector.h"
-#include "metrics.h"
 #include "authentication.h"
-#include "args.h"
 #include "io_utils/buffer.h"
-#include "io_utils/conversions.h"
 #include "parsers/up_req_parser.h"
 #include <arpa/inet.h>
 // This header does not exist in OSX, so the compilation has to be done in Linux
@@ -26,6 +23,8 @@
 
 /** Version of the negotiation */
 #define SCTP_VERSION 0x01
+
+#define N(x) (sizeof(x) / sizeof((x)[0]))
 
 /** 
  * States the SCTP process goes through 

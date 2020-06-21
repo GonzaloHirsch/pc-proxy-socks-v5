@@ -30,7 +30,7 @@ copy_init(const unsigned state, struct selector_key *key)
     // Init of the copy for the origin
     d = &sockState->orig.copy;
 
-    d->fd = sockState->origin_fd;
+    d->fd = sockState->sel_origin_fd;
     d->rb = &sockState->write_buffer;
     d->wb = &sockState->read_buffer;
     d->interest = OP_READ | OP_WRITE;

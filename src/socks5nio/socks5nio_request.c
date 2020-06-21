@@ -21,6 +21,9 @@ request_close(const unsigned state, struct selector_key *key)
     buffer_reset(&s->write_buffer);
     buffer_reset(&s->read_buffer);
 
+    // Freeing the parser
+    free_connection_req_parser(&s->client.request.parser);
+
     /** TODO: Free everything */
 
     // All temporal for testing... -----> DELTE SHORTLY
