@@ -5,9 +5,9 @@
     Pool for the reusing of instances
 */
 /** Max amount of items in pool */
-static const unsigned max_pool = 50;
+//static const unsigned max_pool = 50;
 /** Actual pool size */
-static unsigned pool_size = 0;
+//static unsigned pool_size = 0;
 /** Actual pool of objects */
 static struct sctp *pool = 0;
 
@@ -63,6 +63,7 @@ sctp_destroy_(struct sctp *s)
  * Destroys a "struct sctp", takes into account the references
  * and the object pool
  */
+/*
 static void
 sctp_destroy(struct sctp *s)
 {
@@ -91,6 +92,7 @@ sctp_destroy(struct sctp *s)
         s->references -= 1;
     }
 }
+*/
 
 void sctp_pool_destroy(void)
 {
@@ -190,7 +192,7 @@ fail:
         close(client);
     }
 
-    sctp_destroy(state);
+    sctp_destroy_(state);
 }
 
 ///////////////////////////////////////////////////////////////////

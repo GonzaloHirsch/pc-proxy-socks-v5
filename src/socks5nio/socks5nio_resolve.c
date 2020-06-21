@@ -113,11 +113,12 @@ resolve_close(const unsigned state, struct selector_key *key)
     buffer_reset(&s->write_buffer);
     buffer_reset(&s->read_buffer);
 
+    // Free http parser
+    free_http_message_parser(&s->orig.resolve.parser);
+
     // Unregister the doh_fd.
     selector_unregister_fd(key->s, s->orig.resolve.doh_fd);
 
-    // Free http parser
-    free_http_message_parser(&s->orig.resolve.parser);
 }
 
 // static unsigned
