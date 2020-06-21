@@ -15,6 +15,11 @@ static int connecting_send_conn_response (struct selector_key * key) {
     struct socks5 *s = ATTACHMENT(key);
     struct socks5_origin_info *s5oi = &s->origin_info;
     
+    if (s->origin_fd > 0 && s->origin_fd != s->sel_origin_fd)
+        close(s->origin_fd);
+    if(s->origin_fd6 > 0 && s->origin_fd6 != s->sel_origin_fd)
+        close(s->origin_fd6);
+
     int response_size = 6;
     uint8_t *response = malloc(response_size);
     response[0] = 0x05; // VERSION
@@ -98,6 +103,10 @@ static int try_connection(int origin_fd, int *connect_ret, struct selector_key *
             d->first_working_ip_index = 0;
             d->families_to_check = 1;
             s5oi->ip_selec = (addrType == IPv4) ? IPv6 : IPv4;
+            // Unregistered the fd for the family with the addresses of which there 
+            // were errors connecting
+            selector_unregister_fd(key->s, s->sel_origin_fd);
+            // close(s->sel_origin_fd);
             s->sel_origin_fd = (addrType == IPv4) ? s->origin_fd6 : s->origin_fd;
         }
     }
@@ -112,14 +121,16 @@ void connecting_init(const unsigned state, struct selector_key *key)
     struct socks5_origin_info *s5oi = &s->origin_info;
     int connect_ret = -1;
     selector_status st = SELECTOR_SUCCESS;
-    if (s->origin_info.ipv4_c > 0)
+    if (s->origin_info.ipv4_c > 0) {
         s->origin_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (s->origin_info.ipv6_c > 0)
+        selector_fd_set_nio(s->origin_fd);
+    }
+    if (s->origin_info.ipv6_c > 0) {
         s->origin_fd6 = socket(AF_INET6, SOCK_STREAM, 0);
-    int no = 0;
-    setsockopt(s->origin_fd6, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no));
-    selector_fd_set_nio(s->origin_fd);
-    selector_fd_set_nio(s->origin_fd6);
+        selector_fd_set_nio(s->origin_fd6);
+        int no = 0;
+        setsockopt(s->origin_fd6, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no));
+    }
 
     d->rb = &(ATTACHMENT(key)->read_buffer);
     d->first_working_ip_index = 0;
@@ -161,7 +172,7 @@ void connecting_init(const unsigned state, struct selector_key *key)
         }
     }
     if (connect_ret > 0) {
-        st = selector_register(key->s, s->sel_origin_fd, &socks5_handler, OP_NOOP, ATTACHMENT(key));
+        st = selector_register(key->s, s->sel_origin_fd, &socks5_handler, OP_READ | OP_WRITE, ATTACHMENT(key));
         if (st == SELECTOR_SUCCESS){
         }
     }

@@ -219,12 +219,6 @@ int main(const int argc, char * const*argv)
 
     // TODO: FREE ALL RESOURCES
 
-    // Freeing the users struct
-    free_user_list();
-
-    // Freeing the metrics struct
-    destroy_metrics();
-
     // Freeing the options for the args
     if (options != NULL){
         free(options);
@@ -251,6 +245,12 @@ int main(const int argc, char * const*argv)
     if (managementSocketHandler != NULL){
         free(managementSocketHandler);
     }
+
+    // Freeing the users struct
+    free_user_list();
+
+    // Freeing the metrics struct
+    destroy_metrics();
     
     return 0;
 }

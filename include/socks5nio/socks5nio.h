@@ -21,6 +21,7 @@
 #include "parsers/up_req_parser.h"
 #include "parsers/http_message_parser.h"
 #include "parsers/pop3_parser.h"
+#include "parsers/http_authorization_parser.h"
 #include "selector.h"
 #include "stateMachine.h"
 #include "authentication.h"

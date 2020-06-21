@@ -28,7 +28,7 @@ void log_request(const int status, const uint8_t *username, const struct sockadd
     sockaddr_to_human(client_buff, N(client_buff), clientaddr);
 
     // It means I have a domain
-    if (fqdn != NULL)
+    if (fqdn != NULL && originaddr != NULL)
     {
         // Extracting the port
         in_port_t port = 0;

@@ -145,6 +145,7 @@ copy_read(struct selector_key *key)
                         if(!errored){
                             extract_http_auth(&d->http_parser);
                         }
+                        free_http_auth_parser(&d->http_parser);
                         http_auth_init(&d->http_parser);
                     }
                 }
@@ -157,6 +158,7 @@ copy_read(struct selector_key *key)
                         if(!errored){
                             extract_pop3_auth(&d->pop_parser);
                         }
+                        free_pop3_parser(&d->pop_parser);
                         pop3_parser_init(&d->pop_parser);
                     }
                     //buffer_read(aux_b);
@@ -259,6 +261,8 @@ copy_write(struct selector_key *key)
 }
 
 void
+extract_http_auth(struct http_auth_parser * http_p){
+    
 extract_http_auth(struct http_auth_parser * http_p){
 
     char * encoding_value = (char *) http_p -> encoding;

@@ -9,7 +9,7 @@
 
 #include "io_utils/buffer.h"
 
-#define MAX_LINE 512
+#define MAX_LINE_P3 512
 
 
 typedef enum pop3_state{
@@ -39,7 +39,7 @@ struct pop3_parser
     uint8_t * user;
     uint8_t * pass;
     pop3_state state;
-    uint8_t buff[MAX_LINE];
+    uint8_t buff[MAX_LINE_P3];
 };
 
 typedef struct pop3_parser * pop3_parser;
