@@ -38,22 +38,22 @@ static void print_option_title(int option)
     switch (option)
     {
     case OPT_EXIT:
-        printf("Option %d - Desconectarse\n\n", option);
+        printf("Opción %d - Desconectarse\n\n", option);
         break;
     case OPT_SHOW_METRICS:
-        printf("Option %d - Mostrar Metricas\n\n", option);
+        printf("Opción %d - Mostrar Metricas\n\n", option);
         break;
     case OPT_LIST_USERS:
-        printf("Option %d - Listar Usuarios\n\n", option);
+        printf("Opción %d - Listar Usuarios\n\n", option);
         break;
     case OPT_CREATE_USER:
-        printf("Option %d - Crear Usuario\n\n", option);
+        printf("Opción %d - Crear Usuario\n\n", option);
         break;
     case OPT_SHOW_CONFIGS:
-        printf("Option %d - Mostrar Configuraciones\n\n", option);
+        printf("Opción %d - Mostrar Configuraciones\n\n", option);
         break;
     case OPT_EDIT_CONFIG:
-        printf("Option %d - Editar Configuración\n\n", option);
+        printf("Opción %d - Editar Configuración\n\n", option);
         break;
     default:
         break;
@@ -74,15 +74,17 @@ static int show_options()
            "6 - Editar configuración\n");
 
     printf("Elegir un número de comando para interactuar: ");
-    int i;
-    int result = scanf("%d", &i);
+    char option[5] = {0};
+    char * res = fgets(option, 4, stdin);
 
-    if (result == EOF)
+    if (res == NULL || option == NULL)
     {
         return -1;
-    }
-    else if (result == 0)
-    {
+    } 
+
+    int i = atoi(option);
+
+    if (i <= 0 || i > 6){
         return -1;
     }
 
@@ -121,7 +123,7 @@ int main(int argc, char *argv[])
         memset(&server, 0, sizeof(server));
         server.sin_family = AF_INET;
         server.sin_port = htons(args->mng_port);
-        server.sin_addr.s_addr = htons(INADDR_ANY);
+        server.sin_addr.s_addr = inet_addr(args->mng_addr);
 
         // Creating the socket
         serverSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
@@ -139,11 +141,15 @@ int main(int argc, char *argv[])
 
         if (try_again)
         {
+            // Generating the IPv6 address structure
+            struct in6_addr in6addr;
+            inet_pton(AF_INET6, args->mng_addr6, &in6addr);
+
             // Address for IPv6 socket binding
             struct sockaddr_in6 server6;
             memset(&server6, 0, sizeof(server6));
             server6.sin6_family = AF_INET6;
-            server6.sin6_addr = in6addr_any;
+            server6.sin6_addr = in6addr;
             server6.sin6_port = htons(args->mng_port);
 
             // Creating the socket
@@ -180,7 +186,7 @@ int main(int argc, char *argv[])
 
         if (args->mng_family == AF_INET6)
         {
-            struct sockaddr_in6 * adr_6 = (struct sockaddr_in6 *)args->mng_addr_info;
+            struct sockaddr_in6 *adr_6 = (struct sockaddr_in6 *)args->mng_addr_info;
             // Connecting to the server
             ret = connect(serverSocket, (struct sockaddr *)adr_6, sizeof(*adr_6));
             if (ret == -1)
@@ -192,7 +198,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            struct sockaddr_in * adr = (struct sockaddr_in *)args->mng_addr_info;
+            struct sockaddr_in *adr = (struct sockaddr_in *)args->mng_addr_info;
             // Connecting to the server
             ret = connect(serverSocket, (struct sockaddr *)adr, sizeof(*adr));
             if (ret == -1)

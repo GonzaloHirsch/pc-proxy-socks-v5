@@ -56,6 +56,7 @@ typedef struct socks5args_struct {
 
     struct doh      doh;
     struct users    users[MAX_USERS];
+    int             n_users;
 } socks5args_struct;
 
 typedef struct socks5args_struct * socks5args;

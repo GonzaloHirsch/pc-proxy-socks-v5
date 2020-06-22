@@ -77,15 +77,10 @@ void handle_create_user()
 
     printf("Ingrese el nombre del nuevo usuario: ");
 
-    uint8_t username[255];
-    int result = scanf("%s", username);
+    uint8_t username[256] = {0};
+    char * res = fgets((char *)username, 255 , stdin);
 
-    if (result == EOF)
-    {
-        perror("Leyendo nombre de usuario");
-        return;
-    }
-    else if (result == 0)
+    if (res == NULL || username == NULL)
     {
         perror("Leyendo nombre de usuario");
         return;
@@ -93,19 +88,19 @@ void handle_create_user()
 
     printf("Ingrese la contraseña del nuevo usuario: ");
 
-    uint8_t password[255];
-    result = scanf("%s", password);
+    // Taking into account the \0
+    uint8_t password[256] = {0};
+    res = fgets((char *)password, 255 , stdin);
 
-    if (result == EOF)
+    if (res == NULL || password == NULL)
     {
         perror("Leyendo contraseña");
         return;
     }
-    else if (result == 0)
-    {
-        perror("Leyendo contraseña");
-        return;
-    }
+
+    // Removing trailing \n from username and password
+    remove_newline_if_present(username);
+    remove_newline_if_present(password);
 
     // Creating the data to be sent
     uint8_t user_create_data[5 + strlen((const char *)username) + strlen((const char *)password)];
@@ -213,8 +208,8 @@ void handle_list_users()
     }
 
     int processed_users = 0;
-    int expected_users = user_list_buffer[3];
-    int response_index = 4; // Index to start reading users
+    uint32_t expected_users = ntoh32(user_list_buffer + 3);
+    int response_index = 7; // Index to start reading users
     uint8_t **users = malloc(sizeof(uint8_t *) * expected_users);
     if (users == NULL)
     {
@@ -280,17 +275,17 @@ void handle_list_users()
 
     printf("Los usuarios son: \n");
 
-    int i;
+    uint32_t i;
     for (i = 0; i < expected_users; i++)
     {
         // Printing the user
         if (i == expected_users - 1)
         {
-            printf("%d - %s", i + 1, (const char *)users[i]);
+            printf("%u - %s", i + 1, (const char *)users[i]);
         }
         else
         {
-            printf("%d - %s\n", i + 1, (const char *)users[i]);
+            printf("%u - %s\n", i + 1, (const char *)users[i]);
         }
         // Freeing that user
         free(users[i]);

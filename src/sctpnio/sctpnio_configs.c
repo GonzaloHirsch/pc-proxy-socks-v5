@@ -47,7 +47,7 @@ unsigned handle_list_configs(struct selector_key *key)
     hton16(data + 4, options->socks5_buffer_size);
     hton16(data + 4 + 2, options->sctp_buffer_size);
     hton16(data + 4 + 4, options->doh.buffer_size);
-    data[10] = options->timeout;
+    data[10] = options->disectors_enabled == true ? 0x01 : 0x00;
 
     // Allocating and copying
     d->datagram.configs_list.configs_data = malloc(N(data));
@@ -91,10 +91,13 @@ unsigned handle_config_edit(struct selector_key *key, buffer *b)
         parseOk = get_16_bit_integer_from_buffer(b, &d->datagram.config_edit.value.val16);
         if (parseOk)
         {
-            
-            if (d->datagram.config_edit.value.val16 >= SOCKS5_BUFFER_MIN && d->datagram.config_edit.value.val16 <= SOCKS5_BUFFER_MAX){
+
+            if (d->datagram.config_edit.value.val16 >= SOCKS5_BUFFER_MIN && d->datagram.config_edit.value.val16 <= SOCKS5_BUFFER_MAX)
+            {
                 options->socks5_buffer_size = d->datagram.config_edit.value.val16;
-            } else {
+            }
+            else
+            {
                 parseOk = false;
             }
         }
@@ -104,9 +107,12 @@ unsigned handle_config_edit(struct selector_key *key, buffer *b)
         parseOk = get_16_bit_integer_from_buffer(b, &d->datagram.config_edit.value.val16);
         if (parseOk)
         {
-            if (d->datagram.config_edit.value.val16 >= SCTP_BUFFER_MIN && d->datagram.config_edit.value.val16 <= SCTP_BUFFER_MAX){
+            if (d->datagram.config_edit.value.val16 >= SCTP_BUFFER_MIN && d->datagram.config_edit.value.val16 <= SCTP_BUFFER_MAX)
+            {
                 options->sctp_buffer_size = d->datagram.config_edit.value.val16;
-            } else {
+            }
+            else
+            {
                 parseOk = false;
             }
         }
@@ -116,25 +122,29 @@ unsigned handle_config_edit(struct selector_key *key, buffer *b)
         parseOk = get_16_bit_integer_from_buffer(b, &d->datagram.config_edit.value.val16);
         if (parseOk)
         {
-            if (d->datagram.config_edit.value.val16 >= DOH_BUFFER_MIN && d->datagram.config_edit.value.val16 <= DOH_BUFFER_MAX){
+            if (d->datagram.config_edit.value.val16 >= DOH_BUFFER_MIN && d->datagram.config_edit.value.val16 <= DOH_BUFFER_MAX)
+            {
                 options->doh.buffer_size = d->datagram.config_edit.value.val16;
-            } else {
+            }
+            else
+            {
                 parseOk = false;
             }
-            
         }
         break;
-    case CONF_TIMEOUT:
-        d->datagram.config_edit.config_type = CONF_TIMEOUT;
+    case CONF_DISECTORS:
+        d->datagram.config_edit.config_type = CONF_DISECTORS;
         parseOk = get_8_bit_integer_from_buffer(b, &d->datagram.config_edit.value.val8);
         if (parseOk)
         {
-            if (d->datagram.config_edit.value.val8 >= TIMEOUT_MIN && d->datagram.config_edit.value.val8 <= TIMEOUT_MAX){
-                options->timeout = d->datagram.config_edit.value.val8;
-            } else {
-                parseOk = false;
+            if (d->datagram.config_edit.value.val8 > 0)
+            {
+                options->disectors_enabled = true;
             }
-            
+            else
+            {
+                options->disectors_enabled = false;
+            }
         }
         break;
     default:

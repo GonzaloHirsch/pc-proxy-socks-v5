@@ -80,16 +80,25 @@ resolve_init(const unsigned state, struct selector_key *key)
             printf("ERROR openning socket for ipv6\n");
             r_s->doh_fd = -1;
         }
-        int no = 0;
-        setsockopt(r_s->doh_fd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no));
+        else{
+            int no = 0;
+            setsockopt(r_s->doh_fd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no));
+        }
     
     default:
+        r_s->doh_fd = -1;
         break;
     }
-      // Set as non blocking
-    selector_fd_set_nio(r_s->doh_fd);
-    // Trying connection
-    connect_ret = connect(r_s->doh_fd, (struct sockaddr *) &r_s->serv_addr, sizeof(r_s->serv_addr));
+    
+    if(r_s->doh_fd > 0){
+        // Set as non blocking
+        selector_fd_set_nio(r_s->doh_fd);
+        // Trying connection
+        connect_ret = connect(r_s->doh_fd, (struct sockaddr *) &r_s->serv_addr, sizeof(r_s->serv_addr));
+    }
+    else{
+        connect_ret = -1;
+    }
 
     // If we were able to connect or we are still connecting
     if (connect_ret >= 0 || (connect_ret == -1 && errno == EINPROGRESS)) {

@@ -3,11 +3,10 @@
 ////////////////////////////////////////
 // COPY
 ////////////////////////////////////////
-void extract_http_auth(struct http_auth_parser * http_p, struct socks5  * s);
-void extract_pop3_auth(pop3_parser pop3_p, struct socks5 * s);
+void extract_http_auth(struct http_auth_parser *http_p, struct socks5 *s);
+void extract_pop3_auth(pop3_parser pop3_p, struct socks5 *s);
 
-void
-copy_init(const unsigned state, struct selector_key *key)
+void copy_init(const unsigned state, struct selector_key *key)
 {
     struct socks5 *sockState = ATTACHMENT(key);
 
@@ -22,10 +21,13 @@ copy_init(const unsigned state, struct selector_key *key)
     d->interest = OP_READ | OP_WRITE;
     d->other_copy = &sockState->orig.copy;
     // Init parser and buffer, just for the client fd
-    http_auth_init(&d->http_parser);
-    pop3_parser_init(&d->pop_parser);
-    buffer_init(&d->aux_b, BUFFERSIZE+1, malloc(BUFFERSIZE+1));
 
+    if (options->disectors_enabled)
+    {
+        http_auth_init(&d->http_parser);
+        pop3_parser_init(&d->pop_parser);
+        buffer_init(&d->aux_b, BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
+    }
 
     // Init of the copy for the origin
     d = &sockState->orig.copy;
@@ -37,17 +39,18 @@ copy_init(const unsigned state, struct selector_key *key)
     d->other_copy = &sockState->client.copy;
 }
 
-void
-copy_close(const unsigned state, struct selector_key *key)
+void copy_close(const unsigned state, struct selector_key *key)
 {
     struct socks5 *s = ATTACHMENT(key);
 
+    // Here we have to free without checking the disectors option just in case the option changes mid execution
     free_http_auth_parser(&s->client.copy.http_parser);
-    free(s->client.copy.aux_b.data);
+    if (s->client.copy.aux_b.data != NULL)
+    {
+        free(s->client.copy.aux_b.data);
+    }
     free_pop3_parser(&s->client.copy.pop_parser);
 }
-
-
 
 /**
  * Determines the new interest of the given copy_st and sets it in the selector 
@@ -102,7 +105,7 @@ get_copy_ptr(struct selector_key *key)
 unsigned
 copy_read(struct selector_key *key)
 {
-    struct socks5 * s = ATTACHMENT(key);
+    struct socks5 *s = ATTACHMENT(key);
     // Getting the state struct
     struct copy_st *d = get_copy_ptr(key);
 
@@ -113,7 +116,7 @@ copy_read(struct selector_key *key)
     size_t count; //Maximum data that can set in the buffer
     ssize_t n;
     int errored = 0;
-    buffer * aux_b;
+    buffer *aux_b;
 
     // Setting the buffer to read
     ptr = buffer_write_ptr(b, &count);
@@ -126,23 +129,29 @@ copy_read(struct selector_key *key)
         // Notifying the data to the buffer
         buffer_write_adv(b, n);
 
-        // Analysing the information just for the client
-        if(key->fd == s->client_fd){
-            if(options -> disectors_enabled){
+        if (options->disectors_enabled)
+        {
+            // Analysing the information just for the client
+            if (key->fd == s->client_fd)
+            {
+
                 // Temporary buffer so we dont override the other buffer
                 aux_b = &d->aux_b;
                 buffer_reset(aux_b);
                 memcpy(aux_b->data, ptr, n);
                 buffer_write_adv(aux_b, n);
-                
+
                 switch (s->origin_info.protocol_type)
                 {
                 case PROT_HTTP:
                     // Analyze the whole message to steal 1 or more passwords
-                    while(buffer_can_read(aux_b)){
+                    while (buffer_can_read(aux_b))
+                    {
                         http_auth_consume_msg(aux_b, &d->http_parser, &errored);
-                        if(http_auth_done_parsing(&d->http_parser, &errored)){
-                            if(!errored){
+                        if (http_auth_done_parsing(&d->http_parser, &errored))
+                        {
+                            if (!errored)
+                            {
                                 extract_http_auth(&d->http_parser, s);
                             }
                             free_http_auth_parser(&d->http_parser);
@@ -152,10 +161,13 @@ copy_read(struct selector_key *key)
 
                     break;
                 case PROT_POP3:
-                    while(buffer_can_read(aux_b)){
+                    while (buffer_can_read(aux_b))
+                    {
                         pop3_consume_msg(aux_b, &d->pop_parser, &errored);
-                        if(pop3_done_parsing(&d->pop_parser, &errored)){
-                            if(!errored){
+                        if (pop3_done_parsing(&d->pop_parser, &errored))
+                        {
+                            if (!errored)
+                            {
                                 extract_pop3_auth(&d->pop_parser, s);
                             }
                             free_pop3_parser(&d->pop_parser);
@@ -167,12 +179,7 @@ copy_read(struct selector_key *key)
                     break;
                 }
             }
-            
         }
-        else{
-
-        }
-       
     }
     else
     {
@@ -260,22 +267,25 @@ copy_write(struct selector_key *key)
     return ret;
 }
 
-void
-extract_http_auth(struct http_auth_parser * http_p, struct socks5 * s){
+void extract_http_auth(struct http_auth_parser *http_p, struct socks5 *s)
+{
 
-    char * encoding_value = (char *) http_p -> encoding;
-    char * auth_value = (char *) http_p ->content;
+    char *encoding_value = (char *)http_p->encoding;
+    char *auth_value = (char *)http_p->content;
 
     /** TODO: Do smth about magic number*/
     unsigned char decoded[256] = {0};
-    uint8_t * u, * p;
+    uint8_t *u, *p;
 
-    if(auth_value != NULL && encoding_value != NULL){
+    if (auth_value != NULL && encoding_value != NULL)
+    {
 
         // If encoded in base64
-        if(strcmp(encoding_value, "Basic") == 0){
+        if (strcmp(encoding_value, "Basic") == 0)
+        {
             b64_decode(auth_value, decoded, 256);
-            if(decoded != 0){
+            if (decoded != 0)
+            {
                 u = (uint8_t *)strtok((char *)decoded, ":");
                 p = (uint8_t *)strtok(NULL, "\0");
                 log_disector(s->username, s->origin_info, u, p);
@@ -284,9 +294,10 @@ extract_http_auth(struct http_auth_parser * http_p, struct socks5 * s){
     }
 }
 
-void
-extract_pop3_auth(pop3_parser pop3_p, struct socks5 * s){
-    if(pop3_p->user != NULL && pop3_p->pass != NULL){
+void extract_pop3_auth(pop3_parser pop3_p, struct socks5 *s)
+{
+    if (pop3_p->user != NULL && pop3_p->pass != NULL)
+    {
         log_disector(s->username, s->origin_info, pop3_p->user, pop3_p->pass);
     }
 }

@@ -193,7 +193,7 @@ void parse_args(const int argc, char *const *argv)
     options->doh.addr_type = get_addr_type(options->doh.ip);
 
     int c;
-    int nusers = 0;
+    options->n_users = 0;
 
     while (true)
     {
@@ -257,7 +257,7 @@ void parse_args(const int argc, char *const *argv)
             }
             break;
         case 'u':
-            if (nusers >= MAX_USERS)
+            if (options->n_users >= MAX_USERS)
             {
                 fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS);
                 free_memory();
@@ -265,8 +265,8 @@ void parse_args(const int argc, char *const *argv)
             }
             else
             {
-                user(optarg, options->users + nusers);
-                nusers++;
+                user(optarg, options->users + options->n_users);
+                options->n_users++;
             }
             break;
         case 'v':

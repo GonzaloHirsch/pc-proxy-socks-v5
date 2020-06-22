@@ -99,6 +99,7 @@ void parse_args(const int argc, char **argv)
     memset(args, 0, sizeof(*args));
 
     args->mng_addr = "127.0.0.1";
+    args->mng_addr6 = "::1";
     args->mng_port = 8080;
 
     int c;
