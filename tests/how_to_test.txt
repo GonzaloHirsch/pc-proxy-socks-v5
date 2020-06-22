@@ -27,7 +27,7 @@ Download: http://old-releases.ubuntu.com/releases/18.04.3/ubuntu-18.04.3-desktop
 ---------------------------------------------------------------
 How to test Disector:
 HTTP:
-curl -4 -x socks5://ribas:gato@localhost:1080 http://username:password@example.com/ 
+curl -4 -x socks5://protos:protos@localhost:1080 http://username:password@example.com/ 
 POP3:
 while running dovecot
 ncat --proxy-type socks5 -v --proxy-auth 2:2 --proxy 127.0.0.1:1080 127.0.0.1 110
