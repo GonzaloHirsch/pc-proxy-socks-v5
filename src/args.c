@@ -192,9 +192,31 @@ void parse_args(const int argc, char *const *argv)
             break;
         case 'p':
             options->socks_port = port(optarg);
+            if (options->socks_addr_info != NULL)
+            {
+                if (options->socks_family == AF_INET6)
+                {
+                    ((struct sockaddr_in6 *)options->socks_addr_info)->sin6_port = htons(options->socks_port);
+                }
+                else if (options->socks_family == AF_INET)
+                {
+                    ((struct sockaddr_in *)options->socks_addr_info)->sin_port = htons(options->socks_port);
+                }
+            }
             break;
         case 'P':
             options->mng_port = port(optarg);
+            if (options->mng_addr_info != NULL)
+            {
+                if (options->mng_family == AF_INET6)
+                {
+                    ((struct sockaddr_in6 *)options->mng_addr_info)->sin6_port = htons(options->mng_port);
+                }
+                else if (options->mng_family == AF_INET)
+                {
+                    ((struct sockaddr_in *)options->mng_addr_info)->sin_port = htons(options->mng_port);
+                }
+            }
             break;
         case 'u':
             if (nusers >= MAX_USERS)

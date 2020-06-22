@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -12,7 +13,9 @@
 #include <arpa/inet.h>
 
 #include "../tests/Utility.h"
-#include "sctpArgs.h"
+
+#define DIVIDER printf("\n\n-------------------------------------------------------\n\n");
+#define SUBDIVIDER printf("\n\n---------------------------\n\n");
 
 #define N(x) (sizeof(x)/sizeof((x)[0]))
 
@@ -37,5 +40,11 @@ typedef enum Configs{
     CONF_TIMEOUT = 0x04,
     CONF_EXIT = 0x64,
 } Configs;
+
+void die_with_message(char *msg);
+void handle_invalid_value();
+void handle_undefined_command();
+
+extern int serverSocket;
 
 #endif

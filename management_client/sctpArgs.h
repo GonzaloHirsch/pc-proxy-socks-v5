@@ -8,11 +8,20 @@
 #include <string.h> /* memset */
 #include <errno.h>
 #include <getopt.h>
+#include <netinet/in.h>     // AF_UNSPEC
+#include <arpa/inet.h>      // inet_pton
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
-struct sctpClientArgs {
-    char *          mng_addr;
-    unsigned short  mng_port;
-};
+typedef struct sctpClientArgs_struct {
+    char *              mng_addr;
+    unsigned short      mng_port;
+    int                 mng_family;
+    struct addrinfo *   mng_addr_info;
+} sctpClientArgs_struct;
+
+typedef struct sctpClientArgs_struct * sctpClientArgs;
 
 /**
  * Interpreta la linea de comandos (argc, argv) llenando
@@ -20,7 +29,12 @@ struct sctpClientArgs {
  * la ejecución.
  */
 void 
-parse_args(const int argc, char **argv, struct sctpClientArgs *args);
+parse_args(const int argc, char **argv);
+
+void
+free_memory();
+
+extern sctpClientArgs args;
 
 #endif
 

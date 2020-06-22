@@ -15,7 +15,7 @@ all:
 client:
 	$(CC) -g tests/socksClient.c tests/Utility.c -Iinclude -o socksClient
 sctp_client:
-	$(CC) $(CFLAGS) -g management_client/sctpClient.c management_client/sctpArgs.c tests/Utility.c -Iinclude -L/usr/local/lib -lsctp -o sctp_client
+	$(CC) $(CFLAGS) -g management_client/sctpClient.c management_client/sctpArgs.c management_client/sctpClient_Users.c management_client/sctpClient_Configs.c management_client/sctpClient_Metrics.c tests/Utility.c -Iinclude -L/usr/local/lib -lsctp -o sctp_client
 clean:
 	rm -rf application slaveProcess view sctp_client socksClient
 
