@@ -8,20 +8,19 @@ int show_config_options();
 
 bool get_16_bit_number(uint16_t *n)
 {
-    printf("Nuevo valor para configuración (0 - 65535): ");
+    printf("Nuevo valor para configuración (1 - 65535): ");
 
-    int i;
-    int result = scanf("%d", &i);
+    char option[255] = {0};
+    char * res = fgets(option, 256, stdin);
 
-    if (result == EOF)
+    if (res == NULL || option == NULL)
     {
         return false;
-    }
-    else if (result == 0)
-    {
-        return false;
-    }
-    else if (i > 65535 || i < 0)
+    } 
+
+    int i = atoi(option);
+
+    if (i == 0 || (i > 65535 || i <= 0))
     {
         return false;
     }
@@ -35,15 +34,17 @@ bool get_8_bit_number(uint8_t *n)
 {
     printf("Nuevo valor para configuración (0 o 1): ");
 
-    int i;
-    int result = scanf("%d", &i);
+    char option[255] = {0};
+    char * res = fgets(option, 256, stdin);
 
-    if (result == EOF)
+    if (res == NULL || option == NULL)
     {
         return false;
-    }
-    else if (result == 0)
-    {
+    } 
+
+    int i = atoi(option);
+
+    if (i != 0 && i != 1){
         return false;
     }
 
@@ -128,15 +129,17 @@ int show_config_options()
            "100 - Volver para Atrás\n");
 
     printf("Elegir un número de configuración: ");
-    int i;
-    int result = scanf("%d", &i);
+    char option[255] = {0};
+    char * res = fgets(option, 256, stdin);
 
-    if (result == EOF)
+    if (res == NULL || option == NULL)
     {
         return -1;
-    }
-    else if (result == 0)
-    {
+    } 
+
+    int i = atoi(option);
+
+    if (i == 0 || ((i <= 0 || i > 4) && (i != 100))){
         return -1;
     }
 

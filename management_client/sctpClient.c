@@ -74,15 +74,17 @@ static int show_options()
            "6 - Editar configuración\n");
 
     printf("Elegir un número de comando para interactuar: ");
-    int i;
-    int result = scanf("%d", &i);
+    char option[5] = {0};
+    char * res = fgets(option, 4, stdin);
 
-    if (result == EOF)
+    if (res == NULL || option == NULL)
     {
         return -1;
-    }
-    else if (result == 0)
-    {
+    } 
+
+    int i = atoi(option);
+
+    if (i <= 0 || i > 6){
         return -1;
     }
 
