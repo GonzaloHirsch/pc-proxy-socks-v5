@@ -115,8 +115,7 @@ userpass_write_close(const unsigned state, struct selector_key *key)
     // Reset read and write buffer for reuse.
     buffer_reset(&sock_state->write_buffer);
     buffer_reset(&sock_state->read_buffer);
-
-    /** TODO: Free memory of userpass_st */   
+    
 }
 
 unsigned

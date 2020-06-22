@@ -24,42 +24,6 @@ request_close(const unsigned state, struct selector_key *key)
     // Freeing the parser
     free_connection_req_parser(&s->client.request.parser);
 
-    /** TODO: Free everything */
-
-    // All temporal for testing... -----> DELTE SHORTLY
-
-/*
-    if (s->origin_info.ip_selec == IPv4)
-    {
-        printf("    IPv4: ");
-        for (int i = 0; i < IP_V4_ADDR_SIZE; i++)
-        {
-            printf("%d ", s->origin_info.ipv4_addrs[0][i]);
-        }
-        printf("\n");
-    }
-    else if (s->origin_info.ip_selec == IPv6)
-    {
-        printf("    IPv6: ");
-        for (int i = 0; i < IP_V6_ADDR_SIZE; i++)
-        {
-            printf("%d ", s->origin_info.ipv6_addrs[0][i]);
-        }
-        printf("\n");
-    }
-    else
-    {
-        printf("    dom: ");
-
-        for (int i = 0; i < s->origin_info.resolve_addr_len; i++)
-        {
-            printf("%c", s->origin_info.resolve_addr[i]);
-        }
-        printf("\n");
-    }
-    printf("    port: %d%d\n", s->origin_info.port[0], s->origin_info.port[1]);
-*/
-
 }
 
 void

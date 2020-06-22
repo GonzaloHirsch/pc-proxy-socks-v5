@@ -148,9 +148,6 @@ resolve_close(const unsigned state, struct selector_key *key)
 
 }
 
-// static unsigned
-// resolve_process(struct userpass_st *up_s);
-
 /** State when receiving the doh response */
 unsigned
 resolve_read(struct selector_key *key)

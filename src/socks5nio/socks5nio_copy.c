@@ -44,7 +44,7 @@ copy_close(const unsigned state, struct selector_key *key)
 
     free_http_auth_parser(&s->client.copy.http_parser);
     free(s->client.copy.aux_b.data);
-    /** TODO: Free remaining stuff */
+    free_pop3_parser(&s->client.copy.pop_parser);
 }
 
 
@@ -161,7 +161,6 @@ copy_read(struct selector_key *key)
                         free_pop3_parser(&d->pop_parser);
                         pop3_parser_init(&d->pop_parser);
                     }
-                    //buffer_read(aux_b);
                 }
                 break;
             default:

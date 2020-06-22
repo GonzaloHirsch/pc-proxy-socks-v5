@@ -319,5 +319,4 @@ void connecting_close(const unsigned state, struct selector_key *key)
         send_reply_failure(key);
     }
 
-    /** TODO: FREE MEMORY */
 }
