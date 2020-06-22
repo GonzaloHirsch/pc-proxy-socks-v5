@@ -27,6 +27,10 @@ Ignacio Ribas
 
 Francisco Choi
 
+## Testing
+
+Links útiles para testing con JMeter: https://jmeter.apache.org/usermanual/jmeter_proxy_step_by_step.pdf
+
 ## Versión
 
 Versión 1.0
