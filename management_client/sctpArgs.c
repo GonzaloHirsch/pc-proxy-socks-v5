@@ -120,7 +120,6 @@ void parse_args(const int argc, char **argv)
             address(args->mng_addr, args->mng_port, IPPROTO_SCTP, &args->mng_family, args->mng_addr_info);
             break;
         case 'P':
-        printf("CHANGING PIRT\n");
             args->mng_port = port(optarg);
             if (args->mng_addr_info != NULL)
             {
