@@ -58,6 +58,7 @@ static struct socks5 *socks5_new(const int client)
     sockState->reply_type = -1;
     sockState->references = 1;
     sockState->origin_resolution = NULL;
+    memset(&sockState->origin_info, 0, sizeof(sockState->origin_info));
 
     return sockState;
 }

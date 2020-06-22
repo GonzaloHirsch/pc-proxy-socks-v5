@@ -46,9 +46,10 @@ void log_request(const int status, const uint8_t *username, const struct sockadd
     else
     {
         // Generating the origin buffer
-        char origin_buff[SOCKADDR_TO_HUMAN_MIN] = {0};
-        sockaddr_to_human(origin_buff, N(origin_buff), originaddr);
+        char * origin_buff = malloc(SOCKADDR_TO_HUMAN_MIN);
+        sockaddr_to_human(origin_buff, SOCKADDR_TO_HUMAN_MIN, originaddr);
         fprintf(stdout, "%s\t%s\t%c\t%s\t%s\t%d\n", time_buff, username, ACCESS_CHAR, client_buff, origin_buff, status);
+        free(origin_buff);
     }
 }
 
@@ -76,10 +77,10 @@ void log_disector(const uint8_t *owner, struct socks5_origin_info orig_info, con
     switch (orig_info.protocol_type)
     {
     case PROT_HTTP:
-        proto = "HTTP PROTOCOL";
+        proto = "HTTP";
         break;
     case PROT_POP3:
-        proto = "POP3 PROTOCOL";
+        proto = "POP3";
         break;
     default:
         break;

@@ -6,7 +6,7 @@ extern const char *
 sockaddr_to_human(char *buff, const size_t buffsize,
                   const struct sockaddr *addr) {
     if(addr == 0) {
-        strncpy(buff, "null", buffsize);
+        strncpy(buff, "null\tnull", buffsize);
         return buff;
     }
     in_port_t port;
@@ -31,7 +31,7 @@ sockaddr_to_human(char *buff, const size_t buffsize,
             buff[buffsize - 1] = 0;
         }
     } else {
-        strncpy(buff, "unknown", buffsize);
+        strncpy(buff, "unknown\tunknown", buffsize);
     }
 
     strncat(buff, "\t", buffsize);

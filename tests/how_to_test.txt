@@ -31,3 +31,4 @@ curl -4 -x socks5://protos:protos@localhost:1080 http://username:password@exampl
 POP3:
 while running dovecot
 ncat --proxy-type socks5 -v --proxy-auth 2:2 --proxy 127.0.0.1:1080 127.0.0.1 110
+
