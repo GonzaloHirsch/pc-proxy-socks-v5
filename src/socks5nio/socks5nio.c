@@ -91,40 +91,16 @@ socks5_destroy_(struct socks5 *s)
     }
 }
 
-/**
- * destruye un  `struct socks5', tiene en cuenta las referencias
- * y el pool de objetos.
- */
-/*
+
 static void
 socks5_destroy(struct socks5 *s)
-{
-    if (s == NULL)
-    {
-        // nada para hacer
-    }
-    else if (s->references == 1)
-    {
-        if (s != NULL)
-        {
-            if (pool_size < max_pool)
-            {
-                s->next = pool;
-                pool = s;
-                pool_size++;
-            }
-            else
-            {
-                socks5_destroy_(s);
-            }
-        }
-    }
-    else
-    {
-        s->references -= 1;
+{   
+    s->references -= 1;
+    if(s->references == 0){
+        socks5_destroy_(s);
     }
 }
-*/
+
 
 void socksv5_pool_destroy(void)
 {
@@ -289,6 +265,7 @@ void socksv5_block(struct selector_key *key)
 void socksv5_close(struct selector_key *key)
 {
     close(key->fd);
+    socks5_destroy(ATTACHMENT(key));
 }
 
 void socksv5_done(struct selector_key *key)
@@ -309,9 +286,6 @@ void socksv5_done(struct selector_key *key)
             //close(fds[i]);
         }
     }
-
-    // Calling the destroy_ method because the object pool is not implemented
-    socks5_destroy_(ATTACHMENT(key));
 
     // Removing the current connection from the metrics
     remove_current_connections(1);

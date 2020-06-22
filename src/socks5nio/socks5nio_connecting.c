@@ -149,6 +149,7 @@ void connecting_init(const unsigned state, struct selector_key *key)
         switch (errno) {
             case EINPROGRESS:
                 st = selector_register(key->s, s->sel_origin_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
+                s->references++;
                 st = selector_set_interest(key->s, s->client_fd, OP_NOOP);
                 if (st != SELECTOR_SUCCESS){
                     // s->origin_fd = -1;
@@ -177,6 +178,7 @@ void connecting_init(const unsigned state, struct selector_key *key)
     }
     if (connect_ret > 0) {
         st = selector_register(key->s, s->sel_origin_fd, &socks5_handler, OP_READ | OP_WRITE, ATTACHMENT(key));
+        s->references++;
         if (st == SELECTOR_SUCCESS){
         }
     }

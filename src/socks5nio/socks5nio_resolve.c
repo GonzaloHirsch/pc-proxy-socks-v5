@@ -99,6 +99,9 @@ resolve_init(const unsigned state, struct selector_key *key)
             printf("Error registering doh server\n");
             r_s->doh_fd = -1;
         }
+        else{
+            s->references++;
+        }
         // Unregistering client interests
         st = selector_set_interest(key->s, s->client_fd, OP_NOOP);
         if(st != SELECTOR_SUCCESS){
