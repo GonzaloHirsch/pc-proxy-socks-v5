@@ -86,6 +86,7 @@ void create_master_socket_all(int *master_socket_4, int *master_socket_6)
 {
     // Address for socket binding
     struct sockaddr_in address;
+    memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = inet_addr(options->socks_addr);
     address.sin_port = htons(options->socks_port);
@@ -96,6 +97,7 @@ void create_master_socket_all(int *master_socket_4, int *master_socket_6)
 
     // Address for IPv6 socket binding
     struct sockaddr_in6 address6;
+    memset(&address6, 0, sizeof(address6));
     address6.sin6_family = AF_INET6;
     address6.sin6_addr = in6addr;
     address6.sin6_port = htons(options->socks_port);
@@ -203,6 +205,7 @@ void create_management_socket_all(int *management_socket_4, int *management_sock
 {
     // Address for sctp socket binding
     struct sockaddr_in address;
+    memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = inet_addr(options->mng_addr);
     address.sin_port = htons(options->mng_port);
@@ -213,6 +216,7 @@ void create_management_socket_all(int *management_socket_4, int *management_sock
 
     // Address for IPv6 socket binding
     struct sockaddr_in6 address6;
+    memset(&address6, 0, sizeof(address6));
     address6.sin6_family = AF_INET6;
     address6.sin6_addr = in6addr;
     address6.sin6_port = htons(options->mng_port);
