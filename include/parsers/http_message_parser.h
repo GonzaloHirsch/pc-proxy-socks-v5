@@ -71,6 +71,7 @@ const char * http_error_string(const http_message_parser p);
 int http_done_parsing_message(http_message_parser p, int * errored);
 
 int get_numeric_header_value(http_message_parser p, const char * header_name);
+char * get_header_value_by_name(http_message_parser p, const char * header_name);
 http_header ** get_headers(http_message_parser p);
 int get_number_of_headers(http_message_parser p);
 const uint8_t * get_body(http_message_parser p);

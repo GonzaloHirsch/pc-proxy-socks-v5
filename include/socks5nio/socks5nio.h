@@ -20,11 +20,14 @@
 #include "parsers/connection_req_parser.h"
 #include "parsers/up_req_parser.h"
 #include "parsers/http_message_parser.h"
+#include "parsers/pop3_parser.h"
+#include "parsers/http_authorization_parser.h"
 #include "selector.h"
 #include "stateMachine.h"
 #include "authentication.h"
 #include "metrics.h"
 #include "args.h"
+#include "parsers/http_authorization_parser.h"
 
 #define N(x) (sizeof(x) / sizeof((x)[0]))
 /** TODO: define appropiate size */
@@ -210,9 +213,14 @@ typedef enum ConnectionState {
 typedef enum ResolveResponseState {
     RES_RESP_IPV4,
     RES_RESP_IPV6,
-
     RES_RESP_DONE,
 }ResolveResponseState;
+
+typedef enum ProtocolType{
+    PROT_UNIDENTIFIED,
+    PROT_POP3,
+    PROT_HTTP
+}ProtocolType;
 
 /** Used by the HELLO_READ and HELLO_WRITE states */
 typedef struct hello_st
@@ -274,6 +282,15 @@ typedef struct copy_st
     fd_interest interest;
     /** Pointer to the structure of the opposing copy state*/
     struct copy_st * other_copy;
+
+    /** Parser to use if sniffing http protocol */
+    struct http_auth_parser http_parser;
+    /** Parser to use if sniffing pop3 protocol */
+    struct pop3_parser pop_parser;
+    /** Auxiliary buffer */
+    buffer aux_b;
+
+
 } copy_st;
 
 typedef enum connecting_substate {
@@ -310,6 +327,8 @@ typedef struct socks5_origin_info
 
     /** Port info */
     uint8_t port[PORT_SIZE];
+
+    uint8_t protocol_type;
     
     /** Origin info in case we need to relve */
     uint8_t * resolve_addr;

@@ -3,6 +3,7 @@
 ////////////////////////////////////////
 // REQUEST
 ////////////////////////////////////////
+unsigned int identify_protocol_type(uint8_t * port);
 
 /** Frees the parser used */
 void
@@ -177,6 +178,7 @@ request_process(struct selector_key *key, struct request_st *d)
             s->origin_info.ip_selec = IPv4;
             //Save the port.
             memcpy(s->origin_info.port, dst_port, 2);
+            s->origin_info.protocol_type = identify_protocol_type(dst_port);
             // We have all the info to connect
             ret = CONNECTING;
             break;
@@ -187,6 +189,9 @@ request_process(struct selector_key *key, struct request_st *d)
             s->origin_info.ip_selec = IPv6;
             //Save the port.
             memcpy(s->origin_info.port, dst_port, 2);
+            s->origin_info.protocol_type = identify_protocol_type(dst_port);
+            //State that we have no domain
+            s->origin_resolution = NULL;
             // We have all the info to connect
             ret = CONNECTING;
             break;
@@ -200,6 +205,7 @@ request_process(struct selector_key *key, struct request_st *d)
 
             //Save the port.
             memcpy(s->origin_info.port, dst_port, 2);
+            s->origin_info.protocol_type = identify_protocol_type(dst_port);
 
             // We need to resolve the domain name.
             ret = RESOLVE;
@@ -218,4 +224,20 @@ request_process(struct selector_key *key, struct request_st *d)
     }
 
     return ret;
+}
+
+unsigned int
+identify_protocol_type(uint8_t * port){
+
+    if(port == NULL){
+        return PROT_UNIDENTIFIED;
+    }
+    else if(port[0] == 0 && port[1] == 80){
+        return PROT_HTTP;
+    }
+    else if(port[0] == 0 && port[1] == 110){
+        return PROT_POP3;
+    }
+
+    return PROT_UNIDENTIFIED;
 }

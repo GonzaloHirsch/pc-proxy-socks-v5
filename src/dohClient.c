@@ -3,7 +3,7 @@
 
 // code from https://nachtimwald.com/2017/11/18/base64-encode-and-decode-in-c/
 
-const char b64chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const char b64chars_[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 size_t base64_encoded_size(size_t inlen)
 {
@@ -41,11 +41,11 @@ char *base64_encode(const unsigned char *in, size_t len, size_t *elen)
         v = i + 1 < len ? v << 8 | in[i + 1] : v << 8;
         v = i + 2 < len ? v << 8 | in[i + 2] : v << 8;
 
-        out[j] = b64chars[(v >> 18) & 0x3F];
-        out[j + 1] = b64chars[(v >> 12) & 0x3F];
+        out[j] = b64chars_[(v >> 18) & 0x3F];
+        out[j + 1] = b64chars_[(v >> 12) & 0x3F];
         if (i + 1 <= len)
         {
-            out[j + 2] = b64chars[(v >> 6) & 0x3F];
+            out[j + 2] = b64chars_[(v >> 6) & 0x3F];
         }
         else
         {
@@ -53,7 +53,7 @@ char *base64_encode(const unsigned char *in, size_t len, size_t *elen)
         }
         if (i + 2 <= len)
         {
-            out[j + 3] = b64chars[v & 0x3F];
+            out[j + 3] = b64chars_[v & 0x3F];
         }
         else
         {

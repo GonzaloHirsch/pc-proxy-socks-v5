@@ -132,7 +132,7 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
 
     for(i=0;i<ntohs(dns->ans_count);i++)
     {
-        answers[i].name=ReadName((unsigned char *) reader,to_parse,&stop);
+        answers[i].name=ReadName((unsigned char *) reader,to_parse,&stop); //this is not needed for the project but it can be information that can be logged in the future
         reader = reader + stop;
  
         answers[i].resource = (struct R_DATA*)(reader);
@@ -152,13 +152,13 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
             reader = reader + ntohs(answers[i].resource->data_len);
         }
         else{
-            reader = reader + ntohs(answers[i].resource->data_len);
+            reader = reader + ntohs(answers[i].resource->data_len); //if something that is not ipv4 or ipv6 comes then just forward the pointer
         }
          
     }
 
 
-    for(i=0 ; i < ntohs(dns->ans_count) ; i++)
+    for(i=0 ; i < ntohs(dns->ans_count) ; i++) //it could all be done in one iteration but to better understanding dns processing and our structure of socks 5 was divided
     {
  
         if( ntohs(answers[i].resource->type) == T_A) //IPv4 address
@@ -181,7 +181,7 @@ void parse_dns_resp(uint8_t * to_parse, char * domain, struct socks5 * s, int * 
         }   
         else
         {
-            free(answers[i].name);
+            free(answers[i].name); 
         }
         
 \
