@@ -135,7 +135,7 @@ void connecting_init(const unsigned state, struct selector_key *key)
     d->rb = &(ATTACHMENT(key)->read_buffer);
     d->first_working_ip_index = 0;
     // Need to know how many families there are to check
-    d->families_to_check += s->origin_info.ipv4_c > 0;
+    d->families_to_check = s->origin_info.ipv4_c > 0;
     d->families_to_check += s->origin_info.ipv6_c > 0;
     d->substate = CONN_SUB_TRY_IPS;
 
@@ -157,16 +157,17 @@ void connecting_init(const unsigned state, struct selector_key *key)
                 // On next write handle, connecting to origin must be checked
                 d->substate = CONN_SUB_CHECK_ORIGIN;
                 break;
-            case ENETUNREACH:
-                d->substate = CONN_SUB_ERROR;
-                break;
+            // case ENETUNREACH:
+            //     // Classic IPv6 error
+            //     d->substate = CONN_SUB_ERROR;
+            //     break;
             default:
                 // If this is reached, then every ip has been tried for preferred family
                 // SHOULD try with the other family (TODO)
                 // s->origin_fd = -1;
                 d->first_working_ip_index = 0;
                 // determine_connect_error(errno);
-                if (d->families_to_check > 0) {
+                if (d->families_to_check > 0 && d->first_working_ip_index < ((s->sel_origin_fd == s->origin_fd) ? s->origin_info.ipv4_c : s->origin_info.ipv6_c)) {
                     d->substate = CONN_SUB_TRY_IPS;
                 }
                 else {
