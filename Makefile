@@ -1,5 +1,5 @@
 # Makefile
-.PHONY: all sctp_client clean
+.PHONY: clean
 
 #CFLAGS=-Wall -g -fsanitize=address
 CFLAGS=-Wall -g -std=c11 -D_POSIX_C_SOURCE=200112L
