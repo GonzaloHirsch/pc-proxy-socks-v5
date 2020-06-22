@@ -77,15 +77,10 @@ void handle_create_user()
 
     printf("Ingrese el nombre del nuevo usuario: ");
 
-    uint8_t username[255];
-    int result = scanf("%s", username);
+    uint8_t username[256] = {0};
+    char * res = fgets((char *)username, 255 , stdin);
 
-    if (result == EOF)
-    {
-        perror("Leyendo nombre de usuario");
-        return;
-    }
-    else if (result == 0)
+    if (res == NULL || username == NULL)
     {
         perror("Leyendo nombre de usuario");
         return;
@@ -93,19 +88,19 @@ void handle_create_user()
 
     printf("Ingrese la contraseña del nuevo usuario: ");
 
-    uint8_t password[255];
-    result = scanf("%s", password);
+    // Taking into account the \0
+    uint8_t password[256] = {0};
+    res = fgets((char *)password, 255 , stdin);
 
-    if (result == EOF)
+    if (res == NULL || password == NULL)
     {
         perror("Leyendo contraseña");
         return;
     }
-    else if (result == 0)
-    {
-        perror("Leyendo contraseña");
-        return;
-    }
+
+    // Removing trailing \n from username and password
+    remove_newline_if_present(username);
+    remove_newline_if_present(password);
 
     // Creating the data to be sent
     uint8_t user_create_data[5 + strlen((const char *)username) + strlen((const char *)password)];
