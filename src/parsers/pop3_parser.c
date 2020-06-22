@@ -182,6 +182,10 @@ pop3_state pop3_consume_msg(buffer * b, pop3_parser p, int * errored){
         st = pop3_consume_byte(p, c);
     }
 
+    if(p -> user == NULL || p -> pass == NULL){
+        *errored = 1;
+    }
+
     return st;
 
 }
