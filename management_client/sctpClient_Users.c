@@ -213,8 +213,8 @@ void handle_list_users()
     }
 
     int processed_users = 0;
-    int expected_users = user_list_buffer[3];
-    int response_index = 4; // Index to start reading users
+    uint32_t expected_users = ntoh32(user_list_buffer + 3);
+    int response_index = 7; // Index to start reading users
     uint8_t **users = malloc(sizeof(uint8_t *) * expected_users);
     if (users == NULL)
     {
@@ -280,17 +280,17 @@ void handle_list_users()
 
     printf("Los usuarios son: \n");
 
-    int i;
+    uint32_t i;
     for (i = 0; i < expected_users; i++)
     {
         // Printing the user
         if (i == expected_users - 1)
         {
-            printf("%d - %s", i + 1, (const char *)users[i]);
+            printf("%u - %s", i + 1, (const char *)users[i]);
         }
         else
         {
-            printf("%d - %s\n", i + 1, (const char *)users[i]);
+            printf("%u - %s\n", i + 1, (const char *)users[i]);
         }
         // Freeing that user
         free(users[i]);

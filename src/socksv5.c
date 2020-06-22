@@ -107,6 +107,14 @@ int main(const int argc, char *const *argv)
         abort();
     }
 
+    // Adding the command line users to our own user table
+    int user_count;
+    struct users user;
+    for (user_count = 0; user_count < options->n_users; user_count++){
+        user = options->users[user_count];
+        create_user_proxy((uint8_t *)user.name, (uint8_t *)user.pass, strlen(user.name), strlen(user.pass));
+    }
+
     // Initializing the metrics struct
     init_metrics();
 

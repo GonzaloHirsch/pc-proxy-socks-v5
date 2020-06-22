@@ -33,7 +33,7 @@ bool get_16_bit_number(uint16_t *n)
 
 bool get_8_bit_number(uint8_t *n)
 {
-    printf("Nuevo valor para configuración (0 - 255): ");
+    printf("Nuevo valor para configuración (0 o 1): ");
 
     int i;
     int result = scanf("%d", &i);
@@ -108,12 +108,12 @@ void handle_show_configs()
     uint16_t socks5_buff_len = ntoh16(configs_list_buffer + 4);
     uint16_t sctp_buff_len = ntoh16(configs_list_buffer + 6);
     uint16_t doh_buff_len = ntoh16(configs_list_buffer + 8);
-    uint8_t timeout = configs_list_buffer[10];
+    uint8_t disectors = configs_list_buffer[10];
 
     printf("Tamaño del buffer del proxy socks5: %d\n", socks5_buff_len);
     printf("Tamaño del buffer del socket de management (bytes): %d\n", sctp_buff_len);
     printf("Tamaño del buffer de doh (bytes): %d\n", doh_buff_len);
-    printf("Tiempo de timeout (segundos): %d", timeout);
+    printf("Estado de los disectores: %s", disectors > 0 ? "Activos" : "Inactivos");
 }
 
 int show_config_options()
@@ -122,7 +122,9 @@ int show_config_options()
            "1 - Tamaño de buffer de proxy\n"
            "2 - Tamaño de buffer de management\n"
            "3 - Tamaño de buffer de DoH\n"
-           "4 - Timeout\n"
+           "4 - Estado de los disectores\n"
+           "\t0 -> Desactivar\n"
+           "\t1 -> Activar\n"
            "100 - Volver para Atrás\n");
 
     printf("Elegir un número de configuración: ");
@@ -164,7 +166,7 @@ void handle_edit_config()
         switch (option)
         {
         case CONF_DOH_BUFF:
-            printf("Option %d - Tamaño de Buffer de DoH\n\n", option);
+            printf("Opción %d - Tamaño de Buffer de DoH\n\n", option);
             parseOk = get_16_bit_number(&val.val16);
             if (!parseOk)
             {
@@ -178,7 +180,7 @@ void handle_edit_config()
             }
             break;
         case CONF_SCTP_BUFF:
-            printf("Option %d - Tamaño de Buffer de SCTP\n\n", option);
+            printf("Opción %d - Tamaño de Buffer de SCTP\n\n", option);
             parseOk = get_16_bit_number(&val.val16);
             if (!parseOk)
             {
@@ -192,7 +194,7 @@ void handle_edit_config()
             }
             break;
         case CONF_SOCKS5_BUFF:
-            printf("Option %d - Tamaño de Buffer de Proxy\n\n", option);
+            printf("Opción %d - Tamaño de Buffer de Proxy\n\n", option);
             parseOk = get_16_bit_number(&val.val16);
             if (!parseOk)
             {
@@ -205,16 +207,16 @@ void handle_edit_config()
                 end = true;
             }
             break;
-        case CONF_TIMEOUT:
-            printf("Option %d - Timeout\n\n", option);
+        case CONF_DISECTORS:
+            printf("Opción %d - Estado de los disectores\n\n", option);
             parseOk = get_8_bit_number(&val.val8);
-            if (!parseOk)
+            if (!parseOk || (val.val8 != 1 && val.val8 != 0))
             {
                 handle_invalid_value();
             }
             else
             {
-                data.data8[3] = val.val8;
+                data.data8[3] = val.val8 == 0 ? 0 : 1;
                 send_edit_config(option, data.data8, 4);
                 end = true;
             }

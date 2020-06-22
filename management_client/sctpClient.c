@@ -38,22 +38,22 @@ static void print_option_title(int option)
     switch (option)
     {
     case OPT_EXIT:
-        printf("Option %d - Desconectarse\n\n", option);
+        printf("Opción %d - Desconectarse\n\n", option);
         break;
     case OPT_SHOW_METRICS:
-        printf("Option %d - Mostrar Metricas\n\n", option);
+        printf("Opción %d - Mostrar Metricas\n\n", option);
         break;
     case OPT_LIST_USERS:
-        printf("Option %d - Listar Usuarios\n\n", option);
+        printf("Opción %d - Listar Usuarios\n\n", option);
         break;
     case OPT_CREATE_USER:
-        printf("Option %d - Crear Usuario\n\n", option);
+        printf("Opción %d - Crear Usuario\n\n", option);
         break;
     case OPT_SHOW_CONFIGS:
-        printf("Option %d - Mostrar Configuraciones\n\n", option);
+        printf("Opción %d - Mostrar Configuraciones\n\n", option);
         break;
     case OPT_EDIT_CONFIG:
-        printf("Option %d - Editar Configuración\n\n", option);
+        printf("Opción %d - Editar Configuración\n\n", option);
         break;
     default:
         break;

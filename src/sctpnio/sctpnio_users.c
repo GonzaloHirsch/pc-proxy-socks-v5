@@ -95,13 +95,13 @@ ssize_t send_user_list(struct selector_key *key)
         // Getting the representation for the users
         uint8_t *users = prepare_list_users(d->datagram.user_list.users, d->datagram.user_list.user_count, d->datagram.user_list.users_len);
         // Adding the info to the buffer
-        uint8_t user_list_data[4 + packet_len];
+        uint8_t user_list_data[7 + packet_len];
         user_list_data[0] = d->info.type;
         user_list_data[1] = d->info.cmd;
         user_list_data[2] = d->error;
-        user_list_data[3] = d->datagram.user_list.user_count;
-        memcpy(&user_list_data[4], users, packet_len);
-        n = sctp_sendmsg(key->fd, (void *)user_list_data, 4 + packet_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
+        hton32(user_list_data + 3, (uint32_t)d->datagram.user_list.user_count);
+        memcpy(&user_list_data[7], users, packet_len);
+        n = sctp_sendmsg(key->fd, (void *)user_list_data, 7 + packet_len, NULL, 0, 0, 0, 0, 0, MSG_NOSIGNAL);
         free(users);
         free_list_users(d->datagram.user_list.users, d->datagram.user_list.user_count);
     }

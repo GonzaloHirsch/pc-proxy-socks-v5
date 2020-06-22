@@ -86,14 +86,14 @@ Y la respuesta del servidor sigue el siguiente formato:
             +------+-------+--------+--------+-----------+
             | TYPE |  CMD  | STATUS |  ULEN  |    DATA   |
             +------+-------+--------+--------+-----------+
-            |   1  |   1   |    1   |    1   |  Variable |
+            |   1  |   1   |    1   |    4   |  Variable |
             +------+-------+--------+--------+-----------+
 
 Campos:
             TYPE -> Tipo de uso, X’01’ (USUARIOS)
             CMD -> Comando a realizar, X’01’ (LISTAR)
             STATUS -> Campo Status definido en la introducción
-            ULEN -> Cantidad de usuarios a devolver
+            ULEN -> Cantidad de usuarios a devolver (BigEndian)
             DATA -> Nombres de los usuarios, separados por un byte en 0 (0x00)
 
 Para realizar un alta de un usuario, se envía una request de creacion de un usuario:
@@ -177,7 +177,7 @@ Campos:
 Y la respuesta del servidor sigue el siguiente formato:
 
             +------+-------+--------+--------+-----------+-----------+-----------+-----------+
-            | TYPE |  CMD  | STATUS |  CLEN  |  S5BSIZE  |   SBSIZE  |   DBSIZE  |   TOUT    |
+            | TYPE |  CMD  | STATUS |  CLEN  |  S5BSIZE  |   SBSIZE  |   DBSIZE  |   DISCT   |
             +------+-------+--------+--------+-----------+-----------+-----------+-----------+
             |   1  |   1   |    1   |    1   |      2    |      2    |      2    |     1     |
             +------+-------+--------+--------+-----------+-----------+-----------+-----------+
@@ -190,7 +190,7 @@ Campos:
             S5BSIZE -> Tamaño del buffer para el proxy socks5 (BigEndian)
             SBSIZE -> Tamaño del buffer de la conexión SCTP (BigEndian)
             DBSIZE -> Tamaño del buffer de DoH (BigEndian)
-            TOUT -> Tiempo de timeout (BigEndian)
+            DISCT -> Estado de los disectores, activos(0x01) o inactivos(0x00)
 
 Para poder editar la configuración de alguna métrica se utiliza la siguiente request:
 
@@ -212,12 +212,12 @@ Campos:
                 - S5BSIZE -> 2 bytes (BigEndian) - Unidad: Bytes
                 - SBSIZE -> 2 bytes (BigEndian) - Unidad: Bytes
                 - DBSIZE -> 2 bytes (BigEndian) - Unidad: Bytes
-                - TOUT -> 1 byte (BigEndian) - Unidad: Segundos
+                - DISCT -> 1 byte - 0x00(desactivar) o 0x01-0xFF(activar)
 
 Y la respuesta del servidor sigue el siguiente formato:
 
             +------+-------+--------+--------+
-            | TYPE |  CMD  | STATUS |  CONF  |
+            | TYPE |  CMD  | STATUS |  DISCT |
             +------+-------+--------+--------+
             |   1  |   1   |    1   |    1   |
             +------+-------+--------+--------+
@@ -230,7 +230,7 @@ Campos:
                 - S5BSIZE -> Tamaño del buffer para el proxy socks5, 0x01
                 - SBSIZE -> Tamaño del buffer de la conexión SCTP, 0x02
                 - DBSIZE -> Tamaño del buffer de DoH, 0x03
-                - TOUT -> Tiempo de timeout, 0x04
+                - DISCT -> Estado de los disectores, activados(0x01)/desactivados(0x00), 0x04
 
 4 - Errores
 

@@ -14,6 +14,7 @@
 #include "selector.h"
 #include "authentication.h"
 #include "io_utils/buffer.h"
+#include "io_utils/conversions.h"
 #include "parsers/up_req_parser.h"
 #include <arpa/inet.h>
 // This header does not exist in OSX, so the compilation has to be done in Linux
@@ -64,7 +65,7 @@ typedef enum CONFIGS {
     CONF_SOCKS5_BUFF = 0x01,
     CONF_SCTP_BUFF = 0x02,
     CONF_DOH_BUFF = 0x03,
-    CONF_TIMEOUT = 0x04
+    CONF_DISECTORS = 0x04
 } CONFIGS;
 
 /** Enum for the different types of actions to be performed */
