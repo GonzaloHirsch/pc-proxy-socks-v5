@@ -24,3 +24,7 @@ sctp_lient
 a.out
 
 valgrind-output.txt
+
+test_results/results_proxy.txt
+
+serverdata/logtest.txt

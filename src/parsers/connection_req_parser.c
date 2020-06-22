@@ -101,7 +101,9 @@ int connection_req_done_parsing(connection_req_parser p, bool * errored) {
 // Free all connection_req_parser-Related memory
 
 void free_connection_req_parser(connection_req_parser p) {
-    free_socks_5_addr_parser(p->socks_5_addr_parser);
+    if (p != NULL){
+        free_socks_5_addr_parser(p->socks_5_addr_parser);
+    }
     // free(p);
 }
 
