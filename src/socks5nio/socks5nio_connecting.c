@@ -54,7 +54,7 @@ static int connecting_send_conn_response (struct selector_key * key) {
 
     // Logging the request
     log_request(0, s->username, (const struct sockaddr *)&s->client_addr, (const struct sockaddr *)&s->origin_info.origin_addr, s->origin_info.resolve_addr);
-    
+
     selector_set_interest(key->s, s->sel_origin_fd, OP_READ | OP_WRITE);
     selector_set_interest(key->s, s->client_fd, OP_READ | OP_WRITE);
     return COPY;
@@ -156,6 +156,9 @@ void connecting_init(const unsigned state, struct selector_key *key)
                 }
                 // On next write handle, connecting to origin must be checked
                 d->substate = CONN_SUB_CHECK_ORIGIN;
+                break;
+            case ENETUNREACH:
+                d->substate = CONN_SUB_ERROR;
                 break;
             default:
                 // If this is reached, then every ip has been tried for preferred family
@@ -279,7 +282,10 @@ unsigned connecting_write(struct selector_key *key)
     struct connecting_st * d = &ATTACHMENT(key)->orig.conn;
     struct socks5 *s = ATTACHMENT(key);
     if (key->fd == s->client_fd) {
-        // shouldn't happen
+        if (d->substate == CONN_SUB_ERROR) {
+            s->reply_type = REPLY_RESP_REFUSED_BY_DEST_HOST;
+            return ERROR;
+        }
         return connecting_send_conn_response(key);
     } else if (key->fd == s->sel_origin_fd) {
         // this should be entered only when EINPROGRESS is obtained
