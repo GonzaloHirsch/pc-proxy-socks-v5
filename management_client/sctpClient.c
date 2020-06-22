@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
         memset(&server, 0, sizeof(server));
         server.sin_family = AF_INET;
         server.sin_port = htons(args->mng_port);
-        server.sin_addr.s_addr = htons(INADDR_ANY);
+        server.sin_addr.s_addr = inet_addr(args->mng_addr);
 
         // Creating the socket
         serverSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
@@ -139,11 +139,15 @@ int main(int argc, char *argv[])
 
         if (try_again)
         {
+            // Generating the IPv6 address structure
+            struct in6_addr in6addr;
+            inet_pton(AF_INET6, args->mng_addr6, &in6addr);
+
             // Address for IPv6 socket binding
             struct sockaddr_in6 server6;
             memset(&server6, 0, sizeof(server6));
             server6.sin6_family = AF_INET6;
-            server6.sin6_addr = in6addr_any;
+            server6.sin6_addr = in6addr;
             server6.sin6_port = htons(args->mng_port);
 
             // Creating the socket
@@ -180,7 +184,7 @@ int main(int argc, char *argv[])
 
         if (args->mng_family == AF_INET6)
         {
-            struct sockaddr_in6 * adr_6 = (struct sockaddr_in6 *)args->mng_addr_info;
+            struct sockaddr_in6 *adr_6 = (struct sockaddr_in6 *)args->mng_addr_info;
             // Connecting to the server
             ret = connect(serverSocket, (struct sockaddr *)adr_6, sizeof(*adr_6));
             if (ret == -1)
@@ -192,7 +196,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            struct sockaddr_in * adr = (struct sockaddr_in *)args->mng_addr_info;
+            struct sockaddr_in *adr = (struct sockaddr_in *)args->mng_addr_info;
             // Connecting to the server
             ret = connect(serverSocket, (struct sockaddr *)adr, sizeof(*adr));
             if (ret == -1)
