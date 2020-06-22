@@ -203,6 +203,7 @@ resolve_read(struct selector_key *key)
                      * to leave it ready for the next parsing */
                 }
 
+                free_http_message_parser(&s->orig.resolve.parser);
                 // Reset the parser for the ipv6 response
                 http_message_parser_init(&r_s->parser);
                 
