@@ -60,7 +60,7 @@ void http_auth_init(http_auth_parser p);
 
 http_auth_state http_auth_consume_msg(buffer * b, http_auth_parser p, int * errored);
 
-int http_auth_done_parsing(http_auth_parser p, int * errored);
+int http_auth_done_parsing(http_auth_parser p);
 
 
 void free_http_auth_parser(http_auth_parser p);

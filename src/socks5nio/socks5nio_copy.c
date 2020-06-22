@@ -148,12 +148,9 @@ copy_read(struct selector_key *key)
                     while (buffer_can_read(aux_b))
                     {
                         http_auth_consume_msg(aux_b, &d->http_parser, &errored);
-                        if (http_auth_done_parsing(&d->http_parser, &errored))
+                        if (http_auth_done_parsing(&d->http_parser))
                         {
-                            if (!errored)
-                            {
-                                extract_http_auth(&d->http_parser, s);
-                            }
+                            extract_http_auth(&d->http_parser, s);
                             free_http_auth_parser(&d->http_parser);
                             http_auth_init(&d->http_parser);
                         }
@@ -172,6 +169,7 @@ copy_read(struct selector_key *key)
                             }
                             free_pop3_parser(&d->pop_parser);
                             pop3_parser_init(&d->pop_parser);
+                            errored = 0;
                         }
                     }
                     break;

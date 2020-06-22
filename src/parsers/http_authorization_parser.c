@@ -254,13 +254,12 @@ http_auth_state http_auth_consume_byte(http_auth_parser p, uint8_t b)
     return p->state;
 }
 
-int http_auth_done_parsing(http_auth_parser p, int *errored)
+int http_auth_done_parsing(http_auth_parser p)
 {
-    if (p->state >= HTTPA_F || *errored == 1)
+    if (p->state == HTTPA_F)
     {
         return 1;
     }
-
     return 0;
 }
 
@@ -268,15 +267,10 @@ http_auth_state http_auth_consume_msg(buffer *b, http_auth_parser p, int *errore
 {
 
     http_auth_state st = p->state;
-    while (buffer_can_read(b) && !http_auth_done_parsing(p, errored))
+    while (buffer_can_read(b) && !http_auth_done_parsing(p))
     {
         uint8_t c = buffer_read(b);
         st = http_auth_consume_byte(p, c);
-    }
-
-    if (p->encoding == NULL || p->content == NULL)
-    {
-        *errored = 1;
     }
 
     return st;
