@@ -70,6 +70,41 @@ port(const char *s)
     return (unsigned short)sl;
 }
 
+static int
+get_addr_type(char *address)
+{
+    struct in_addr inaddr;
+    struct in6_addr in6addr;
+    int r_4, r_6;
+
+    // Try to match with IPv4
+    r_4 = inet_pton(AF_INET, address, &inaddr);
+
+    // IPv4 unsuccessful, try with IPv6
+    if (r_4 <= 0)
+    {
+        // Try to match with IPv4
+        r_6 = inet_pton(AF_INET6, address, &in6addr);
+
+        // IPv6 error, exit
+        if (r_6 <= 0)
+        {
+            printf("Cannot determine address family %s, please try again with a valid address.\n", address);
+            fprintf(stderr, "Address resolution error\n");
+            free_memory();
+            exit(0);
+        }
+        else
+        {
+            return AF_INET6;
+        }
+    }
+    else
+    {
+        return AF_INET;
+    }
+}
+
 static void
 user(char *s, struct users *user)
 {
@@ -153,6 +188,7 @@ void parse_args(const int argc, char *const *argv)
     options->doh.path = "/getnsrecord";
     options->doh.query = "?dns=";
     options->doh.buffer_size = 1024;
+    options->doh.addr_type = get_addr_type(options->doh.ip);
 
     int c;
     int nusers = 0;
@@ -237,6 +273,7 @@ void parse_args(const int argc, char *const *argv)
             break;
         case 0xD001:
             options->doh.ip = optarg;
+            options->doh.addr_type = get_addr_type(options->doh.ip);
             break;
         case 0xD002:
             options->doh.port = port(optarg);

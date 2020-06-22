@@ -263,7 +263,7 @@ typedef struct resolve_st
     /** File descriptor of the doh server */
     int doh_fd;
     struct http_message_parser parser;
-    struct sockaddr_in serv_addr;
+    struct sockaddr_storage serv_addr;
     unsigned int conn_state;
     unsigned int resp_state;
     

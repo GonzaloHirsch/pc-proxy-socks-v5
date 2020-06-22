@@ -44,22 +44,49 @@ resolve_init(const unsigned state, struct selector_key *key)
 
     int connect_ret;
     selector_status st = SELECTOR_SUCCESS;
-
-    // Structure to connect to the dns server
- 
-    memset(&r_s->serv_addr, 0, sizeof(r_s->serv_addr));              // Zero out structure
-    r_s->serv_addr.sin_family = AF_INET;                             // IPv4 address family
-    r_s->serv_addr.sin_addr.s_addr = inet_addr(options ->doh.ip);            // Address
-    r_s->serv_addr.sin_port = htons(options -> doh.port);                       // Server port
-
-
-    // Creating the fd for the ipv4 doh connection
-    r_s->doh_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if(r_s->doh_fd <= 0){
-        printf("ERROR openning socket for ipv4\n");
+    
+     
+    switch (options->doh.addr_type)
+    {
+    case AF_UNSPEC:
         r_s->doh_fd = -1;
+        break;
+    case AF_INET:
+        memset(&r_s->serv_addr, 0, sizeof(r_s->serv_addr));
+        struct sockaddr_in * si4 =(struct sockaddr_in * )&r_s->serv_addr;
+        si4->sin_family = AF_INET;
+        si4->sin_addr.s_addr = inet_addr(options ->doh.ip); 
+        si4->sin_port = htons(options -> doh.port);
+
+        // Creating the fd for the ipv4 doh connection
+        r_s->doh_fd = socket(AF_INET, SOCK_STREAM, 0);
+        if(r_s->doh_fd <= 0){
+            printf("ERROR openning socket for ipv4\n");
+            r_s->doh_fd = -1;
+        }
+
+        break;
+    
+    case AF_INET6:
+        memset(&r_s->serv_addr, 0, sizeof(r_s->serv_addr));
+        struct sockaddr_in6 * si6 =(struct sockaddr_in6 * )&r_s->serv_addr;
+        si6->sin6_family = AF_INET6;
+        inet_pton(AF_INET6, options->doh.ip, &si6->sin6_addr); 
+        si6->sin6_port = htons(options -> doh.port);
+
+        // Creating the fd for the ipv4 doh connection
+        r_s->doh_fd = socket(AF_INET6, SOCK_STREAM, 0);
+        if(r_s->doh_fd <= 0){
+            printf("ERROR openning socket for ipv6\n");
+            r_s->doh_fd = -1;
+        }
+        int no = 0;
+        setsockopt(r_s->doh_fd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no));
+    
+    default:
+        break;
     }
-    // Set as non blocking
+      // Set as non blocking
     selector_fd_set_nio(r_s->doh_fd);
     // Trying connection
     connect_ret = connect(r_s->doh_fd, (struct sockaddr *) &r_s->serv_addr, sizeof(r_s->serv_addr));
@@ -257,6 +284,11 @@ resolve_write(struct selector_key *key)
     ssize_t n, m;
     int final_buffer_size = 0, final_buffer_size2 = 0;
 
+    if(r_s->doh_fd < 0){
+        s->reply_type = REPLY_RESP_NET_UNREACHABLE;
+        return ERROR;
+    }
+
     // If connecting in progress, check if connection done.
     if(r_s->conn_state == CONN_INPROGRESS){
          r_s->conn_state = doh_check_connection(r_s);
@@ -276,7 +308,7 @@ resolve_write(struct selector_key *key)
     case CONN_SUCCESS:
         break;
     default:
-        s->reply_type = REPLY_RESP_GENERAL_FAILURE;
+        s->reply_type = REPLY_RESP_NET_UNREACHABLE;
         return ERROR;
     }
 

@@ -31,6 +31,7 @@ struct doh {
     char           *path;
     char           *query;
     uint16_t        buffer_size;
+    int             addr_type;
 };
 
 typedef struct socks5args_struct {
