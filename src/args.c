@@ -167,11 +167,13 @@ void parse_args(const int argc, char *const *argv)
     memset(options, 0, sizeof(*options)); // sobre todo para setear en null los punteros de users
 
     options->socks_addr = "0.0.0.0";
+    options->socks_addr_6 = "::";
     options->socks_port = 1080;
     options->socks_family = AF_UNSPEC;
     options->socks_addr_info = NULL;
 
     options->mng_addr = "127.0.0.1";
+    options->mng_addr_6 = "::1";
     options->mng_port = 8080;
     options->mng_family = AF_UNSPEC;
     options->mng_addr_info = NULL;

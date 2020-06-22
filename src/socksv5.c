@@ -111,13 +111,17 @@ void create_master_socket_all(int *master_socket_4, int *master_socket_6)
     // Address for socket binding
     struct sockaddr_in address;
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_addr.s_addr = inet_addr(options->socks_addr);
     address.sin_port = htons(options->socks_port);
+
+    // Generating the IPv6 address structure
+    struct in6_addr in6addr;
+    inet_pton(AF_INET6, options->socks_addr_6, &in6addr);
 
     // Address for IPv6 socket binding
     struct sockaddr_in6 address6;
     address6.sin6_family = AF_INET6;
-    address6.sin6_addr = in6addr_any;
+    address6.sin6_addr = in6addr;
     address6.sin6_port = htons(options->socks_port);
 
     *master_socket_4 = create_master_socket_4(&address);
@@ -224,13 +228,17 @@ void create_management_socket_all(int *management_socket_4, int *management_sock
     // Address for sctp socket binding
     struct sockaddr_in address;
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = htons(INADDR_ANY);
+    address.sin_addr.s_addr = inet_addr(options->mng_addr);
     address.sin_port = htons(options->mng_port);
+
+    // Generating the IPv6 address structure
+    struct in6_addr in6addr;
+    inet_pton(AF_INET6, options->mng_addr_6, &in6addr);
 
     // Address for IPv6 socket binding
     struct sockaddr_in6 address6;
     address6.sin6_family = AF_INET6;
-    address6.sin6_addr = in6addr_any;
+    address6.sin6_addr = in6addr;
     address6.sin6_port = htons(options->mng_port);
 
     *management_socket_4 = create_management_socket_4(&address);
@@ -270,11 +278,11 @@ int main(const int argc, char *const *argv)
     }
     else if (options->mng_family == AF_INET)
     {
-        management_socket = create_master_socket_4((struct sockaddr_in *) options->mng_addr_info);
+        management_socket = create_management_socket_4((struct sockaddr_in *) options->mng_addr_info);
     }
     else if (options->mng_family == AF_INET6)
     {
-        management_socket_6 = create_master_socket_6((struct sockaddr_in6 *) options->mng_addr_info);
+        management_socket_6 = create_management_socket_6((struct sockaddr_in6 *) options->mng_addr_info);
     }
 
     // ----------------- CREATING SIGNAL HANDLERS -----------------

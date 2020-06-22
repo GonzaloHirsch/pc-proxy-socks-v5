@@ -36,11 +36,13 @@ struct doh {
 
 typedef struct socks5args_struct {
     char *              socks_addr;
+    char *              socks_addr_6;
     unsigned short      socks_port;
     int                 socks_family;
     struct addrinfo *   socks_addr_info;
 
     char *              mng_addr;
+    char *              mng_addr_6;
     unsigned short      mng_port;
     int                 mng_family;
     struct addrinfo *   mng_addr_info;
