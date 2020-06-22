@@ -14,7 +14,7 @@
 #include <arpa/inet.h>
 #include "parsers/http_message_parser.h"
 #include "dnsPacket.h"
-
+#include "io_utils/encoding.h"
 #define DOH_PORT 80
 #define DOH_ADDR "127.0.0.1"
 #define BUFFERSIZE_DOH 1024
