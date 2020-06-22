@@ -23,12 +23,6 @@ pop3_state pop3_consume_byte(pop3_parser p, uint8_t b)
         {
             p->state = POP3_P_P;
         }
-        else if(b == NL){
-            p -> state = POP3_F;
-        }
-        else{
-            p -> state = POP3_READING;
-        }
         break;
 
     case POP3_READING:
@@ -169,7 +163,7 @@ pop3_state pop3_consume_byte(pop3_parser p, uint8_t b)
             *p->cursor = '\0';
             p->pass = malloc(strlen((const char *)p->start) + 1);
             strcpy((char *)p->pass, (char *)p->start);
-            p->state = POP3_NL;
+            p->state = POP3_F;
         }
 
     case POP3_F:
@@ -204,10 +198,6 @@ pop3_state pop3_consume_msg(buffer *b, pop3_parser p, int *errored)
     {
         uint8_t c = buffer_read(b);
         st = pop3_consume_byte(p, c);
-    }
-
-    if(p -> user == NULL || p -> pass == NULL){
-        *errored = 1;
     }
 
     return st;
