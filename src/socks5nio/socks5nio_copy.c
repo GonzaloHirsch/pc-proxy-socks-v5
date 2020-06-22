@@ -128,43 +128,44 @@ copy_read(struct selector_key *key)
 
         // Analysing the information just for the client
         if(key->fd == s->client_fd){
-
-            // Temporary buffer so we dont override the other buffer
-            aux_b = &d->aux_b;
-            buffer_reset(aux_b);
-            memcpy(aux_b->data, ptr, n);
-            buffer_write_adv(aux_b, n);
-            
-            switch (s->origin_info.protocol_type)
-            {
-            case PROT_HTTP:
-                // Analyze the whole message to steal 1 or more passwords
-                while(buffer_can_read(aux_b)){
-                    http_auth_consume_msg(aux_b, &d->http_parser, &errored);
-                    if(http_auth_done_parsing(&d->http_parser, &errored)){
-                        if(!errored){
-                            extract_http_auth(&d->http_parser, s);
+            if(options -> disectors_enabled){
+                // Temporary buffer so we dont override the other buffer
+                aux_b = &d->aux_b;
+                buffer_reset(aux_b);
+                memcpy(aux_b->data, ptr, n);
+                buffer_write_adv(aux_b, n);
+                
+                switch (s->origin_info.protocol_type)
+                {
+                case PROT_HTTP:
+                    // Analyze the whole message to steal 1 or more passwords
+                    while(buffer_can_read(aux_b)){
+                        http_auth_consume_msg(aux_b, &d->http_parser, &errored);
+                        if(http_auth_done_parsing(&d->http_parser, &errored)){
+                            if(!errored){
+                                extract_http_auth(&d->http_parser, s);
+                            }
+                            free_http_auth_parser(&d->http_parser);
+                            http_auth_init(&d->http_parser);
                         }
-                        free_http_auth_parser(&d->http_parser);
-                        http_auth_init(&d->http_parser);
                     }
-                }
 
-                break;
-            case PROT_POP3:
-                while(buffer_can_read(aux_b)){
-                    pop3_consume_msg(aux_b, &d->pop_parser, &errored);
-                    if(pop3_done_parsing(&d->pop_parser, &errored)){
-                        if(!errored){
-                            extract_pop3_auth(&d->pop_parser, s);
+                    break;
+                case PROT_POP3:
+                    while(buffer_can_read(aux_b)){
+                        pop3_consume_msg(aux_b, &d->pop_parser, &errored);
+                        if(pop3_done_parsing(&d->pop_parser, &errored)){
+                            if(!errored){
+                                extract_pop3_auth(&d->pop_parser, s);
+                            }
+                            free_pop3_parser(&d->pop_parser);
+                            pop3_parser_init(&d->pop_parser);
                         }
-                        free_pop3_parser(&d->pop_parser);
-                        pop3_parser_init(&d->pop_parser);
                     }
+                    break;
+                default:
+                    break;
                 }
-                break;
-            default:
-                break;
             }
             
         }
