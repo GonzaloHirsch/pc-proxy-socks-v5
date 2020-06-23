@@ -82,7 +82,7 @@ void handle_create_user()
 
     if (res == NULL || username == NULL)
     {
-        perror("Leyendo nombre de usuario");
+        printf("Error leyendo nombre de usuario");
         return;
     }
 
@@ -94,7 +94,7 @@ void handle_create_user()
 
     if (res == NULL || password == NULL)
     {
-        perror("Leyendo contraseña");
+        printf("Error leyendo contraseña");
         return;
     }
 
@@ -134,14 +134,14 @@ void handle_create_user()
     // Checking TYPE byte
     if (user_create_buffer[0] != 0x01)
     {
-        printf("Tipo diferente al esperado");
+        printf("Error: Tipo diferente al esperado");
         return;
     }
 
     // Checking CMD byte
     if (user_create_buffer[1] != 0x02)
     {
-        printf("Comando diferente al esperado");
+        printf("Error: Comando diferente al esperado");
         return;
     }
 
@@ -154,7 +154,7 @@ void handle_create_user()
 
     if (user_create_buffer[3] != 0x01)
     {
-        perror("Versión diferente a la esperada");
+        printf("Error: Versión diferente a la esperada");
         return;
     }
 
@@ -189,21 +189,21 @@ void handle_list_users()
     // Checking TYPE byte
     if (user_list_buffer[0] != 0x01)
     {
-        perror("Tipo diferente al esperado");
+        printf("Error: Tipo diferente al esperado");
         return;
     }
 
     // Checking CMD byte
     if (user_list_buffer[1] != 0x01)
     {
-        perror("Comando diferente al esperado");
+        printf("Error: Comando diferente al esperado");
         return;
     }
 
     // Checking STATUS byte
     if (user_list_buffer[2] != 0x00)
     {
-        perror("Status de error");
+        determine_error(user_list_buffer[2]);
         return;
     }
 

@@ -45,9 +45,8 @@ typedef enum Errors {
 typedef enum Configs{
     CONF_SOCKS5_BUFF = 0x01,
     CONF_SCTP_BUFF = 0x02,
-    CONF_DOH_BUFF = 0x03,
-    CONF_DISECTORS = 0x04,
-    CONF_EXIT = 0x64,
+    CONF_DISECTORS = 0x03,
+    CONF_EXIT = 0x64
 } Configs;
 
 void die_with_message(char *msg);

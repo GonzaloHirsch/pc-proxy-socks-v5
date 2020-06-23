@@ -64,8 +64,7 @@ typedef enum TYPE
 typedef enum CONFIGS {
     CONF_SOCKS5_BUFF = 0x01,
     CONF_SCTP_BUFF = 0x02,
-    CONF_DOH_BUFF = 0x03,
-    CONF_DISECTORS = 0x04
+    CONF_DISECTORS = 0x03
 } CONFIGS;
 
 /** Enum for the different types of actions to be performed */

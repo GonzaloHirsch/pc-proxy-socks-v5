@@ -77,43 +77,41 @@ void handle_show_configs()
     {
         die_with_message("Error recibiendo respuesta para mostrar configuraciones");
     }
-    else if (ret != 11)
+    else if (ret != 9)
     {
         die_with_message("Tamaño desconocido de respuesta");
     }
 
     if (configs_list_buffer[0] != 0x03)
     {
-        perror("Tipo diferente al esperado");
+        printf("Error: Tipo diferente al esperado");
         return;
     }
 
     if (configs_list_buffer[1] != 0x01)
     {
-        perror("Comando diferente al esperado");
+        printf("Error: Comando diferente al esperado");
         return;
     }
 
     if (configs_list_buffer[2] != 0x00)
     {
-        perror("Status de error");
+        determine_error(configs_list_buffer[2]);
         return;
     }
 
-    if (configs_list_buffer[3] != 0x04)
+    if (configs_list_buffer[3] != 0x03)
     {
-        perror("Cantidad de configuraciones inesperada");
+        printf("Error: Cantidad de configuraciones inesperada");
         return;
     }
 
     uint16_t socks5_buff_len = ntoh16(configs_list_buffer + 4);
     uint16_t sctp_buff_len = ntoh16(configs_list_buffer + 6);
-    uint16_t doh_buff_len = ntoh16(configs_list_buffer + 8);
-    uint8_t disectors = configs_list_buffer[10];
+    uint8_t disectors = configs_list_buffer[8];
 
-    printf("Tamaño del buffer del proxy socks5: %d\n", socks5_buff_len);
+    printf("Tamaño del buffer del proxy socks5 (bytes): %d\n", socks5_buff_len);
     printf("Tamaño del buffer del socket de management (bytes): %d\n", sctp_buff_len);
-    printf("Tamaño del buffer de doh (bytes): %d\n", doh_buff_len);
     printf("Estado de los disectores: %s", disectors > 0 ? "Activos" : "Inactivos");
 }
 
@@ -122,8 +120,7 @@ int show_config_options()
     printf("Posibles configuraciones para editar:\n"
            "1 - Tamaño de buffer de proxy\n"
            "2 - Tamaño de buffer de management\n"
-           "3 - Tamaño de buffer de DoH\n"
-           "4 - Estado de los disectores\n"
+           "3 - Estado de los disectores\n"
            "\t0 -> Desactivar\n"
            "\t1 -> Activar\n"
            "100 - Volver para Atrás\n");
@@ -139,7 +136,7 @@ int show_config_options()
 
     int i = atoi(option);
 
-    if (i == 0 || ((i <= 0 || i > 4) && (i != 100))){
+    if (i == 0 || ((i <= 0 || i > 3) && (i != 100))){
         return -1;
     }
 
@@ -168,20 +165,6 @@ void handle_edit_config()
 
         switch (option)
         {
-        case CONF_DOH_BUFF:
-            printf("Opción %d - Tamaño de Buffer de DoH\n\n", option);
-            parseOk = get_16_bit_number(&val.val16);
-            if (!parseOk)
-            {
-                handle_invalid_value();
-            }
-            else
-            {
-                hton16(data.data16 + 3, val.val16);
-                send_edit_config(option, data.data16, 5);
-                end = true;
-            }
-            break;
         case CONF_SCTP_BUFF:
             printf("Opción %d - Tamaño de Buffer de SCTP\n\n", option);
             parseOk = get_16_bit_number(&val.val16);
@@ -268,25 +251,25 @@ void send_edit_config(Configs conf, uint8_t *data, ssize_t data_len)
 
     if (configs_edit_buffer[0] != 0x03)
     {
-        perror("Tipo diferente al esperado");
+        printf("Error: Tipo diferente al esperado");
         return;
     }
 
     if (configs_edit_buffer[1] != 0x03)
     {
-        perror("Comando diferente al esperado");
+        printf("Error: Comando diferente al esperado");
         return;
     }
 
     if (configs_edit_buffer[2] != 0x00)
     {
-        perror("Status de error");
+        determine_error(configs_edit_buffer[2]);
         return;
     }
 
     if (configs_edit_buffer[3] != conf)
     {
-        perror("Configuración inesperada");
+        printf("Configuración inesperada");
         return;
     }
 

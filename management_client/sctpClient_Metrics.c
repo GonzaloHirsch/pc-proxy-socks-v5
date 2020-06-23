@@ -34,25 +34,25 @@ void handle_show_metrics()
 
     if (metrics_list_buffer[0] != 0x02)
     {
-        perror("Tipo diferente al esperado");
+        printf("Error: Tipo diferente al esperado");
         return;
     }
 
     if (metrics_list_buffer[1] != 0x01)
     {
-        perror("Comando diferente al esperado");
+        printf("Error: Comando diferente al esperado");
         return;
     }
 
     if (metrics_list_buffer[2] != 0x00)
     {
-        perror("Status de error");
+        determine_error(metrics_list_buffer[2]);
         return;
     }
 
     if (metrics_list_buffer[3] != 0x03)
     {
-        perror("Cantidad de metricas inesperada");
+        printf("Error: Cantidad de metricas inesperada");
         return;
     }
 

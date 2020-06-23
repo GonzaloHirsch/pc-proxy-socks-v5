@@ -6,9 +6,6 @@
 #define SOCKS5_BUFFER_MIN 256
 #define SOCKS5_BUFFER_MAX 32768
 
-#define DOH_BUFFER_MIN 256
-#define DOH_BUFFER_MAX 4096
-
 #define TIMEOUT_MIN 5
 #define TIMEOUT_MAX 60
 
@@ -39,15 +36,14 @@ unsigned handle_list_configs(struct selector_key *key)
     // Getting the sctp struct
     struct sctp *d = ATTACHMENT(key);
 
-    uint8_t data[11] = {0};
+    uint8_t data[9] = {0};
     data[0] = d->info.type;
     data[1] = d->info.cmd;
     data[2] = 0x00; // Status
-    data[3] = 0x04; // Amount of configs to send
+    data[3] = 0x03; // Amount of configs to send
     hton16(data + 4, options->socks5_buffer_size);
     hton16(data + 4 + 2, options->sctp_buffer_size);
-    hton16(data + 4 + 4, options->doh.buffer_size);
-    data[10] = options->disectors_enabled == true ? 0x01 : 0x00;
+    data[8] = options->disectors_enabled == true ? 0x01 : 0x00;
 
     // Allocating and copying
     d->datagram.configs_list.configs_data = malloc(N(data));
@@ -110,21 +106,6 @@ unsigned handle_config_edit(struct selector_key *key, buffer *b)
             if (d->datagram.config_edit.value.val16 >= SCTP_BUFFER_MIN && d->datagram.config_edit.value.val16 <= SCTP_BUFFER_MAX)
             {
                 options->sctp_buffer_size = d->datagram.config_edit.value.val16;
-            }
-            else
-            {
-                parseOk = false;
-            }
-        }
-        break;
-    case CONF_DOH_BUFF:
-        d->datagram.config_edit.config_type = CONF_DOH_BUFF;
-        parseOk = get_16_bit_integer_from_buffer(b, &d->datagram.config_edit.value.val16);
-        if (parseOk)
-        {
-            if (d->datagram.config_edit.value.val16 >= DOH_BUFFER_MIN && d->datagram.config_edit.value.val16 <= DOH_BUFFER_MAX)
-            {
-                options->doh.buffer_size = d->datagram.config_edit.value.val16;
             }
             else
             {

@@ -22,7 +22,7 @@ static void signal_handler(const int signal)
 
 void die_with_message(char *msg)
 {
-    printf(msg);
+    printf("%s", msg);
     free_memory();
     close(serverSocket);
     exit(0);
