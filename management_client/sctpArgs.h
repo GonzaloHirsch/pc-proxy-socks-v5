@@ -19,7 +19,8 @@ typedef struct sctpClientArgs_struct {
     char *              mng_addr6;
     unsigned short      mng_port;
     int                 mng_family;
-    struct addrinfo *   mng_addr_info;
+    struct sockaddr_in  mng_addr_info;
+    struct sockaddr_in6 mng_addr_info6;
 } sctpClientArgs_struct;
 
 typedef struct sctpClientArgs_struct * sctpClientArgs;

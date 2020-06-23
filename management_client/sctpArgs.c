@@ -2,15 +2,55 @@
 
 void free_memory()
 {
-    if (args->mng_addr_info != NULL)
-    {
-        free(args->mng_addr_info);
-    }
     free(args);
 }
 
 static void
-address(char *address, int port, int protocol, int *family, struct addrinfo *addrinfo)
+address(char *address, int port, struct sockaddr_in *addr)
+{
+    int r_4;
+
+    // Try to match with IPv4
+    r_4 = inet_pton(AF_INET, address, &addr->sin_addr);
+
+    // IPv4 unsuccessful, try with IPv6
+    if (r_4 <= 0)
+    {
+        printf("Cannot determine address family %s, please try again with a valid address.\n", address);
+        fprintf(stderr, "Address resolution error\n");
+        free_memory();
+        exit(0);
+    }
+    else
+    {
+        addr->sin_family = AF_INET;
+        addr->sin_port = htons(port);
+    }
+}
+
+static void
+address6(char *address, int port, struct sockaddr_in6 *addr)
+{
+    // Try to match with IPv4
+    int r_6 = inet_pton(AF_INET6, address, &addr->sin6_addr);
+
+    // IPv6 error, exit
+    if (r_6 <= 0)
+    {
+        printf("Cannot determine address family %s, please try again with a valid address.\n", address);
+        fprintf(stderr, "Address resolution error\n");
+        free_memory();
+        exit(0);
+    }
+    else
+    {
+        addr->sin6_family = AF_INET6;
+        addr->sin6_port = htons(port);
+    }
+}
+
+static int
+get_addr_type(char *address)
 {
     struct in_addr inaddr;
     struct in6_addr in6addr;
@@ -35,18 +75,12 @@ address(char *address, int port, int protocol, int *family, struct addrinfo *add
         }
         else
         {
-            *family = AF_INET6;
-            ((struct sockaddr_in6 *)addrinfo)->sin6_family = AF_INET6;
-            ((struct sockaddr_in6 *)addrinfo)->sin6_port = htons(port);
-            ((struct sockaddr_in6 *)addrinfo)->sin6_addr = in6addr;
+            return AF_INET6;
         }
     }
     else
     {
-        *family = AF_INET;
-        ((struct sockaddr_in *)addrinfo)->sin_family = AF_INET;
-        ((struct sockaddr_in *)addrinfo)->sin_port = htons(port);
-        ((struct sockaddr_in *)addrinfo)->sin_addr = inaddr;
+        return AF_INET;
     }
 }
 
@@ -101,6 +135,8 @@ void parse_args(const int argc, char **argv)
     args->mng_addr = "127.0.0.1";
     args->mng_addr6 = "::1";
     args->mng_port = 8080;
+    memset(&args->mng_addr_info, 0, sizeof(args->mng_addr_info));
+    memset(&args->mng_addr_info6, 0, sizeof(args->mng_addr_info6));
 
     int c;
 
@@ -117,21 +153,25 @@ void parse_args(const int argc, char **argv)
             break;
         case 'L':
             args->mng_addr = optarg;
-            args->mng_addr_info = malloc(sizeof(struct addrinfo *));
-            address(args->mng_addr, args->mng_port, IPPROTO_SCTP, &args->mng_family, args->mng_addr_info);
+            args->mng_family = get_addr_type(args->mng_addr);
+            if (args->mng_family == AF_INET)
+            {
+                address(args->mng_addr, args->mng_port, &args->mng_addr_info);
+            }
+            else if (args->mng_family == AF_INET6)
+            {
+                address6(args->mng_addr, args->mng_port, &args->mng_addr_info6);
+            }
             break;
         case 'P':
             args->mng_port = port(optarg);
-            if (args->mng_addr_info != NULL)
+            if (args->mng_family == AF_INET6)
             {
-                if (args->mng_family == AF_INET6)
-                {
-                    ((struct sockaddr_in6 *)args->mng_addr_info)->sin6_port = htons(args->mng_port);
-                }
-                else if (args->mng_family == AF_INET)
-                {
-                    ((struct sockaddr_in *)args->mng_addr_info)->sin_port = htons(args->mng_port);
-                }
+                args->mng_addr_info6.sin6_port = htons(args->mng_port);
+            }
+            else if (args->mng_family == AF_INET)
+            {
+                args->mng_addr_info.sin_port = htons(args->mng_port);
             }
             break;
         case 'v':

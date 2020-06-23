@@ -394,7 +394,7 @@ static unsigned handle_request(struct selector_key *key)
     // Struct for information about the sender
     struct sctp_sndrcvinfo sender_info;
     // Variable for the from data
-    struct sockaddr from;
+    // struct sockaddr from;
     // Getting the buffer to read the data
     buffer *b = &d->buffer_read;
     // Amount that can be read
@@ -407,7 +407,7 @@ static unsigned handle_request(struct selector_key *key)
     unsigned ret = SCTP_RESPONSE;
 
     // Receiving the message
-    ssize_t length = sctp_recvmsg(d->client_fd, ptr, count, &from, 0, &sender_info, &flags);
+    ssize_t length = sctp_recvmsg(d->client_fd, ptr, count, NULL, 0, &sender_info, &flags);
     if (length <= 0)
     {
         return SCTP_FATAL_ERROR;

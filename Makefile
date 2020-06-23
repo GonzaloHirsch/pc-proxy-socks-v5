@@ -1,8 +1,8 @@
 # Makefile
 .PHONY: clean
 
-CFLAGS=-Wall -g -fsanitize=address -std=c11 -D_POSIX_C_SOURCE=200112L
-#CFLAGS=-Wall -g -std=c11 -D_POSIX_C_SOURCE=200112L
+#CFLAGS=-Wall -g -fsanitize=address -std=c11 -D_POSIX_C_SOURCE=200112L
+CFLAGS=-Wall -g -std=c11 -D_POSIX_C_SOURCE=200112L
 # LDFLAGS=-lrt -pthread
 
 SOURCES=$(wildcard src/*.c)
@@ -23,7 +23,7 @@ client:
 sctp_client: $(MGMT_SOURCES)
 	$(CC) $(CFLAGS) -g $(MGMT_SOURCES) -I$(INCLUDE) -I$(MGMT_INCLUDE) -Itests/ -L/usr/local/lib -lsctp -o $@
 clean:
-	rm -rf application slaveProcess view sctp_client socksClient
+	rm -rf application slaveProcess view sctp_client socksClient server
 
 # find . -type f -exec touch {} +
 # valgrind --leak-check=yes --track-origins=yes --trace-children=yes ./sctp_client

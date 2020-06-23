@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
     bool try_again = false;
 
     // If no address given, try both
-    if (args->mng_addr_info == NULL)
+    if (args->mng_family == AF_UNSPEC)
     {
         struct sockaddr_in server;
         memset(&server, 0, sizeof(server));
@@ -186,9 +186,8 @@ int main(int argc, char *argv[])
 
         if (args->mng_family == AF_INET6)
         {
-            struct sockaddr_in6 *adr_6 = (struct sockaddr_in6 *)args->mng_addr_info;
             // Connecting to the server
-            ret = connect(serverSocket, (struct sockaddr *)adr_6, sizeof(*adr_6));
+            ret = connect(serverSocket, (struct sockaddr *)&args->mng_addr_info6, sizeof(args->mng_addr_info6));
             if (ret == -1)
             {
                 printf("Connection failed\n");
@@ -198,9 +197,8 @@ int main(int argc, char *argv[])
         }
         else
         {
-            struct sockaddr_in *adr = (struct sockaddr_in *)args->mng_addr_info;
             // Connecting to the server
-            ret = connect(serverSocket, (struct sockaddr *)adr, sizeof(*adr));
+            ret = connect(serverSocket, (struct sockaddr *)&args->mng_addr_info, sizeof(args->mng_addr_info));
             if (ret == -1)
             {
                 printf("Connection failed\n");
