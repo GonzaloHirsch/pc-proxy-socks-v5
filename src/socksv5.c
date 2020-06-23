@@ -131,9 +131,9 @@ int main(const int argc, char *const *argv)
         selector_status ss_master = selector_register(selector, master_socket, master_socket_handler, OP_READ, NULL);
         if (ss_master != SELECTOR_SUCCESS)
         {
-            perror("Error in master socket: %s", selector_error(ss_master));
+            fprintf(stderr,"Error in master socket: %s", selector_error(ss_master));
         }
-        perror("  -IP: %s  PORT: %d \n", options->socks_addr, options->socks_port);
+        fprintf(stderr,"  -IP: %s  PORT: %d \n", options->socks_addr, options->socks_port);
 
     }
 
@@ -149,9 +149,9 @@ int main(const int argc, char *const *argv)
         selector_status ss_master6 = selector_register(selector, master_socket_6, master_socket6_handler, OP_READ, NULL);
         if (ss_master6 != SELECTOR_SUCCESS)
         {
-            perror("Error in master socket: %s", selector_error(ss_master6));
+            fprintf(stderr,"Error in master socket: %s", selector_error(ss_master6));
         }
-        perror("  -IP: %s  PORT: %d \n", options->socks_addr_6, options->socks_port);
+        fprintf(stderr,"  -IP: %s  PORT: %d \n", options->socks_addr_6, options->socks_port);
     }
 
     perror("Waiting for management connections on: \n");
@@ -169,9 +169,9 @@ int main(const int argc, char *const *argv)
         selector_status ss_management = selector_register(selector, management_socket, management_socket_handler, OP_READ, NULL);
         if (ss_management != SELECTOR_SUCCESS)
         {
-            perror("Error in management socket: %s", selector_error(ss_management));
+            fprintf(stderr, "Error in management socket: %s", selector_error(ss_management));
         }
-        perror("  -IP: %s  PORT: %d \n", options->mng_addr, options->mng_port);
+        fprintf(stderr, "  -IP: %s  PORT: %d \n", options->mng_addr, options->mng_port);
     }
 
     if (management_socket_6 > 0)
@@ -188,9 +188,9 @@ int main(const int argc, char *const *argv)
         selector_status ss_management6 = selector_register(selector, management_socket_6, management_socket6_handler, OP_READ, NULL);
         if (ss_management6 != SELECTOR_SUCCESS)
         {
-            perror("Error in management socket: %s", selector_error(ss_management6));
+            fprintf(stderr, "Error in management socket: %s", selector_error(ss_management6));
         }
-        perror("  -IP: %s  PORT: %d \n", options->mng_addr_6, options->mng_port);
+        fprintf(stderr, "  -IP: %s  PORT: %d \n", options->mng_addr_6, options->mng_port);
 
     }
 
@@ -207,7 +207,7 @@ int main(const int argc, char *const *argv)
         ss = selector_select(selector);
         if (ss != SELECTOR_SUCCESS)
         {
-            perror("Error awaiting for select: %s\n", selector_error(ss));
+            fprintf(stderr ,"Error awaiting for select: %s\n", selector_error(ss));
         }
     }
 
