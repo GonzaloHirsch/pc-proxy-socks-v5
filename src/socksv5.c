@@ -29,7 +29,7 @@ int main(const int argc, char *const *argv)
 
     int master_socket = -1, master_socket_6 = -1, management_socket = -1, management_socket_6 = -1;
 
-    fd_handler *management_socket6_handler, *management_socket_handler, *master_socket_handler, *master_socket6_handler;
+    fd_handler *management_socket6_handler = NULL, *management_socket_handler = NULL, *master_socket_handler = NULL, *master_socket6_handler = NULL;
 
     // Selector for concurrent connexions
     fd_selector selector = NULL;
@@ -40,11 +40,11 @@ int main(const int argc, char *const *argv)
     }
     else if (options->socks_family == AF_INET)
     {
-        master_socket = create_master_socket_4((struct sockaddr_in *) options->socks_addr_info);
+        master_socket = create_master_socket_4(&options->socks_addr_info);
     }
     else if (options->socks_family == AF_INET6)
     {
-        master_socket_6 = create_master_socket_6((struct sockaddr_in6 *) options->socks_addr_info);
+        master_socket_6 = create_master_socket_6(&options->socks_addr_info6);
     }
 
     if (options->mng_family == AF_UNSPEC)
@@ -53,11 +53,11 @@ int main(const int argc, char *const *argv)
     }
     else if (options->mng_family == AF_INET)
     {
-        management_socket = create_management_socket_4((struct sockaddr_in *) options->mng_addr_info);
+        management_socket = create_management_socket_4(&options->mng_addr_info);
     }
     else if (options->mng_family == AF_INET6)
     {
-        management_socket_6 = create_management_socket_6((struct sockaddr_in6 *) options->mng_addr_info);
+        management_socket_6 = create_management_socket_6(&options->mng_addr_info6);
     }
 
     // ----------------- CREATING SIGNAL HANDLERS -----------------

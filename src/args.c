@@ -2,51 +2,50 @@
 
 void free_memory()
 {
-    if (options->mng_addr_info != NULL)
-    {
-        free(options->mng_addr_info);
-    }
-    if (options->socks_addr_info != NULL)
-    {
-        free(options->socks_addr_info);
-    }
     free(options);
 }
 
 static void
-address(char *address, int port, int protocol, int *family, struct addrinfo *addrinfo)
+address(char *address, int port, struct sockaddr_in *addr)
 {
-    int r_4, r_6;
+    int r_4;
 
     // Try to match with IPv4
-    r_4 = inet_pton(AF_INET, address, &((struct sockaddr_in *)addrinfo)->sin_addr);
+    r_4 = inet_pton(AF_INET, address, &addr->sin_addr);
 
     // IPv4 unsuccessful, try with IPv6
     if (r_4 <= 0)
     {
-        // Try to match with IPv4
-        r_6 = inet_pton(AF_INET6, address, &((struct sockaddr_in6 *)addrinfo)->sin6_addr);
-
-        // IPv6 error, exit
-        if (r_6 <= 0)
-        {
-            printf("Cannot determine address family %s, please try again with a valid address.\n", address);
-            fprintf(stderr, "Address resolution error\n");
-            free_memory();
-            exit(0);
-        }
-        else
-        {
-            *family = AF_INET6;
-            ((struct sockaddr_in6 *)addrinfo)->sin6_family = AF_INET6;
-            ((struct sockaddr_in6 *)addrinfo)->sin6_port = htons(port);
-        }
+        printf("Cannot determine address family %s, please try again with a valid address.\n", address);
+        fprintf(stderr, "Address resolution error\n");
+        free_memory();
+        exit(0);
     }
     else
     {
-        *family = AF_INET;
-        ((struct sockaddr_in *)addrinfo)->sin_family = AF_INET;
-        ((struct sockaddr_in *)addrinfo)->sin_port = htons(port);
+        addr->sin_family = AF_INET;
+        addr->sin_port = htons(port);
+    }
+}
+
+static void
+address6(char *address, int port, struct sockaddr_in6 *addr)
+{
+    // Try to match with IPv4
+    int r_6 = inet_pton(AF_INET6, address, &addr->sin6_addr);
+
+    // IPv6 error, exit
+    if (r_6 <= 0)
+    {
+        printf("Cannot determine address family %s, please try again with a valid address.\n", address);
+        fprintf(stderr, "Address resolution error\n");
+        free_memory();
+        exit(0);
+    }
+    else
+    {
+        addr->sin6_family = AF_INET6;
+        addr->sin6_port = htons(port);
     }
 }
 
@@ -166,15 +165,15 @@ void parse_args(const int argc, char *const *argv)
     options->socks_addr_6 = "::";
     options->socks_port = 1080;
     options->socks_family = AF_UNSPEC;
-    options->socks_addr_info = malloc(sizeof(struct addrinfo *));
-    //memset(options->socks_addr_info, 0, sizeof(*options->socks_addr_info));
+    memset(&options->socks_addr_info, 0, sizeof(options->socks_addr_info));
+    memset(&options->socks_addr_info6, 0, sizeof(options->socks_addr_info6));
 
     options->mng_addr = "127.0.0.1";
     options->mng_addr_6 = "::1";
     options->mng_port = 8080;
     options->mng_family = AF_UNSPEC;
-    options->mng_addr_info = malloc(sizeof(struct addrinfo *));
-    //memset(options->mng_addr_info, 0, sizeof(*options->mng_addr_info));
+    memset(&options->mng_addr_info, 0, sizeof(options->mng_addr_info));
+    memset(&options->mng_addr_info6, 0, sizeof(options->mng_addr_info6));
 
     options->disectors_enabled = true;
 
@@ -215,43 +214,51 @@ void parse_args(const int argc, char *const *argv)
             break;
         case 'l':
             options->socks_addr = optarg;
-            options->socks_addr_info = malloc(sizeof(struct addrinfo *));
-            address(options->socks_addr, options->socks_port, 0, &options->socks_family, options->socks_addr_info);
+            options->socks_family = get_addr_type(options->socks_addr);
+            if (options->socks_family == AF_INET)
+            {
+                address(options->socks_addr, options->socks_port, &options->socks_addr_info);
+            }
+            else if (options->socks_family == AF_INET6)
+            {
+                address6(options->socks_addr, options->socks_port, &options->socks_addr_info6);
+            }
             break;
         case 'L':
             options->mng_addr = optarg;
-            options->mng_addr_info = malloc(sizeof(struct addrinfo *));
-            address(options->mng_addr, options->mng_port, IPPROTO_SCTP, &options->mng_family, options->mng_addr_info);
+            options->mng_family = get_addr_type(options->mng_addr);
+            if (options->mng_family == AF_INET)
+            {
+                address(options->mng_addr, options->mng_port, &options->mng_addr_info);
+            }
+            else if (options->mng_family == AF_INET6)
+            {
+                address6(options->mng_addr, options->mng_port, &options->mng_addr_info6);
+            }
             break;
         case 'N':
             options->disectors_enabled = false;
             break;
         case 'p':
             options->socks_port = port(optarg);
-            if (options->socks_addr_info != NULL)
+            if (options->socks_family == AF_INET6)
             {
-                if (options->socks_family == AF_INET6)
-                {
-                    ((struct sockaddr_in6 *)options->socks_addr_info)->sin6_port = htons(options->socks_port);
-                }
-                else if (options->socks_family == AF_INET)
-                {
-                    ((struct sockaddr_in *)options->socks_addr_info)->sin_port = htons(options->socks_port);
-                }
+                options->socks_addr_info6.sin6_port = htons(options->socks_port);
+            }
+            else if (options->socks_family == AF_INET)
+            {
+                options->socks_addr_info.sin_port = htons(options->socks_port);
             }
             break;
         case 'P':
             options->mng_port = port(optarg);
-            if (options->mng_addr_info != NULL)
+            if (options->mng_family == AF_INET6)
             {
-                if (options->mng_family == AF_INET6)
-                {
-                    ((struct sockaddr_in6 *)options->mng_addr_info)->sin6_port = htons(options->mng_port);
-                }
-                else if (options->mng_family == AF_INET)
-                {
-                    ((struct sockaddr_in *)options->mng_addr_info)->sin_port = htons(options->mng_port);
-                }
+                options->mng_addr_info6.sin6_port = htons(options->mng_port);
+            }
+            else if (options->mng_family == AF_INET)
+            {
+                options->mng_addr_info.sin_port = htons(options->mng_port);
             }
             break;
         case 'u':

@@ -39,13 +39,15 @@ typedef struct socks5args_struct {
     char *              socks_addr_6;
     unsigned short      socks_port;
     int                 socks_family;
-    struct addrinfo *   socks_addr_info;
+    struct sockaddr_in  socks_addr_info;
+    struct sockaddr_in6 socks_addr_info6;
 
     char *              mng_addr;
     char *              mng_addr_6;
     unsigned short      mng_port;
     int                 mng_family;
-    struct addrinfo *   mng_addr_info;
+    struct sockaddr_in  mng_addr_info;
+    struct sockaddr_in6 mng_addr_info6;
 
     bool            disectors_enabled;
 
