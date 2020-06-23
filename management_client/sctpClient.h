@@ -12,7 +12,7 @@
 #include <netinet/sctp.h>
 #include <arpa/inet.h>
 
-#include "../tests/Utility.h"
+#include "Utility.h"
 
 #define DIVIDER printf("\n\n-------------------------------------------------------\n\n");
 #define SUBDIVIDER printf("\n\n---------------------------\n\n");

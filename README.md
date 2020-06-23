@@ -1,6 +1,6 @@
 # Protocolos de Comunicacion - TPE
 
-## Compilación
+## Compilación e Instalación
 
 Primeramente se debe tener:
 
@@ -10,7 +10,36 @@ sudo apt-get install libsctp-dev
 Para compilar el programa simplemente se puede ejecutar:
 
 ```
-$ make
+$ make clean all
+```
+
+Este comando va compilar la aplicación servidor y el clienteSCTP
+
+## Ejecución
+
+Para ejecutar el sevidor se corre el comando 
+
+```
+$ ./server <Opciones>
+```
+
+Para ejecutar el cliente SCTP se corre el comando
+
+```
+$ ./sctp_client <Opciones>
+```
+
+
+Las opciones de cada ejecutable pueden verse haciendo 
+
+```
+$ ./server -h
+```
+
+o
+
+```
+$ ./sctp_client -h
 ```
 
 ## Informe

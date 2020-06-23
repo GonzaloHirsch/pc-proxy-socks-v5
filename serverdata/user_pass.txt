@@ -1,4 +1,2 @@
-2 2
-22222 2
-protos protos
-gonza test
+protos_proxy protos_proxy
+proxy proxy

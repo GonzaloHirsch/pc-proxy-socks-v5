@@ -1,8 +1,8 @@
 # Makefile
 .PHONY: clean
 
-#CFLAGS=-Wall -g -fsanitize=address -std=c11 -D_POSIX_C_SOURCE=200112L
-CFLAGS=-Wall -g -std=c11 -D_POSIX_C_SOURCE=200112L
+CFLAGS=-Wall -g -fsanitize=address -std=c11 -D_POSIX_C_SOURCE=200112L
+#CFLAGS=-Wall -g -std=c11 -D_POSIX_C_SOURCE=200112L
 # LDFLAGS=-lrt -pthread
 
 SOURCES=$(wildcard src/*.c)
@@ -11,7 +11,7 @@ INCLUDE=include
 MGMT_INCLUDE=management_client
 # HEADERS=$(wildcard include/*.h)
 # HEADERS2=$(wildcard include/**/*.h)
-MGMT_SOURCES=$(wildcard management_client/*.c) tests/Utility.c
+MGMT_SOURCES=$(wildcard management_client/*.c)
 
 
 all: server sctp_client
