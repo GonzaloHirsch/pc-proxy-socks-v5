@@ -367,9 +367,6 @@ typedef struct socks5
         copy_st copy;
     } orig;
 
-    /** Address info for the origin server */
-    struct addrinfo *origin_resolution;
-
     /** Amount of references to this instance of the socks5 struct, if the amount is 1, it can be deleted */
     unsigned references;
 

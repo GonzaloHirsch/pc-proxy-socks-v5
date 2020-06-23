@@ -57,7 +57,7 @@ static struct socks5 *socks5_new(const int client)
 
     sockState->reply_type = -1;
     sockState->references = 1;
-    sockState->origin_resolution = NULL;
+    sockState->username = NULL;
     memset(&sockState->origin_info, 0, sizeof(sockState->origin_info));
 
     return sockState;
@@ -67,11 +67,6 @@ static struct socks5 *socks5_new(const int client)
 static void
 socks5_destroy_(struct socks5 *s)
 {
-    if (s->origin_resolution != NULL)
-    {
-        //freeaddrinfo(s->origin_resolution);
-        s->origin_resolution = 0;
-    }
     if (s != NULL)
     {
         // Liberating the username if allocated

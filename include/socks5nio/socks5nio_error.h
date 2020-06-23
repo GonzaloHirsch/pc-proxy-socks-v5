@@ -6,6 +6,5 @@
 
 void
 send_reply_failure(struct selector_key * key);
-void determine_connect_error(int error);
 
 #endif

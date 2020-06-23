@@ -19,7 +19,6 @@ doh_check_connection(struct resolve_st *r_s)
                 return CONN_SUCCESS;
                 break;
             default:
-                determine_connect_error(errno);
                 return CONN_FAILURE;        
         }
     }
@@ -115,7 +114,7 @@ resolve_init(const unsigned state, struct selector_key *key)
         st = selector_set_interest(key->s, s->client_fd, OP_NOOP);
         if(st != SELECTOR_SUCCESS){
             printf("Failure setting interest for client\n");
-            /** TODO: handle error */
+            r_s->doh_fd = -1;
         }
         // Determine if we already connected or in progress
         if(connect_ret >= 0){
@@ -128,7 +127,6 @@ resolve_init(const unsigned state, struct selector_key *key)
     else{
         r_s->doh_fd = -1;
         fprintf(stderr, "Could not connect to doh server\n");
-        determine_connect_error(errno);
         r_s->conn_state = CONN_FAILURE;
     }
 
