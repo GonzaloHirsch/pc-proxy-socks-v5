@@ -22,7 +22,7 @@ static void signal_handler(const int signal)
 
 void die_with_message(char *msg)
 {
-    perror(msg);
+    printf(msg);
     free_memory();
     close(serverSocket);
     exit(0);
@@ -60,6 +60,35 @@ static void print_option_title(int option)
     }
 }
 
+void determine_error(int err)
+{
+    printf("###############################\n"
+           "ERROR\n\n");
+    switch (err)
+    {
+    case ERR_GENERAL:
+        printf("Error general del servidor");
+        break;
+    case ERR_INVALID_CMD:
+        printf("Comando inválido");
+        break;
+    case ERR_INVALID_TYPE:
+        printf("Tipo inválido");
+        break;
+    case ERR_INVALID_DATA:
+        printf("Data inválida");
+        break;
+    case ERR_INVALID_NUMERIC_DATA:
+        printf("Dato numérico inválido");
+        break;
+    default:
+        printf("Error desconocido");
+        break;
+    }
+    printf("\n\nERROR\n"
+           "###############################\n");
+}
+
 /**
  * Determines the option to be chosen
 */
@@ -75,16 +104,17 @@ static int show_options()
 
     printf("Elegir un número de comando para interactuar: ");
     char option[5] = {0};
-    char * res = fgets(option, 4, stdin);
+    char *res = fgets(option, 4, stdin);
 
     if (res == NULL || option == NULL)
     {
         return -1;
-    } 
+    }
 
     int i = atoi(option);
 
-    if (i <= 0 || i > 6){
+    if (i <= 0 || i > 6)
+    {
         return -1;
     }
 

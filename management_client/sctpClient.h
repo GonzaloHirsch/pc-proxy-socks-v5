@@ -33,6 +33,15 @@ typedef enum Options {
     OPT_EDIT_CONFIG = 0x06
 } Options;
 
+typedef enum Errors {
+    ERR_NO_ERR = 0x00,
+    ERR_GENERAL = 0x01,
+    ERR_INVALID_TYPE = 0x02,
+    ERR_INVALID_CMD = 0x03,
+    ERR_INVALID_DATA = 0x04,
+    ERR_INVALID_NUMERIC_DATA = 0x05
+} Errors;
+
 typedef enum Configs{
     CONF_SOCKS5_BUFF = 0x01,
     CONF_SCTP_BUFF = 0x02,
@@ -42,6 +51,7 @@ typedef enum Configs{
 } Configs;
 
 void die_with_message(char *msg);
+void determine_error(int err);
 void handle_invalid_value();
 void handle_undefined_command();
 

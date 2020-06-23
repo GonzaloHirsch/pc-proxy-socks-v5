@@ -134,21 +134,21 @@ void handle_create_user()
     // Checking TYPE byte
     if (user_create_buffer[0] != 0x01)
     {
-        perror("Tipo diferente al esperado");
+        printf("Tipo diferente al esperado");
         return;
     }
 
     // Checking CMD byte
     if (user_create_buffer[1] != 0x02)
     {
-        perror("Comando diferente al esperado");
+        printf("Comando diferente al esperado");
         return;
     }
 
     // Checking STATUS byte
     if (user_create_buffer[2] != 0x00)
     {
-        perror("Status de error");
+        determine_error(user_create_buffer[2]);
         return;
     }
 
