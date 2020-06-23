@@ -1,0 +1,256 @@
+Protocolo IGAF
+
+Índice:
+    1 - Introducción
+    2 - Autenticación - Usuario y Contraseña
+    3 - Procedimiento para el uso
+        3.1 - Alta, baja y modificacion de usuarios
+        3.2 - Obtención de métricas
+        3.3 - Configuración remota
+    4 - Errores
+    5 - Información de los Autores
+
+1 - Introducción
+
+El protocolo IGAF (Ignacio - Gonzalo - Augusto - Francisco) corre sobre SCTP, y especifíca la autenticación y negociación de opciones para la conexión al servidor.
+
+En todo momento que aparezca un cuadro con un número, hace referencia a la longitud del campo dentro de la request. Los valores posibles dentro de cada campo son especificados debajo del cuadro, y los valores se mostraran en formato de octetos con el valor X’hh’.
+
+Posibles estados del campo Status y sus significados:
+Status:
+    0x00 -> Exito, sin error
+    0x01 -> Error general del servidor
+    0x02 -> Campo TYPE inválido
+    0x03 -> Campo CMD inválido
+    0x04 -> Datos enviados inválidos
+    0x05 -> Datos numéricos enviados inválidos
+
+2 - Autenticación - Usuario y Contraseña
+
+La autenticación del usuario está dada siguiendo el RFC-1929 sobre autenticación.
+
+Una vez que el servidor está corriendo, se comienza con el cliente enviando una request Usuario+Password:
+
+            +-----+------+----------+------+----------+
+            | VER | ULEN |   UNAME  | PLEN |  PASSWD  |
+            +-----+------+----------+------+----------+
+            |  1  |   1  | 1 to 255 |   1  | 1 to 255 |
+            +-----+------+----------+------+----------+
+
+Campos:
+            VER -> Version de la negociación, X’01’
+            ULEN -> Longitud del nombre del usuario
+            UNAME -> Nombre del usuario
+            PLEN -> Longitud de la Contraseña
+            PASSWD -> contraseña
+
+El servidor verifica la contraseña y devuelve un mensaje con el siguiente contenido:
+
+            +-----+--------+
+            | VER | STATUS |
+            +-----+--------+
+            |  1  |    1   |
+            +-----+--------+
+
+Campos:
+            VER -> Version de la negociación, X’01’
+            STATUS -> Campo Status definido en la introducción
+
+3 - Procedimiento para el uso
+
+Una vez establecido el usuario y contraseña, y verificados como correctos, se puede comenzar a utilizar el servidor.
+
+Hay varias opciones para interactuar con el servidor, especificadas en las siguientes secciones:
+    3.1 - Alta, baja y modificacion de usuarios
+    3.2 - Obtención de métricas
+    3.3 - Configuración remota
+
+3.1 - Alta, baja y modificacion de usuarios
+
+Para realizar operaciones sobre los usuarios hay distintas opciones de requests.
+
+Para realizar un listado de usuarios, simplemente se envía la siguiente request:
+
+            +------+-------+
+            | TYPE |  CMD  |
+            +------+-------+
+            |   1  |   1   | 
+            +------+-------+
+
+Campos:
+            TYPE -> Tipo de uso, X’01’ (USUARIOS)
+            CMD -> Comando a realizar, X’01’ (LISTAR)
+
+Y la respuesta del servidor sigue el siguiente formato:
+
+            +------+-------+--------+--------+-----------+
+            | TYPE |  CMD  | STATUS |  ULEN  |    DATA   |
+            +------+-------+--------+--------+-----------+
+            |   1  |   1   |    1   |    4   |  Variable |
+            +------+-------+--------+--------+-----------+
+
+Campos:
+            TYPE -> Tipo de uso, X’01’ (USUARIOS)
+            CMD -> Comando a realizar, X’01’ (LISTAR)
+            STATUS -> Campo Status definido en la introducción
+            ULEN -> Cantidad de usuarios a devolver (BigEndian)
+            DATA -> Nombres de los usuarios, separados por un byte en 0 (0x00)
+
+Para realizar un alta de un usuario, se envía una request de creacion de un usuario:
+
+            +------+-------+-----+------+----------+------+----------+
+            | TYPE |  CMD  | VER | ULEN |   UNAME  | PLEN |  PASSWD  |
+            +------+-------+-----+------+----------+------+----------+
+            |   1  |   1   |  1  |   1  | 1 to 255 |   1  | 1 to 255 |
+            +------+-------+-----+------+----------+------+----------+
+
+Campos:
+            TYPE -> Tipo de uso, X’01’ (USUARIOS)
+            CMD -> Comando a realizar, X’02’ (CREAR)
+            VER -> Version de la negociación, X’01’
+            ULEN -> Longitud del nombre del usuario
+            UNAME -> Nombre del usuario
+            PLEN -> Longitud de la Contraseña
+            PASSWD -> contraseña
+
+Y la respuesta del servidor sigue el siguiente formato:
+
+            +------+-------+----------+-----+
+            | TYPE |  CMD  |  STATUS  | VER |
+            +------+-------+----------+-----+
+            |   1  |   1   |     1    |  1  |
+            +------+-------+----------+-----+
+
+Campos:
+            TYPE -> Tipo de uso, X’01’ (USUARIOS)
+            CMD -> Comando a realizar, X’02’ (CREAR)
+            STATUS -> Campo Status definido en la introducción
+            VER -> Version de la negociación, X’01’
+
+3.2 - Obtención de métricas
+
+Para realizar la obtención de las métricas, se puede realizar una request siguiendo el formato a continuación:
+
+            +------+-------+
+            | TYPE |  CMD  |
+            +------+-------+
+            |   1  |   1   | 
+            +------+-------+
+
+Campos:
+            TYPE -> Tipo de uso, X’02’ (METRICAS)
+            CMD -> Comando a realizar, X’01’ (LISTAR)
+
+Y la respuesta del servidor sigue el siguiente formato:
+
+            +------+-------+--------+--------+-----------+-----------+-----------+
+            | TYPE |  CMD  | STATUS |  MLEN  |   TBYTES  |   HCONN   |   CCONN   |
+            +------+-------+--------+--------+-----------+-----------+-----------+
+            |   1  |   1   |    1   |    1   |     8     |     4     |     4     |
+            +------+-------+--------+--------+-----------+-----------+-----------+
+
+Campos:
+            TYPE -> Tipo de uso, X’02’ (METRICAS)
+            CMD -> Comando a realizar, X’01’ (LISTAR)
+            STATUS -> Campo Status definido en la introducción
+            MLEN -> Cantidad de metricas a devolver
+            TBYTES -> Cantidad de bytes transferidos historicamente (Big Endian)
+            HCONN -> Cantidad de conexiones historicas (Big Endian)
+            CCONN -> Cantidad de conexiones concurrentes (Big Endian)
+
+3.3 - Configuración remota
+
+Para realizar la configuracion remota de parametros hay dos posibles requests para poder realizar, una para listar y otra para editar.
+
+Para poder listar todas las configuraciones se utiliza la siguiente request:
+
+            +------+-------+
+            | TYPE |  CMD  |
+            +------+-------+
+            |   1  |   1   | 
+            +------+-------+
+
+Campos:
+            TYPE -> Tipo de uso, X’03’ (CONFIGURACION)
+            CMD -> Comando a realizar, X’01’ (LISTAR)
+
+Y la respuesta del servidor sigue el siguiente formato:
+
+            +------+-------+--------+--------+-----------+-----------+-----------+
+            | TYPE |  CMD  | STATUS |  CLEN  |  S5BSIZE  |   SBSIZE  |   DISCT   |
+            +------+-------+--------+--------+-----------+-----------+-----------+
+            |   1  |   1   |    1   |    1   |      2    |      2    |     1     |
+            +------+-------+--------+--------+-----------+-----------+-----------+
+
+Campos:
+            TYPE -> Tipo de uso, X’03’ (CONFIGURACION)
+            CMD -> Comando a realizar, X’01’ (LISTAR)
+            STATUS -> Campo Status definido en la introducción
+            CLEN -> Cantidad de configuraciones a devolver
+            S5BSIZE -> Tamaño del buffer para el proxy socks5 (BigEndian)
+            SBSIZE -> Tamaño del buffer de la conexión SCTP (BigEndian)
+            DISCT -> Estado de los disectores, activos(0x01) o inactivos(0x00)
+
+Para poder editar la configuración de alguna métrica se utiliza la siguiente request:
+
+            +------+-------+--------+-----------+
+            | TYPE |  CMD  |  CONF  |   VALUE   |
+            +------+-------+--------+-----------+
+            |   1  |   1   |    1   |  Variable |
+            +------+-------+--------+-----------+
+
+Campos:
+            TYPE -> Tipo de uso, X’03’ (CONFIGURACION)
+            CMD -> Comando a realizar, X’03’ (EDITAR)
+            CONF -> Numero de configuración a editar
+                - S5BSIZE -> Tamaño del buffer para el proxy socks5, 0x01
+                - SBSIZE -> Tamaño del buffer de la conexión SCTP, 0x02
+                - DISCT -> Estado de los disectores, 0x03
+            VALUE -> Valor de la nueva configuración, tamaño depende del campo
+                - S5BSIZE -> 2 bytes (BigEndian) - Unidad: Bytes
+                - SBSIZE -> 2 bytes (BigEndian) - Unidad: Bytes
+                - DISCT -> 1 byte - 0x00(desactivar) o 0x01-0xFF(activar)
+
+Y la respuesta del servidor sigue el siguiente formato:
+
+            +------+-------+--------+--------+
+            | TYPE |  CMD  | STATUS |  CONF  |
+            +------+-------+--------+--------+
+            |   1  |   1   |    1   |    1   |
+            +------+-------+--------+--------+
+
+Campos:
+            TYPE -> Tipo de uso, X’03’ (CONFIGURACION)
+            CMD -> Comando a realizar, X’03’ (EDITAR)
+            STATUS -> Campo Status definido en la introducción
+            CONF -> Numero de configuración a editar
+                - S5BSIZE -> Tamaño del buffer para el proxy socks5, 0x01
+                - SBSIZE -> Tamaño del buffer de la conexión SCTP, 0x02
+                - DISCT -> Estado de los disectores, activados(0x01)/desactivados(0x00), 0x03
+
+4 - Errores
+
+En caso de que haya un error de protocolo al enviar una request, teniendo un par TYPE + CMD inválido, el servidor responderá de la siguiente manera y luego cierra la conexión.
+
+            +------+-------+--------+
+            | TYPE |  CMD  | STATUS |
+            +------+-------+--------+
+            |   1  |   1   |    1   |
+            +------+-------+--------+
+
+Campos:
+            TYPE -> Reservado en 0x00
+            CMD -> Reservado en 0x00
+            STATUS -> Campo Status definido en la introducción
+
+
+5 - Información de los Autores
+
+Autores:
+    - Ignacio Ribas
+    - Augusto Henestrosa
+    - Francisco Choi
+    - Gonzalo Hirsch
+
+Materia:
+    Protoclos de Comunicación - Trabajo Práctico Especial - 1er Cuatrimestre 2020
