@@ -68,8 +68,6 @@ int main(const int argc, char *const *argv)
 
     // ----------------- CREATE THE SELECTOR -----------------
 
-    printf("Creating selector\n");
-
     // Creating the configuration for the select
     const struct selector_init selector_configuration = {
         .signal = SIGALRM,
@@ -117,6 +115,7 @@ int main(const int argc, char *const *argv)
 
     // Initializing the metrics struct
     init_metrics();
+    printf("Waiting for proxy connections on: \n");
 
     // Create socket handler for the master socket
     if (master_socket > 0)
@@ -134,6 +133,8 @@ int main(const int argc, char *const *argv)
         {
             printf("Error in master socket: %s", selector_error(ss_master));
         }
+        printf("  -IP: %s  PORT: %d \n", options->socks_addr, options->socks_port);
+
     }
 
     if (master_socket_6 > 0)
@@ -150,8 +151,10 @@ int main(const int argc, char *const *argv)
         {
             printf("Error in master socket: %s", selector_error(ss_master6));
         }
+        printf("  -IP: %s  PORT: %d \n", options->socks_addr_6, options->socks_port);
     }
 
+    printf("Waiting for management connections on: \n");
     if (management_socket > 0)
     {
         // Create socket handler for the master socket
@@ -168,6 +171,7 @@ int main(const int argc, char *const *argv)
         {
             printf("Error in management socket: %s", selector_error(ss_management));
         }
+        printf("  -IP: %s  PORT: %d \n", options->mng_addr, options->mng_port);
     }
 
     if (management_socket_6 > 0)
@@ -186,10 +190,9 @@ int main(const int argc, char *const *argv)
         {
             printf("Error in management socket: %s", selector_error(ss_management6));
         }
-    }
+        printf("  -IP: %s  PORT: %d \n", options->mng_addr_6, options->mng_port);
 
-    // Accept the incoming connection
-    printf("Waiting for connections on socket %d and management connections on socket %d\n", master_socket, management_socket);
+    }
 
     selector_status ss;
 
