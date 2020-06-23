@@ -81,8 +81,9 @@ resolve_init(const unsigned state, struct selector_key *key)
         }
         else{
             int no = 0;
-            setsockopt(r_s->doh_fd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no));
+            setsockopt(r_s->doh_fd, SOL_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no));
         }
+        break;
     
     default:
         r_s->doh_fd = -1;
