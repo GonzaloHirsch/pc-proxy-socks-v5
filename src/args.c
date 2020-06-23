@@ -16,18 +16,16 @@ void free_memory()
 static void
 address(char *address, int port, int protocol, int *family, struct addrinfo *addrinfo)
 {
-    struct in_addr inaddr;
-    struct in6_addr in6addr;
     int r_4, r_6;
 
     // Try to match with IPv4
-    r_4 = inet_pton(AF_INET, address, &inaddr);
+    r_4 = inet_pton(AF_INET, address, &((struct sockaddr_in *)addrinfo)->sin_addr);
 
     // IPv4 unsuccessful, try with IPv6
     if (r_4 <= 0)
     {
         // Try to match with IPv4
-        r_6 = inet_pton(AF_INET6, address, &in6addr);
+        r_6 = inet_pton(AF_INET6, address, &((struct sockaddr_in6 *)addrinfo)->sin6_addr);
 
         // IPv6 error, exit
         if (r_6 <= 0)
@@ -42,7 +40,6 @@ address(char *address, int port, int protocol, int *family, struct addrinfo *add
             *family = AF_INET6;
             ((struct sockaddr_in6 *)addrinfo)->sin6_family = AF_INET6;
             ((struct sockaddr_in6 *)addrinfo)->sin6_port = htons(port);
-            ((struct sockaddr_in6 *)addrinfo)->sin6_addr = in6addr;
         }
     }
     else
@@ -50,7 +47,6 @@ address(char *address, int port, int protocol, int *family, struct addrinfo *add
         *family = AF_INET;
         ((struct sockaddr_in *)addrinfo)->sin_family = AF_INET;
         ((struct sockaddr_in *)addrinfo)->sin_port = htons(port);
-        ((struct sockaddr_in *)addrinfo)->sin_addr = inaddr;
     }
 }
 
@@ -170,13 +166,15 @@ void parse_args(const int argc, char *const *argv)
     options->socks_addr_6 = "::";
     options->socks_port = 1080;
     options->socks_family = AF_UNSPEC;
-    options->socks_addr_info = NULL;
+    options->socks_addr_info = malloc(sizeof(struct addrinfo *));
+    //memset(options->socks_addr_info, 0, sizeof(*options->socks_addr_info));
 
     options->mng_addr = "127.0.0.1";
     options->mng_addr_6 = "::1";
     options->mng_port = 8080;
     options->mng_family = AF_UNSPEC;
-    options->mng_addr_info = NULL;
+    options->mng_addr_info = malloc(sizeof(struct addrinfo *));
+    //memset(options->mng_addr_info, 0, sizeof(*options->mng_addr_info));
 
     options->disectors_enabled = true;
 
