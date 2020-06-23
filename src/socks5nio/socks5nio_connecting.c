@@ -15,6 +15,8 @@ static int connecting_send_conn_response (struct selector_key * key) {
     if(s->origin_fd6 > 0 && s->origin_fd6 != s->sel_origin_fd)
         close(s->origin_fd6);
 
+    void * tmp;
+
     int response_size = 6;
     uint8_t *response = malloc(response_size);
     response[0] = 0x05; // VERSION
@@ -29,13 +31,25 @@ static int connecting_send_conn_response (struct selector_key * key) {
     {
     case IPv4:
         response_size += IP_V4_ADDR_SIZE;
-        response = realloc(response, response_size);
+        tmp = realloc(response, response_size);
+        if (tmp == NULL) {
+            free(response);
+            exit(1);
+        } else {
+            response = tmp;
+        }
         response[3] = IPv4;
         memcpy(response + 4, s5oi->ipv4_addrs[d->first_working_ip_index], IP_V4_ADDR_SIZE);
         break;
     case IPv6:
         response_size += IP_V6_ADDR_SIZE;
-        response = realloc(response, response_size);
+        tmp = realloc(response, response_size);
+        if (tmp == NULL) {
+            free(response);
+            exit(1);
+        } else {
+            response = tmp;
+        }
         response[3] = IPv6;
         memcpy(response + 4, s5oi->ipv6_addrs[d->first_working_ip_index], IP_V6_ADDR_SIZE);
         break;

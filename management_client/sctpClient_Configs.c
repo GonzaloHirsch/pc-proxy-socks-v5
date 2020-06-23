@@ -11,7 +11,7 @@ bool get_16_bit_number(uint16_t *n)
     printf("Nuevo valor para configuración (1 - 65535): ");
 
     char option[255] = {0};
-    char * res = fgets(option, 256, stdin);
+    char * res = fgets(option, 255, stdin);
 
     if (res == NULL || option == NULL)
     {
@@ -35,7 +35,7 @@ bool get_8_bit_number(uint8_t *n)
     printf("Nuevo valor para configuración (0 o 1): ");
 
     char option[255] = {0};
-    char * res = fgets(option, 256, stdin);
+    char * res = fgets(option, 255, stdin);
 
     if (res == NULL || option == NULL)
     {
@@ -130,7 +130,7 @@ int show_config_options()
 
     printf("Elegir un número de configuración: ");
     char option[255] = {0};
-    char * res = fgets(option, 256, stdin);
+    char * res = fgets(option, 255, stdin);
 
     if (res == NULL || option == NULL)
     {
