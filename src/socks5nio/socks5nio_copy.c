@@ -22,12 +22,19 @@ void copy_init(const unsigned state, struct selector_key *key)
     d->other_copy = &sockState->orig.copy;
     // Init parser and buffer, just for the client fd
 
-    if (options->disectors_enabled)
-    {
-        http_auth_init(&d->http_parser);
-        pop3_parser_init(&d->pop_parser);
-        buffer_init(&d->aux_b, BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
+
+    if(options->disectors_enabled){
+         // Only initialize if protocol supported
+        if (sockState->origin_info.protocol_type == PROT_HTTP || sockState->origin_info.protocol_type == PROT_POP3)
+        {
+            http_auth_init(&d->http_parser);
+            pop3_parser_init(&d->pop_parser);
+            buffer_init(&d->aux_b, BUFFERSIZE + 1, malloc(BUFFERSIZE + 1));
+        }
     }
+    // Save if the disector will be active for that connection
+    sockState->disectors_enabled = options->disectors_enabled;
+   
 
     // Init of the copy for the origin
     d = &sockState->orig.copy;
@@ -43,13 +50,17 @@ void copy_close(const unsigned state, struct selector_key *key)
 {
     struct socks5 *s = ATTACHMENT(key);
 
-    // Here we have to free without checking the disectors option just in case the option changes mid execution
-    free_http_auth_parser(&s->client.copy.http_parser);
-    if (s->client.copy.aux_b.data != NULL)
-    {
-        free(s->client.copy.aux_b.data);
+    // Just free if the disectors were enabled
+    if(s->disectors_enabled){
+        // Here we have to free without checking the disectors option just in case the option changes mid execution
+        free_http_auth_parser(&s->client.copy.http_parser);
+        free_pop3_parser(&s->client.copy.pop_parser);
+        if (s->client.copy.aux_b.data != NULL)
+        {
+            free(s->client.copy.aux_b.data);
+        }
     }
-    free_pop3_parser(&s->client.copy.pop_parser);
+
 }
 
 /**
@@ -129,10 +140,11 @@ copy_read(struct selector_key *key)
         // Notifying the data to the buffer
         buffer_write_adv(b, n);
 
-        if (options->disectors_enabled)
+        // Just disect parsswords if disector is enabled for the connection
+        if (s->disectors_enabled && key->fd == s->client_fd)
         {
-            // Analysing the information just for the client
-            if (key->fd == s->client_fd)
+            // Only dissect if protocol supported
+            if ((s->origin_info.protocol_type == PROT_HTTP || s->origin_info.protocol_type == PROT_POP3))
             {
 
                 // Temporary buffer so we dont override the other buffer
@@ -233,8 +245,6 @@ copy_write(struct selector_key *key)
         add_transfered_bytes(n);
         // Notifying the data to the buffer
         buffer_read_adv(b, n);
-        // Here analyze the information
-        // TODO
     }
     else
     {

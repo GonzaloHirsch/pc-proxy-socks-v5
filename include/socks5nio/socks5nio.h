@@ -393,6 +393,9 @@ typedef struct socks5
 
     /** Information about the origin server */
     struct socks5_origin_info origin_info;
+
+    /** Info if the disector is activated */
+    bool disectors_enabled;
 } socks5;
 
 
