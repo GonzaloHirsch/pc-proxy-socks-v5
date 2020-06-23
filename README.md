@@ -15,6 +15,16 @@ $ make clean all
 
 Este comando va compilar la aplicación servidor y el clienteSCTP
 
+## Configuración
+
+El servidor y el cliente SCTP poseen un *manfile* cada uno dentro de la carpeta de documentación (/Documentacion), y se pueden acceder de esta forma:
+
+```
+$ man <path_al_archivo>
+```
+
+Aquí se pueden ver las configuraciones disponibles para cada una de las aplicaciones que se construyen
+
 ## Ejecución
 
 Para ejecutar el sevidor se corre el comando 

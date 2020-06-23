@@ -177,7 +177,7 @@ void parse_args(const int argc, char *const *argv)
 
     options->disectors_enabled = true;
 
-    options->socks5_buffer_size = 4096;
+    options->socks5_buffer_size = 16384;
     options->sctp_buffer_size = 1024;
     options->timeout = 10;
 
