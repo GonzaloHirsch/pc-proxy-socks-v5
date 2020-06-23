@@ -2,7 +2,7 @@
 .PHONY: clean
 
 #CFLAGS=-Wall -g -fsanitize=address
-CFLAGS=-Wall -g -std=c11 -D_POSIX_C_SOURCE=200112L
+CFLAGS=-Wall -g -std=c11 -D_POSIX_C_SOURCE=200112L -fsanitize=address
 # LDFLAGS=-lrt -pthread
 
 SOURCES=$(wildcard src/*.c)

@@ -14,15 +14,6 @@
 // Tabla con informacion de todos los estados.
 static const struct state_definition client_statbl[];
 
-/*
-    Pool for the reusing of instances
-*/
-/** Max amount of items in pool */
-//static const unsigned max_pool = 50;
-/** Actual pool size */
-//static unsigned pool_size = 0;
-/** Actual pool of objects */
-static struct socks5 *pool = 0;
 
 //-----------------------FUNCIONES DE MANEJO DE SOCKSv5----------------------------
 
@@ -97,17 +88,6 @@ socks5_destroy(struct socks5 *s)
     }
 }
 
-
-void socksv5_pool_destroy(void)
-{
-    struct socks5 *next, *s;
-    for (s = pool; s != NULL; s = next)
-    {
-        next = s->next;
-        free(s);
-    }
-}
-
 /** Intenta aceptar la nueva conexión entrante*/
 void socksv5_passive_accept(struct selector_key *key)
 {
@@ -155,7 +135,6 @@ fail:
 
 //------------------------------STATE FUNCTION HANDLERS--------------------------------
 
-//------------------------STATES DEFINITION--------------------------------------
 
 /** definición de handlers para cada estado */
 static const struct state_definition client_statbl[] = {
@@ -165,10 +144,10 @@ static const struct state_definition client_statbl[] = {
         .on_departure = hello_read_close,
         .on_read_ready = hello_read,
     },
-    {.state = HELLO_WRITE,
-     .on_arrival = hello_write_init,
-     .on_departure = hello_write_close,
-     .on_write_ready = hello_write},
+    {   .state = HELLO_WRITE,
+        .on_arrival = hello_write_init,
+        .on_departure = hello_write_close,
+        .on_write_ready = hello_write},
     {
         .state = USERPASS_READ,
         .on_arrival = userpass_read_init,
@@ -193,7 +172,6 @@ static const struct state_definition client_statbl[] = {
         .on_departure = resolve_close,
         .on_read_ready = resolve_read,
         .on_write_ready = resolve_write,
-
     },
     {
         .state = CONNECTING,
@@ -279,7 +257,6 @@ void socksv5_done(struct selector_key *key)
                 printf("Socks is done for %d\n", fds[i]);
                 abort();
             }
-            //close(fds[i]);
         }
     }
 

@@ -55,25 +55,6 @@ uint8_t * generate_dns_req(char * host, int * final_size, int qtype){
 
 
     length += sizeof(struct QUESTION);
-    /*
-
-    qname2 = (uint8_t *) (buf + sizeof(struct DNS_HEADER) + (strlen((const char*)qname) + 1) + sizeof(struct QUESTION));
-
-    host_dns_format(qname2 , host);
-
-    length += strlen((const char *)qname2) + 1; //size of the host plus the '.' translated
-
-
-    qinfo2 =(struct QUESTION*)&buf[sizeof(struct DNS_HEADER) + (strlen((const char*)qname) + 1) + sizeof(struct QUESTION) + (strlen((const char*)qname2) + 1)]; //fill it
- 
-    qinfo2->qtype = htons(T_AAAA); //type of the query , A , MX , CNAME , NS etc
-    qinfo2->qclass = htons(IN); //internet
-
-
-    length += sizeof(struct QUESTION);
-
-    
-    */
 
     uint8_t * ret = malloc(length);
 

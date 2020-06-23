@@ -4,11 +4,6 @@
 // CONNECTING
 ////////////////////////////////////////
 
-//                  ver---status-----------------rsv--
-// struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
-// struct socks5 *s = ATTACHMENT(key);
-// struct socks5_origin_info *s5oi = &s->origin_info;
-// response_size =  1b + 1b + 1b + 1b  + variable + 2b
 // response fields: VER  ST   RSV  TYPE  ADDR       PRT
 static int connecting_send_conn_response (struct selector_key * key) {
     struct connecting_st *d = &ATTACHMENT(key)->orig.conn;
@@ -184,21 +179,13 @@ static unsigned try_ips(struct selector_key * key) {
     try_connection(s->sel_origin_fd, &connect_ret, key, s->origin_info.ip_selec);
         if (connect_ret < 0) {
             switch (errno) {
-                // TODO try to remove code repetition
                 case EINPROGRESS:
-                    // selector_status st = selector_register(key->s, s->sel_origin_fd, &socks5_handler, OP_WRITE, ATTACHMENT(key));
-                    // if (st != SELECTOR_SUCCESS){
-                    //     s->sel_origin_fd = -1;
-                    //     return;
-                    // }
                     d->substate = CONN_SUB_CHECK_ORIGIN;
                     return CONNECTING;
                     break;
                 default:
-                    // s->sel_origin_fd = -1;
                     if (d->first_working_ip_index >= ((s->origin_info.ip_selec == IPv4) ?  s->origin_info.ipv4_c : s->origin_info.ipv6_c) &&
                         d->families_to_check > 0) {
-                        // TODO Actually, here, one must check if all options for
                         // both or only one family have been tried (and try with the other family)
                             d->substate = CONN_SUB_TRY_IPS;
                             // Start from first address
@@ -230,14 +217,11 @@ static unsigned connecting_check_origin_connected(struct selector_key * key) {
             case EINPROGRESS:
             case EALREADY:
                 // All harmless errors but shouldn't happen
-                // TODO decide how they should be handled
                 return CONNECTING;
             default:
-                // s->sel_origin_fd = -1;
                 // Connection progress ended up in error: try with 
                 if (d->first_working_ip_index >= ((s->origin_info.ip_selec == IPv4) ?  s->origin_info.ipv4_c : s->origin_info.ipv6_c) &&
                     d->families_to_check > 0) {
-                // TODO Actually, here, one must check if all options for
                 // both or only one family have been tried (and try with the other family)
                     d->substate = CONN_SUB_TRY_IPS;
                     d->first_working_ip_index = 0;
