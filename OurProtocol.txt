@@ -217,7 +217,7 @@ Campos:
 Y la respuesta del servidor sigue el siguiente formato:
 
             +------+-------+--------+--------+
-            | TYPE |  CMD  | STATUS |  DISCT |
+            | TYPE |  CMD  | STATUS |  CONF  |
             +------+-------+--------+--------+
             |   1  |   1   |    1   |    1   |
             +------+-------+--------+--------+
