@@ -1,5 +1,7 @@
 # Protocolos de Comunicacion - TPE
 
+La versión funcional del servidor y client SCTP se encuentran en la rama **develop**.
+
 ## Códigos Fuente
 
 ### Servidor
