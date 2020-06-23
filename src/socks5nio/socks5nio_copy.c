@@ -52,12 +52,15 @@ void copy_close(const unsigned state, struct selector_key *key)
 
     // Just free if the disectors were enabled
     if(s->disectors_enabled){
-        // Here we have to free without checking the disectors option just in case the option changes mid execution
-        free_http_auth_parser(&s->client.copy.http_parser);
-        free_pop3_parser(&s->client.copy.pop_parser);
-        if (s->client.copy.aux_b.data != NULL)
+        if (s->origin_info.protocol_type == PROT_HTTP || s->origin_info.protocol_type == PROT_POP3)
         {
-            free(s->client.copy.aux_b.data);
+            // Here we have to free without checking the disectors option just in case the option changes mid execution
+            free_http_auth_parser(&s->client.copy.http_parser);
+            free_pop3_parser(&s->client.copy.pop_parser);
+            if (s->client.copy.aux_b.data != NULL)
+            {
+                free(s->client.copy.aux_b.data);
+            }
         }
     }
 
