@@ -1,4 +1,4 @@
-Protocolo Propio sobre SCTP
+Protocolo IGAF
 
 Índice:
     1 - Introducción
@@ -12,7 +12,7 @@ Protocolo Propio sobre SCTP
 
 1 - Introducción
 
-Este protoclo corre sobre SCTP, y especifíca la autenticación y negociación de opciones para la conexión al servidor.
+El protocolo IGAF (Ignacio - Gonzalo - Augusto - Francisco) corre sobre SCTP, y especifíca la autenticación y negociación de opciones para la conexión al servidor.
 
 En todo momento que aparezca un cuadro con un número, hace referencia a la longitud del campo dentro de la request. Los valores posibles dentro de cada campo son especificados debajo del cuadro, y los valores se mostraran en formato de octetos con el valor X’hh’.
 
@@ -176,11 +176,11 @@ Campos:
 
 Y la respuesta del servidor sigue el siguiente formato:
 
-            +------+-------+--------+--------+-----------+-----------+-----------+-----------+
-            | TYPE |  CMD  | STATUS |  CLEN  |  S5BSIZE  |   SBSIZE  |   DBSIZE  |   DISCT   |
-            +------+-------+--------+--------+-----------+-----------+-----------+-----------+
-            |   1  |   1   |    1   |    1   |      2    |      2    |      2    |     1     |
-            +------+-------+--------+--------+-----------+-----------+-----------+-----------+
+            +------+-------+--------+--------+-----------+-----------+-----------+
+            | TYPE |  CMD  | STATUS |  CLEN  |  S5BSIZE  |   SBSIZE  |   DISCT   |
+            +------+-------+--------+--------+-----------+-----------+-----------+
+            |   1  |   1   |    1   |    1   |      2    |      2    |     1     |
+            +------+-------+--------+--------+-----------+-----------+-----------+
 
 Campos:
             TYPE -> Tipo de uso, X’03’ (CONFIGURACION)
@@ -189,7 +189,6 @@ Campos:
             CLEN -> Cantidad de configuraciones a devolver
             S5BSIZE -> Tamaño del buffer para el proxy socks5 (BigEndian)
             SBSIZE -> Tamaño del buffer de la conexión SCTP (BigEndian)
-            DBSIZE -> Tamaño del buffer de DoH (BigEndian)
             DISCT -> Estado de los disectores, activos(0x01) o inactivos(0x00)
 
 Para poder editar la configuración de alguna métrica se utiliza la siguiente request:
@@ -197,7 +196,7 @@ Para poder editar la configuración de alguna métrica se utiliza la siguiente r
             +------+-------+--------+-----------+
             | TYPE |  CMD  |  CONF  |   VALUE   |
             +------+-------+--------+-----------+
-            |   1  |   1   |    1   | Variable  |
+            |   1  |   1   |    1   |  Variable |
             +------+-------+--------+-----------+
 
 Campos:
@@ -206,12 +205,10 @@ Campos:
             CONF -> Numero de configuración a editar
                 - S5BSIZE -> Tamaño del buffer para el proxy socks5, 0x01
                 - SBSIZE -> Tamaño del buffer de la conexión SCTP, 0x02
-                - DBSIZE -> Tamaño del buffer de DoH, 0x03
-                - TOUT -> Tiempo de timeout, 0x04
+                - DISCT -> Estado de los disectores, 0x03
             VALUE -> Valor de la nueva configuración, tamaño depende del campo
                 - S5BSIZE -> 2 bytes (BigEndian) - Unidad: Bytes
                 - SBSIZE -> 2 bytes (BigEndian) - Unidad: Bytes
-                - DBSIZE -> 2 bytes (BigEndian) - Unidad: Bytes
                 - DISCT -> 1 byte - 0x00(desactivar) o 0x01-0xFF(activar)
 
 Y la respuesta del servidor sigue el siguiente formato:
@@ -229,8 +226,7 @@ Campos:
             CONF -> Numero de configuración a editar
                 - S5BSIZE -> Tamaño del buffer para el proxy socks5, 0x01
                 - SBSIZE -> Tamaño del buffer de la conexión SCTP, 0x02
-                - DBSIZE -> Tamaño del buffer de DoH, 0x03
-                - DISCT -> Estado de los disectores, activados(0x01)/desactivados(0x00), 0x04
+                - DISCT -> Estado de los disectores, activados(0x01)/desactivados(0x00), 0x03
 
 4 - Errores
 

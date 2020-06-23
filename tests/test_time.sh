@@ -3,7 +3,7 @@
 ## { time ./tests/test_time.sh -xs -name /home/gonzalo/Downloads/ >/dev/null; } |& grep real
 
 if [[ $# -ne 4 ]]; then
-	echo 'Usage: test.sh [-xs,-s,-m,-l] [-4, -6, -name] [amount] [outputFilePath]';
+	echo 'Usage: test_time.sh [-xs,-s,-m,-l] [-4, -6, -name] [amount] [outputFilePath]';
 else
     LARGE_URL=https://releases.ubuntu.com/20.04/ubuntu-20.04-desktop-amd64.iso?_ga=2.259928202.1892971045.1592146811-255999976.1581382552
     MEDIUM_URL=https://www.diewerkstatt-wgt.ch/app/download/9504125398/Katalog_die_werkstatt_Freiraumm%C3%B6bel.pdf?t=1400088350
