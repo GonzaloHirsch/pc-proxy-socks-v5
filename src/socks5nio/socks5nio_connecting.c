@@ -86,7 +86,6 @@ static int try_connection(int origin_fd, int *connect_ret, struct selector_key *
             memcpy((void *)&(((struct sockaddr_in*)sin)->sin_port), s5oi->port, 2);
         }
         else if (addrType == IPv6) {
-            printf("IPV6\n");
             sin->ss_family = AF_INET6;
             memcpy((void *)&(((struct sockaddr_in6*)sin)->sin6_addr), s5oi->ipv6_addrs[d->first_working_ip_index], IP_V6_ADDR_SIZE); // Address
             memcpy((void *)&(((struct sockaddr_in6*)sin)->sin6_port), s5oi->port, 2); // Port
