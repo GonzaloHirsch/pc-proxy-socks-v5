@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
             {
                 printf("Connection failed\n");
                 free_memory();
-                die_with_message("connect()");
+                exit(1);
             }
         }
     }
