@@ -49,10 +49,17 @@ char *request_generate(char *domain, int *length, int qtype)
 
     //host we use in this case doh
 
-    char *authority = "Host: doh\r\nUser-Agent: curl/7.54.0\r\n";
+    char *authority = "Host: ";
 
     ptr = copy_advance(ptr, &request_length, authority);
 
+    char * host1 = options -> doh.host;
+
+    ptr = copy_advance(ptr, &request_length, host1);
+
+    char *ua = "\r\nUser-Agent: curl/7.54.0\r\n";
+
+    ptr = copy_advance(ptr, &request_length, ua);
     //accept
 
     char *accept = "accept: application/dns-message\r\n";
