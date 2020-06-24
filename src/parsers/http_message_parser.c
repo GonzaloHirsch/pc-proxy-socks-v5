@@ -69,7 +69,6 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
                 p->bytes_to_read--; 
             }
             else if (p->bytes_to_read == 0 && b == ' ') {
-                // TODO Validate version
                 *p->cursor = '\0';
                 p->cursor = p->status;
                 p->state = HTTP_STATUS_CODE;
@@ -93,7 +92,6 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
                 p->state = HTTP_ERR_INV_STATUS_CODE;
             break;
         case HTTP_STATUS_MSG:
-            // TODO check that status code does not overflow buffer...
             if (b == ' ' || isalpha(b)) {
                 *p->cursor = b;
                 p->cursor++;
@@ -137,7 +135,7 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
             if(b == CLRF){
                 p->body_len = get_numeric_header_value(p, "content-length");
                 if(p->body_len != -1){
-                    p->body = malloc(p->body_len);
+                    p->body = malloc(p->body_len+1);
                     p->cursor = p->body;
                     p->state = HTTP_B;  
                 }
@@ -206,12 +204,12 @@ enum http_message_state http_message_read_next_byte(http_message_parser p, const
                 *p->cursor = b;
                 p->cursor++;
                 if(p->cursor - p->body == p->body_len){
-                    //*p->cursor='\0';
+                    *p->cursor='\0';
                     p->state = HTTP_F;
                 }
             }
             else if(p->cursor - p->body == p->body_len){
-                    //*p->cursor='\0';
+                    *p->cursor='\0';
                     p->state = HTTP_F;
                 }
             else {
