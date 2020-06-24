@@ -10,8 +10,8 @@
 #include "io_utils/buffer.h"
 
 #define MAX_HEADERS 30
-#define MAX_HEADER_NAME_LEN 40
-#define MAX_HEADER_VALUE_LEN 100
+#define MAX_HEADER_NAME_LEN 400
+#define MAX_HEADER_VALUE_LEN 1000
 #define BLOCK_SIZE 512
 
 
