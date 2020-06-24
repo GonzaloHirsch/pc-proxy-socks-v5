@@ -59,7 +59,7 @@ char *request_generate(char *domain, int *length, int qtype)
 
     ptr = copy_advance(ptr, &request_length, accept);
 
-    char *connection = "Connection : keep-alive\r\n\r\n";
+    char *connection = "Connection: keep-alive\r\n\r\n";
 
     ptr = copy_advance(ptr, &request_length, connection);
 
